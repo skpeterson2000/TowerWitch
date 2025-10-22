@@ -996,12 +996,12 @@ class EnhancedGPSWindow(QMainWindow):
                 font-size: 14px;
                 font-weight: bold;
             }}
-            /* Main tab colors */
-            QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* GPS - Purple */
-            QTabBar::tab:nth-child(2) {{ background-color: #27AE60; }}  /* Grids - Green */
-            QTabBar::tab:nth-child(3) {{ background-color: #E74C3C; }}  /* ARMER - Red */
-            QTabBar::tab:nth-child(4) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
-            QTabBar::tab:nth-child(5) {{ background-color: #3498DB; }}  /* Amateur - Blue */
+            /* Main tab colors - only apply to main tab widget */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* GPS - Purple */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(2) {{ background-color: #27AE60; }}  /* Grids - Green */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #E74C3C; }}  /* ARMER - Red */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(5) {{ background-color: #3498DB; }}  /* Amateur - Blue */
             
             QTabBar::tab:selected {{
                 border: 2px solid #ffffff;
@@ -1048,6 +1048,7 @@ class EnhancedGPSWindow(QMainWindow):
         try:
             debug_print("Creating tab widget...", "INFO")
             self.tabs = QTabWidget()
+            self.tabs.setObjectName("main_tabs")  # Set object name for specific CSS targeting
             debug_print("Tab widget created", "SUCCESS")
             
             # GPS Data Tab
@@ -1502,6 +1503,11 @@ Longitude: {lon:.6f}°
         
         # Create sub-tabs for different bands - maximize space for data
         self.amateur_subtabs = QTabWidget()
+        self.amateur_subtabs.setObjectName("amateur_subtabs")  # Set unique object name for CSS targeting
+        
+        # Also set object name for the tab bar for more specific targeting
+        tab_bar = self.amateur_subtabs.tabBar()
+        tab_bar.setObjectName("amateur_tab_bar")
         
         # 10m Tab
         self.amateur_10m_tab = self.create_band_tab("10m", "10 Meters (28-29.7 MHz)")
@@ -1527,26 +1533,26 @@ Longitude: {lon:.6f}°
         self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
         self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
         
-        # Apply basic styling for amateur sub-tabs
-        self.amateur_subtabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #555555;
-                background-color: #3b3b3b;
-            }
-            QTabBar::tab {
-                padding: 10px 15px;
-                margin-right: 2px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                min-width: 60px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            QTabBar::tab:selected {
-                border: 2px solid #ffffff;
-                font-weight: bolder;
-            }
-        """)
+        # Apply dynamic styling for amateur sub-tabs with band-specific colors
+        amateur_css = self.get_amateur_subtab_css()
+        debug_print(f"Applying amateur sub-tab CSS: {amateur_css[:200]}...", "INFO")
+        self.amateur_subtabs.setStyleSheet(amateur_css)
+        
+        # Also try programmatic approach for setting tab colors
+        self.set_amateur_tab_colors()
+        
+        # Also apply to the application level with delayed execution to override main styling
+        from PyQt5.QtCore import QTimer
+        def apply_delayed_styling():
+            debug_print("Applying delayed amateur sub-tab styling", "INFO")
+            self.amateur_subtabs.setStyleSheet(amateur_css)
+            self.set_amateur_tab_colors()
+            # Force style refresh
+            self.amateur_subtabs.style().unpolish(self.amateur_subtabs)
+            self.amateur_subtabs.style().polish(self.amateur_subtabs)
+        
+        # Apply styling after a short delay to ensure it overrides main styling
+        QTimer.singleShot(100, apply_delayed_styling)
         
         layout.addWidget(self.amateur_subtabs)
         
@@ -1872,6 +1878,158 @@ Longitude: {lon:.6f}°
             }}
         """
 
+    def get_amateur_subtab_css(self):
+        """Get CSS for amateur sub-tabs with band-specific colors based on current mode"""
+        
+        # Define band-specific colors for day and night modes
+        if self.night_mode_active:
+            # Night mode - red-tinted colors for night vision compatibility
+            band_colors = {
+                '10m': '#4d1a1a',    # Dark red-brown for HF
+                '6m': '#4d4d1a',     # Dark yellow-red for 6m
+                '2m': '#1a1a4d',     # Dark blue-red for VHF
+                '1.25m': '#1a4d1a',  # Dark green-red for 220 MHz
+                '70cm': '#4d331a',   # Dark orange-red for UHF
+                'Simplex': '#4d1a4d' # Dark purple-red for simplex
+            }
+            text_color = "#ff6666"
+            border_color = "#660000"
+            hover_color = "#661a1a"
+            selected_border = "#ff6666"
+        else:
+            # Day mode - vibrant band-specific colors
+            band_colors = {
+                '10m': '#ff4444',    # Red for 10m HF
+                '6m': '#ffaa44',     # Orange for 6m 
+                '2m': '#4488ff',     # Blue for 2m VHF
+                '1.25m': '#44ff44',  # Green for 1.25m
+                '70cm': '#ff8844',   # Orange-red for 70cm UHF
+                'Simplex': '#aa44ff' # Purple for simplex
+            }
+            text_color = "#ffffff"
+            border_color = "#555555"
+            hover_color = "#666666"
+            selected_border = "#ffffff"
+        
+        # Generate CSS with band-specific colors using very specific selectors
+        css = f"""
+            QTabWidget#amateur_subtabs QTabBar::tab {{
+                padding: 10px 15px !important;
+                margin-right: 2px !important;
+                border-top-left-radius: 5px !important;
+                border-top-right-radius: 5px !important;
+                min-width: 60px !important;
+                font-size: 12px !important;
+                font-weight: bold !important;
+                color: {text_color} !important;
+                border: 1px solid {border_color} !important;
+            }}
+            QTabBar#amateur_tab_bar::tab {{
+                padding: 10px 15px !important;
+                margin-right: 2px !important;
+                border-top-left-radius: 5px !important;
+                border-top-right-radius: 5px !important;
+                min-width: 60px !important;
+                font-size: 12px !important;
+                font-weight: bold !important;
+                color: {text_color} !important;
+                border: 1px solid {border_color} !important;
+            }}
+            QTabWidget#amateur_subtabs QTabBar::tab:hover {{
+                background-color: {hover_color} !important;
+            }}
+            QTabBar#amateur_tab_bar::tab:hover {{
+                background-color: {hover_color} !important;
+            }}
+            QTabWidget#amateur_subtabs QTabBar::tab:selected {{
+                border: 2px solid {selected_border} !important;
+                font-weight: bolder !important;
+            }}
+            QTabBar#amateur_tab_bar::tab:selected {{
+                border: 2px solid {selected_border} !important;
+                font-weight: bolder !important;
+            }}
+            QTabWidget#amateur_subtabs::pane {{
+                border: 1px solid {border_color} !important;
+                background-color: #3b3b3b !important;
+            }}
+        """
+        
+        # Add band-specific styling for each tab using multiple selectors
+        for i, (band, color) in enumerate(band_colors.items()):
+            css += f"""
+            QTabWidget#amateur_subtabs QTabBar::tab:nth-child({i+1}) {{
+                background-color: {color} !important;
+            }}
+            QTabBar#amateur_tab_bar::tab:nth-child({i+1}) {{
+                background-color: {color} !important;
+            }}
+            QTabWidget#amateur_subtabs QTabBar::tab:nth-child({i+1}):selected {{
+                background-color: {color} !important;
+                border: 2px solid {selected_border} !important;
+            }}
+            QTabBar#amateur_tab_bar::tab:nth-child({i+1}):selected {{
+                background-color: {color} !important;
+                border: 2px solid {selected_border} !important;
+            }}
+            QTabWidget#amateur_subtabs QTabBar::tab:nth-child({i+1}):hover {{
+                background-color: {color} !important;
+                opacity: 0.8;
+            }}
+            QTabBar#amateur_tab_bar::tab:nth-child({i+1}):hover {{
+                background-color: {color} !important;
+                opacity: 0.8;
+            }}
+            """
+        
+        return css
+
+    def set_amateur_tab_colors(self):
+        """Set amateur sub-tab colors programmatically using QPalette"""
+        try:
+            from PyQt5.QtGui import QPalette
+            
+            # Define band-specific colors
+            if self.night_mode_active:
+                band_colors = [
+                    QColor(77, 26, 26),    # Dark red-brown for 10m HF
+                    QColor(77, 77, 26),    # Dark yellow-red for 6m
+                    QColor(26, 26, 77),    # Dark blue-red for 2m VHF
+                    QColor(26, 77, 26),    # Dark green-red for 1.25m
+                    QColor(77, 51, 26),    # Dark orange-red for 70cm UHF
+                    QColor(77, 26, 77)     # Dark purple-red for simplex
+                ]
+            else:
+                band_colors = [
+                    QColor(255, 68, 68),   # Red for 10m HF
+                    QColor(255, 170, 68),  # Orange for 6m 
+                    QColor(68, 136, 255),  # Blue for 2m VHF
+                    QColor(68, 255, 68),   # Green for 1.25m
+                    QColor(255, 136, 68),  # Orange-red for 70cm UHF
+                    QColor(170, 68, 255)   # Purple for simplex
+                ]
+            
+            tab_bar = self.amateur_subtabs.tabBar()
+            
+            # Apply colors to each tab
+            for i, color in enumerate(band_colors):
+                if i < tab_bar.count():
+                    # Create a simple colored stylesheet for each tab
+                    tab_style = f"""
+                    QTabBar::tab:nth-child({i+1}) {{
+                        background-color: {color.name()} !important;
+                        color: white !important;
+                    }}
+                    """
+                    # Apply directly to the tab bar
+                    current_style = tab_bar.styleSheet()
+                    tab_bar.setStyleSheet(current_style + tab_style)
+                    
+            debug_print(f"Set programmatic colors for {len(band_colors)} amateur tabs", "INFO")
+            
+        except Exception as e:
+            debug_print(f"Error setting amateur tab colors: {e}", "ERROR")
+
     def update_table_colors_for_mode(self, night_mode_on):
         """Update table item colors based on current mode"""
         if night_mode_on:
@@ -1942,6 +2100,11 @@ Longitude: {lon:.6f}°
         
         # Update all table item colors to match the new theme
         self.update_table_colors_for_mode(night_mode_on)
+        
+        # Update amateur sub-tabs with band-specific colors for the new mode
+        if hasattr(self, 'amateur_subtabs'):
+            self.amateur_subtabs.setStyleSheet(self.get_amateur_subtab_css())
+            self.set_amateur_tab_colors()
 
     def update_gps_data(self, latitude, longitude, altitude, speed, heading):
         """Update all GPS-related displays"""
