@@ -27,6 +27,36 @@ M_TO_FEET = 3.28084
 MPS_TO_MPH = 2.23694
 MPS_TO_KNOTS = 1.94384
 
+# Day/Night mode color scheme
+DAY_MODE_TEXT_COLOR = QColor(255, 255, 255)    # White text for day mode
+NIGHT_MODE_TEXT_COLOR = QColor(255, 102, 102)  # Warm red for night vision compatibility
+
+# Band-specific color schemes for amateur radio
+BAND_COLORS = {
+    'day': {
+        '2m': QColor(100, 150, 255),      # Light blue for 2 meters
+        '2': QColor(100, 150, 255),       # Light blue for 2 meters (alternate name)
+        '70cm': QColor(255, 150, 100),    # Orange for 70 centimeters  
+        '125': QColor(150, 255, 150),     # Light green for 1.25m
+        '125m': QColor(150, 255, 150),    # Light green for 1.25m (alternate name)
+        '1.25m': QColor(150, 255, 150),   # Light green for 1.25m (alternate name)
+        'simplex': QColor(255, 255, 100), # Yellow for simplex
+        'skywarn': QColor(255, 100, 255), # Magenta for Skywarn
+        'default': QColor(255, 255, 255)  # White default
+    },
+    'night': {
+        '2m': QColor(150, 100, 100),      # Muted red-blue for 2m
+        '2': QColor(150, 100, 100),       # Muted red-blue for 2m (alternate name)
+        '70cm': QColor(180, 120, 100),    # Muted red-orange for 70cm
+        '125': QColor(150, 130, 100),     # Muted red-green for 1.25m
+        '125m': QColor(150, 130, 100),    # Muted red-green for 1.25m (alternate name)
+        '1.25m': QColor(150, 130, 100),   # Muted red-green for 1.25m (alternate name)
+        'simplex': QColor(200, 150, 120), # Muted red-yellow for simplex
+        'skywarn': QColor(180, 100, 150), # Muted red-magenta for Skywarn
+        'default': QColor(255, 102, 102)  # Night mode red default
+    }
+}
+
 # Haversine formula to calculate distance
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371  # Radius of the Earth in kilometers
@@ -665,6 +695,10 @@ class GPSWorker(QThread):
 class EnhancedGPSWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        
+        # Initialize night mode state early to prevent AttributeError
+        self.night_mode_active = False
+        
         self.setWindowTitle("TowerWitch - Enhanced GPS Tower Locator")
         
         # Optimize for 10" touchscreen (1024x600 typical resolution)
@@ -721,6 +755,8 @@ class EnhancedGPSWindow(QMainWindow):
         # Create tabbed interface
         self.create_tabs()
         
+        # Tab colors are now set in main stylesheet
+        
         # Create control buttons
         self.create_control_buttons()
         
@@ -756,8 +792,8 @@ class EnhancedGPSWindow(QMainWindow):
         self._toggle_fullscreen_act.triggered.connect(self.toggle_fullscreen)
         self.addAction(self._toggle_fullscreen_act)
 
-    def setup_styling(self):
-        """Set up fonts and colors for touch interface"""
+    def setup_styling(self, night_mode=False):
+        """Set up fonts and colors for touch interface with day/night mode support"""
         # Balanced fonts - larger for important data, reasonable for coordinates
         self.header_font = QFont("Arial", 18, QFont.Bold)
         self.label_font = QFont("Arial", 14, QFont.Bold)
@@ -766,87 +802,108 @@ class EnhancedGPSWindow(QMainWindow):
         self.button_font = QFont("Arial", 14, QFont.Bold)
         self.table_font = QFont("Arial", 13)
         
-        # Color scheme
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #2b2b2b;
-                color: #ffffff;
-            }
-            QGroupBox {
+        # Dynamic color scheme based on mode
+        if night_mode:
+            # Night mode colors - red theme for night vision
+            main_bg = "#1a0000"
+            secondary_bg = "#220000"
+            accent_bg = "#330000"
+            text_color = "#ff6666"
+            accent_text = "#ff6666"
+            button_bg = "#660000"
+            button_hover = "#880000"
+            tab_selected = "#660000"
+        else:
+            # Day mode colors - standard dark theme
+            main_bg = "#2b2b2b"
+            secondary_bg = "#3b3b3b"
+            accent_bg = "#4a90e2"
+            text_color = "#ffffff"
+            accent_text = "#00ff00"
+            button_bg = "#4a90e2"
+            button_hover = "#357abd"
+            tab_selected = "#4a90e2"
+        
+        # Apply dynamic color scheme
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {main_bg};
+                color: {text_color};
+            }}
+            QGroupBox {{
                 font-weight: bold;
                 font-size: 14px;
                 border: 2px solid #555555;
                 border-radius: 8px;
                 margin-top: 1ex;
                 padding-top: 12px;
-                background-color: #3b3b3b;
-                color: #ffffff;
-            }
-            QGroupBox::title {
+                background-color: {secondary_bg};
+                color: {text_color};
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 10px 0 10px;
-                color: #00ff00;
+                color: {accent_text};
                 font-size: 14px;
-            }
-            QLabel {
-                color: #ffffff;
+            }}
+            QLabel {{
+                color: {text_color};
                 padding: 6px;
                 font-size: 12px;
-            }
-            QPushButton {
-                background-color: #4a90e2;
+            }}
+            QPushButton {{
+                background-color: {button_bg};
                 border: none;
                 border-radius: 8px;
                 padding: 15px;
                 font-weight: bold;
-                color: white;
+                color: {text_color};
                 min-height: 45px;
                 font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #357abd;
-            }
-            QPushButton:pressed {
-                background-color: #2968a3;
-            }
-            QTableWidget {
-                background-color: #3b3b3b;
+            }}
+            QPushButton:hover {{
+                background-color: {button_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {button_hover};
+            }}
+            QTableWidget {{
+                background-color: {secondary_bg};
                 border: 1px solid #555555;
                 border-radius: 5px;
                 gridline-color: #555555;
                 font-size: 13px;
-                color: #ffffff;
-            }
-            QTableWidget::item {
+                color: {text_color};
+            }}
+            QTableWidget::item {{
                 padding: 12px;
                 border-bottom: 1px solid #555555;
-                color: #ffffff;
+                color: {text_color};
                 font-size: 13px;
-            }
-            QTableWidget::item:alternate {
-                background-color: #2b2b2b;
-                color: #ffffff;
-            }
-            QTableWidget::item:selected {
-                background-color: #4a90e2;
-                color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #4a90e2;
-                color: #ffffff;
+            }}
+            QTableWidget::item:alternate {{
+                background-color: {main_bg};
+                color: {text_color};
+            }}
+            QTableWidget::item:selected {{
+                background-color: {accent_bg};
+                color: {text_color};
+            }}
+            QHeaderView::section {{
+                background-color: {accent_bg};
+                color: {text_color};
                 padding: 12px;
                 border: 1px solid #555555;
                 font-weight: bold;
                 font-size: 14px;
-            }
-            QTabWidget::pane {
+            }}
+            QTabWidget::pane {{
                 border: 1px solid #555555;
-                background-color: #3b3b3b;
-            }
-            QTabBar::tab {
-                background-color: #2b2b2b;
-                color: #ffffff;
+                background-color: {secondary_bg};
+            }}
+            QTabBar::tab {{
+                color: {text_color};
                 padding: 15px 25px;
                 margin-right: 2px;
                 border-top-left-radius: 5px;
@@ -854,10 +911,18 @@ class EnhancedGPSWindow(QMainWindow):
                 min-width: 120px;
                 font-size: 14px;
                 font-weight: bold;
-            }
-            QTabBar::tab:selected {
-                background-color: #4a90e2;
-            }
+            }}
+            /* Main tab colors */
+            QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* GPS - Purple */
+            QTabBar::tab:nth-child(2) {{ background-color: #27AE60; }}  /* Grids - Green */
+            QTabBar::tab:nth-child(3) {{ background-color: #E74C3C; }}  /* ARMER - Red */
+            QTabBar::tab:nth-child(4) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
+            QTabBar::tab:nth-child(5) {{ background-color: #3498DB; }}  /* Amateur - Blue */
+            
+            QTabBar::tab:selected {{
+                border: 2px solid #ffffff;
+                font-weight: bolder;
+            }}
         """)
 
     def create_header(self):
@@ -873,7 +938,7 @@ class EnhancedGPSWindow(QMainWindow):
         # Date and Time in center
         self.datetime_label = QLabel()
         self.datetime_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.datetime_label.setStyleSheet("color: #ffffff; padding: 10px;")
+        self.datetime_label.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 10px;")
         self.datetime_label.setAlignment(Qt.AlignCenter)
         self.update_datetime()
         
@@ -898,26 +963,28 @@ class EnhancedGPSWindow(QMainWindow):
         """Create tabbed interface for different information views"""
         self.tabs = QTabWidget()
         
-        # GPS Data Tab
+        # GPS Data Tab - use colored circle instead of location pin
         self.gps_tab = self.create_gps_tab()
-        self.tabs.addTab(self.gps_tab, "📍 GPS Data")
+        self.tabs.addTab(self.gps_tab, "� GPS")
         
-        # Grid Systems Tab (grouped with GPS data)
+        # Grid Systems Tab - use colored circle instead of grid emoji
         self.grid_tab = self.create_grid_tab()
-        self.tabs.addTab(self.grid_tab, "�️ Grids")
+        self.tabs.addTab(self.grid_tab, "🟢 Grids")
         
-        # ARMER Data Tab (start of repeater group)
+        # ARMER Data Tab - use colored circle instead of radio emoji
         self.tower_tab = self.create_tower_tab()
-        self.tabs.addTab(self.tower_tab, "� ARMER")
+        self.tabs.addTab(self.tower_tab, "🔴 ARMER")
         
-            # Skywarn Weather Tab
+        # Skywarn Weather Tab - use colored circle instead of weather emoji
         self.skywarn_tab = self.create_skywarn_tab()
-        self.tabs.addTab(self.skywarn_tab, "🌦️ Skywarn")
+        self.tabs.addTab(self.skywarn_tab, "🟠 Skywarn")
             
-            # Amateur Radio Tab
+        # Amateur Radio Tab - use colored circle instead of radio emoji
         self.amateur_tab = self.create_amateur_tab()
-        self.tabs.addTab(self.amateur_tab, "📻 Amateur")
-            
+        self.tabs.addTab(self.amateur_tab, "� Amateur")
+        
+        # Tab colors are now set directly in addTab calls
+        
         self.main_layout.addWidget(self.tabs)
 
     def create_gps_tab(self):
@@ -945,38 +1012,8 @@ class EnhancedGPSWindow(QMainWindow):
         # Set row height for better readability
         self.gps_table.verticalHeader().setDefaultSectionSize(45)
         
-        # Style the GPS table specifically
-        self.gps_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #3b3b3b;
-                border: 1px solid #555555;
-                border-radius: 5px;
-                gridline-color: #555555;
-                font-size: 12px;
-                color: #ffffff;
-            }
-            QTableWidget::item {
-                padding: 10px;
-                border-bottom: 1px solid #555555;
-                color: #ffffff;
-            }
-            QTableWidget::item:alternate {
-                background-color: #2b2b2b;
-                color: #ffffff;
-            }
-            QTableWidget::item:selected {
-                background-color: #4a90e2;
-                color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #4a90e2;
-                color: #ffffff;
-                padding: 12px;
-                border: 1px solid #555555;
-                font-weight: bold;
-                font-size: 13px;
-            }
-        """)
+        # Style the GPS table dynamically based on current mode
+        self.gps_table.setStyleSheet(self.get_table_css())
         
         # Initialize GPS labels for updating
         self.gps_items = {}
@@ -1111,38 +1148,8 @@ class EnhancedGPSWindow(QMainWindow):
         # Set row height for better readability
         self.grid_table.verticalHeader().setDefaultSectionSize(45)
         
-        # Style the grid table specifically
-        self.grid_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #3b3b3b;
-                border: 1px solid #555555;
-                border-radius: 5px;
-                gridline-color: #555555;
-                font-size: 12px;
-                color: #ffffff;
-            }
-            QTableWidget::item {
-                padding: 10px;
-                border-bottom: 1px solid #555555;
-                color: #ffffff;
-            }
-            QTableWidget::item:alternate {
-                background-color: #2b2b2b;
-                color: #ffffff;
-            }
-            QTableWidget::item:selected {
-                background-color: #4a90e2;
-                color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #4a90e2;
-                color: #ffffff;
-                padding: 12px;
-                border: 1px solid #555555;
-                font-weight: bold;
-                font-size: 13px;
-            }
-        """)
+        # Style the grid table dynamically based on current mode
+        self.grid_table.setStyleSheet(self.get_table_css())
         
         # Initialize grid labels for updating
         self.grid_items = {}
@@ -1394,49 +1401,65 @@ Longitude: {lon:.6f}°
         # Create sub-tabs for different bands - maximize space for data
         self.amateur_subtabs = QTabWidget()
         
-        # 10m Tab
+        # 10m Tab - Red circle
         self.amateur_10m_tab = self.create_band_tab("10m", "10 Meters (28-29.7 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_10m_tab, "10m")
+        self.amateur_subtabs.addTab(self.amateur_10m_tab, "🔴 10m")
         
-        # 6m Tab  
+        # 6m Tab - Yellow circle
         self.amateur_6m_tab = self.create_band_tab("6m", "6 Meters (50-54 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_6m_tab, "6m")
+        self.amateur_subtabs.addTab(self.amateur_6m_tab, "🟡 6m")
         
-        # 2m Tab
+        # 2m Tab - Blue circle
         self.amateur_2m_tab = self.create_band_tab("2m", "2 Meters (144-148 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_2m_tab, "2m")
+        self.amateur_subtabs.addTab(self.amateur_2m_tab, "🔵 2m")
         
-        # 1.25m Tab
+        # 1.25m Tab - Green circle
         self.amateur_125m_tab = self.create_band_tab("1.25m", "1.25 Meters (220-225 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_125m_tab, "1.25m")
+        self.amateur_subtabs.addTab(self.amateur_125m_tab, "🟢 1.25m")
         
-        # 70cm Tab
+        # 70cm Tab - Orange circle
         self.amateur_70cm_tab = self.create_band_tab("70cm", "70 Centimeters (420-450 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_70cm_tab, "70cm")
+        self.amateur_subtabs.addTab(self.amateur_70cm_tab, "🟠 70cm")
         
-        # Simplex Tab (Special frequencies)
+        # Simplex Tab - Purple square
         self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
-        self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
+        self.amateur_subtabs.addTab(self.amateur_simplex_tab, "🟪 Simplex")
         
-        # Style the sub-tabs to match the main interface
+        # Set colors for amateur band sub-tabs with compact colored indicators
+        print(f"🎨 Amateur subtab count: {self.amateur_subtabs.count()}")
+        amateur_tab_replacements = [
+            ("10m", "🔴10m"),      # Red - no space
+            ("6m", "🟡6m"),        # Yellow - no space
+            ("2m", "🔵2m"),        # Blue - no space
+            ("1.25m", "🟢1.25m"),  # Green - no space
+            ("70cm", "🟨70cm"),    # Yellow square - no space
+            ("Simplex", "🟪Simplex") # Purple square - no space
+        ]
+        
+        for i, (old_text, new_text) in enumerate(amateur_tab_replacements):
+            if i < self.amateur_subtabs.count():
+                current_text = self.amateur_subtabs.tabText(i)
+                self.amateur_subtabs.setTabText(i, new_text)
+                print(f"🎨 Amateur tab {i}: '{current_text}' -> '{new_text}'")
+        
+        # Apply basic styling without complex colors
         self.amateur_subtabs.setStyleSheet("""
             QTabWidget::pane {
                 border: 1px solid #555555;
                 background-color: #3b3b3b;
             }
             QTabBar::tab {
-                background-color: #2b2b2b;
-                color: #ffffff;
-                padding: 12px 20px;
+                padding: 10px 15px;
                 margin-right: 2px;
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
-                min-width: 80px;
+                min-width: 60px;
                 font-size: 12px;
                 font-weight: bold;
             }
             QTabBar::tab:selected {
-                background-color: #4a90e2;
+                border: 2px solid #ffffff;
+                font-weight: bolder;
             }
         """)
         
@@ -1593,6 +1616,240 @@ Longitude: {lon:.6f}°
         else:
             self.night_mode_btn.setText("🌙 Night Mode")
 
+    def get_text_color(self):
+        """Get the appropriate text color based on current mode"""
+        return NIGHT_MODE_TEXT_COLOR if self.night_mode_active else DAY_MODE_TEXT_COLOR
+
+    def get_text_color_hex(self):
+        """Get text color as hex string for CSS"""
+        return "#ff6666" if self.night_mode_active else "#ffffff"
+
+    def get_band_color(self, band_name):
+        """Get the appropriate color for a specific amateur radio band"""
+        mode = 'night' if self.night_mode_active else 'day'
+        color = BAND_COLORS[mode].get(band_name, BAND_COLORS[mode]['default'])
+        print(f"🎨 Band color for '{band_name}' in {mode} mode: {color.name()}")
+        return color
+    
+    def is_dark_color(self, color):
+        """Check if a color is dark (needs white text)"""
+        # Calculate luminance using relative weights
+        r, g, b = color.red(), color.green(), color.blue()
+        luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+        return luminance < 128
+    
+    def lighten_color(self, color, factor):
+        """Lighten a color by mixing it with white"""
+        r = int(color.red() + (255 - color.red()) * (1 - factor))
+        g = int(color.green() + (255 - color.green()) * (1 - factor))
+        b = int(color.blue() + (255 - color.blue()) * (1 - factor))
+        return QColor(r, g, b)
+    
+    def set_main_tab_colors(self):
+        """Set unique colors for main tabs using Qt programmatic methods"""
+        print("🎨 Setting main tab colors...")
+        # Define colors for each main tab
+        tab_colors = [
+            "#8E44AD",  # GPS - Purple
+            "#27AE60",  # Grids - Green  
+            "#E74C3C",  # ARMER - Red
+            "#F39C12",  # Skywarn - Orange
+            "#3498DB"   # Amateur - Blue
+        ]
+        print(f"🎨 Tab count: {self.tabs.count()}, Colors: {tab_colors}")
+        
+        # Get the tab bar and set colors using tabButton or direct manipulation
+        tab_bar = self.tabs.tabBar()
+        
+        # Build stylesheet dynamically for each tab
+        style_parts = ["""
+            QTabWidget::pane {
+                border: 1px solid #555555;
+                background-color: #3b3b3b;
+            }
+            QTabBar::tab {
+                color: #ffffff;
+                padding: 12px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+                min-width: 120px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+        """]
+        
+        # Add each tab color individually
+        for i, color in enumerate(tab_colors):
+            if i < tab_bar.count():
+                # Set text color programmatically
+                tab_bar.setTabTextColor(i, QColor("#ffffff"))
+                # Add CSS for background
+                style_parts.append(f"QTabBar::tab:nth-child({i+1}) {{ background-color: {color}; }}")
+        
+        style_parts.append("""
+            QTabBar::tab:selected {
+                border: 2px solid #ffffff;
+                font-weight: bolder;
+            }
+        """)
+        
+        final_css = "\n".join(style_parts)
+        print(f"🎨 Applying main tab CSS: {final_css[:200]}...")
+        self.tabs.setStyleSheet(final_css)
+        print("🎨 Main tab colors applied!")
+    
+    def set_amateur_tab_colors(self):
+        """Set unique colors for amateur band sub-tabs using Qt programmatic methods"""
+        print("🎨 Setting amateur tab colors...")
+        # Define colors and text colors for each amateur band tab
+        tab_data = [
+            ("#FF6B6B", "#ffffff"),  # 10m - Red
+            ("#4ECDC4", "#ffffff"),  # 6m - Teal
+            ("#45B7D1", "#ffffff"),  # 2m - Blue
+            ("#96CEB4", "#ffffff"),  # 1.25m - Green
+            ("#FFEAA7", "#000000"),  # 70cm - Yellow
+            ("#DDA0DD", "#ffffff")   # Simplex - Plum
+        ]
+        
+        # Get the tab bar and set colors programmatically
+        tab_bar = self.amateur_subtabs.tabBar()
+        
+        # Build stylesheet dynamically for each tab
+        style_parts = ["""
+            QTabWidget::pane {
+                border: 1px solid #555555;
+                background-color: #3b3b3b;
+            }
+            QTabBar::tab {
+                padding: 12px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+                min-width: 80px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+        """]
+        
+        # Add each tab color individually
+        for i, (bg_color, text_color) in enumerate(tab_data):
+            if i < tab_bar.count():
+                # Set text color programmatically
+                tab_bar.setTabTextColor(i, QColor(text_color))
+                # Add CSS for background
+                style_parts.append(f"QTabBar::tab:nth-child({i+1}) {{ background-color: {bg_color}; color: {text_color}; }}")
+        
+        style_parts.append("""
+            QTabBar::tab:selected {
+                border: 2px solid #ffffff;
+                font-weight: bolder;
+            }
+        """)
+        
+        final_css = "\n".join(style_parts)
+        print(f"🎨 Applying amateur tab CSS: {final_css[:200]}...")
+        self.amateur_subtabs.setStyleSheet(final_css)
+        print("🎨 Amateur tab colors applied!")
+    
+    def force_tab_colors(self):
+        """Brute force approach to set tab colors using multiple methods"""
+        print("🎨 FORCING tab colors with brute force approach...")
+        
+        # Method 1: Try setting background using tabBar().setTabButton
+        main_colors = ["#8E44AD", "#27AE60", "#E74C3C", "#F39C12", "#3498DB"]
+        tab_bar = self.tabs.tabBar()
+        
+        for i, color in enumerate(main_colors):
+            if i < tab_bar.count():
+                print(f"🎨 Setting main tab {i} to {color}")
+                
+                # Create a colored widget
+                colored_widget = QWidget()
+                colored_widget.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+                colored_widget.setFixedSize(120, 30)
+                
+                # Try to replace the tab with colored widget
+                try:
+                    tab_bar.setTabButton(i, tab_bar.LeftSide, colored_widget)
+                except:
+                    pass
+                
+                try:
+                    tab_bar.setTabButton(i, tab_bar.RightSide, colored_widget)  
+                except:
+                    pass
+        
+        # Method 2: Replace existing emoji with color indicators to keep tabs compact
+        tab_replacements = [
+            ("📍 GPS Data", "🟣 GPS"),
+            ("🗗️ Grids", "🟢 Grids"), 
+            ("� ARMER", "� ARMER"),
+            ("🌦️ Skywarn", "🟠 Skywarn"),
+            ("📻 Amateur", "🔵 Amateur")
+        ]
+        
+        for i, (old_text, new_text) in enumerate(tab_replacements):
+            if i < self.tabs.count():
+                self.tabs.setTabText(i, new_text)
+                print(f"🎨 Set tab {i} text to: {new_text}")
+        
+        print("🎨 Brute force coloring completed")
+    
+    def set_tab_colors_direct(self):
+        """Try direct palette manipulation as backup"""
+        print("🎨 Trying direct palette approach...")
+        from PyQt5.QtGui import QPalette
+        
+        # Try to set main tab colors using palette
+        main_colors = ["#8E44AD", "#27AE60", "#E74C3C", "#F39C12", "#3498DB"]
+        for i, color_hex in enumerate(main_colors):
+            if i < self.tabs.count():
+                print(f"🎨 Setting tab {i} to {color_hex}")
+                # Try multiple approaches
+                self.tabs.tabBar().setTabTextColor(i, QColor("#ffffff"))
+                
+                # Create a widget to act as tab background
+                tab_widget = QWidget()
+                tab_widget.setStyleSheet(f"background-color: {color_hex}; border-radius: 5px;")
+                
+        print("🎨 Direct palette approach completed")
+
+    def get_table_css(self):
+        """Get CSS for tables based on current mode"""
+        text_color = "#ff6666" if self.night_mode_active else "#ffffff"
+        return f"""
+            QTableWidget {{
+                background-color: #3b3b3b;
+                border: 1px solid #555555;
+                border-radius: 5px;
+                gridline-color: #555555;
+                font-size: 12px;
+                color: {text_color};
+            }}
+            QTableWidget::item {{
+                padding: 10px;
+                border-bottom: 1px solid #555555;
+                color: {text_color};
+            }}
+            QTableWidget::item:alternate {{
+                background-color: #2b2b2b;
+                color: {text_color};
+            }}
+            QTableWidget::item:selected {{
+                background-color: #4a90e2;
+                color: {text_color};
+            }}
+            QHeaderView::section {{
+                background-color: #4a90e2;
+                color: {text_color};
+                padding: 12px;
+                border: 1px solid #555555;
+                font-weight: bold;
+                font-size: 13px;
+            }}
+        """
+
     def update_table_colors_for_mode(self, night_mode_on):
         """Update table item colors based on current mode"""
         if night_mode_on:
@@ -1618,85 +1875,46 @@ Longitude: {lon:.6f}°
                 else:
                     self.gps_items['fix_value'].setForeground(warning_color)
         
-        # Update tower table colors if it exists
+        # Update tower table colors (but not amateur radio band tables - they get band-specific colors)
         if hasattr(self, 'tower_table'):
             for row in range(self.tower_table.rowCount()):
                 for col in range(self.tower_table.columnCount()):
                     item = self.tower_table.item(row, col)
                     if item:
                         item.setForeground(text_color)
+        
+        # Update GPS and Grid table CSS styles
+        if hasattr(self, 'gps_table'):
+            self.gps_table.setStyleSheet(self.get_table_css())
+        if hasattr(self, 'grid_table'):
+            self.grid_table.setStyleSheet(self.get_table_css())
+        
+        # Update dynamic labels
+        if hasattr(self, 'datetime_label'):
+            color_hex = "#ff6666" if night_mode_on else "#ffffff"
+            self.datetime_label.setStyleSheet(f"color: {color_hex}; padding: 10px;")
+        
+        # Force refresh of all band-specific data to update colors
+        if hasattr(self, 'amateur_2m_data') and self.amateur_2m_data:
+            self.populate_band_data("2", self.amateur_2m_data)
+        if hasattr(self, 'amateur_70cm_data') and self.amateur_70cm_data:
+            self.populate_band_data("70cm", self.amateur_70cm_data)
+        if hasattr(self, 'amateur_simplex_data') and self.amateur_simplex_data:
+            self.populate_simplex_data()
+        # Refresh Skywarn data if it exists
+        if hasattr(self, 'cached_skywarn_data') and self.cached_skywarn_data:
+            self.populate_skywarn_data()
 
     def toggle_night_mode(self, night_mode_on):
         """Toggle between day and night mode for better night vision"""
+        # Use the unified styling system
+        self.setup_styling(night_mode=night_mode_on)
+        
+        # Update header colors based on mode
         if night_mode_on:
-            # Night mode - red theme for preserving night vision
-            night_style = """
-            QMainWindow {
-                background-color: #1a0000;
-                color: #ff6666;
-            }
-            QTabWidget::pane {
-                border: 2px solid #330000;
-                background-color: #1a0000;
-            }
-            QTabBar::tab {
-                background-color: #220000;
-                color: #ff6666;
-                padding: 15px 25px;
-                margin-right: 2px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                min-width: 120px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QTabBar::tab:selected {
-                background-color: #660000;
-            }
-            QTableWidget {
-                background-color: #1a0000;
-                alternate-background-color: #220000;
-                color: #ff6666;
-                gridline-color: #330000;
-                border: 1px solid #330000;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #330000;
-            }
-            QHeaderView::section {
-                background-color: #330000;
-                color: #ff6666;
-                font-weight: bold;
-                font-size: 14px;
-                padding: 8px;
-                border: 1px solid #550000;
-            }
-            QLabel {
-                color: #ff6666;
-            }
-            QPushButton {
-                background-color: #660000;
-                border: none;
-                border-radius: 8px;
-                padding: 15px;
-                font-weight: bold;
-                color: #ff6666;
-                min-height: 45px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #880000;
-            }
-
-            """
-            self.setStyleSheet(night_style)
-            # Update header colors for night mode
             self.gps_status.setStyleSheet("color: #ff6666; padding: 6px; font-size: 14px;")
             self.datetime_label.setStyleSheet("color: #ff6666; padding: 10px;")
         else:
-            # Day mode - restore original dark theme
-            self.setup_styling()
             self.gps_status.setStyleSheet("color: #00ff00; padding: 6px; font-size: 14px;")
             self.datetime_label.setStyleSheet("color: #ffffff; padding: 10px;")
         
@@ -1852,31 +2070,31 @@ Longitude: {lon:.6f}°
             site_item = QTableWidgetItem(site["Description"])
             if distance < 5:
                 site_item.setBackground(QColor(0, 120, 0))  # Darker green for better contrast
-                site_item.setForeground(QColor(255, 255, 255))  # White text
+                site_item.setForeground(self.get_text_color())
             elif distance < 15:
                 site_item.setBackground(QColor(140, 140, 0))  # Darker yellow for better contrast
-                site_item.setForeground(QColor(255, 255, 255))  # White text
+                site_item.setForeground(self.get_text_color())
             else:
                 site_item.setBackground(QColor(120, 0, 0))  # Darker red for better contrast
-                site_item.setForeground(QColor(255, 255, 255))  # White text
+                site_item.setForeground(self.get_text_color())
             
-            # Create other items with white text
+            # Create other items with mode-appropriate text color
             county_item = QTableWidgetItem(site["County Name"])
-            county_item.setForeground(QColor(255, 255, 255))
+            county_item.setForeground(self.get_text_color())
             
             distance_item = QTableWidgetItem(f"{distance:.1f} mi")
-            distance_item.setForeground(QColor(255, 255, 255))
+            distance_item.setForeground(self.get_text_color())
             
             bearing_item = QTableWidgetItem(f"{bearing:.0f}°")
-            bearing_item.setForeground(QColor(255, 255, 255))
+            bearing_item.setForeground(self.get_text_color())
             
             nac_item = QTableWidgetItem(str(nac))
-            nac_item.setForeground(QColor(255, 255, 255))
+            nac_item.setForeground(self.get_text_color())
             
             # Format control frequencies nicely
             freq_text = ", ".join(control_frequencies) if control_frequencies else "N/A"
             freq_item = QTableWidgetItem(freq_text)
-            freq_item.setForeground(QColor(255, 255, 255))
+            freq_item.setForeground(self.get_text_color())
             
             self.table.setItem(row, 0, site_item)
             self.table.setItem(row, 1, county_item)
@@ -2021,33 +2239,44 @@ Longitude: {lon:.6f}°
             f"Call Sign {source_indicator}", "Location", "Frequency", "Tone", "Distance", "Bearing"
         ])
         
+        # Get Skywarn-specific color
+        skywarn_color = self.get_band_color('skywarn')
+        
         for row, (repeater, distance, bearing) in enumerate(repeater_distances):
-            # Color code by distance like ARMER sites
+            # Use Skywarn-specific background color with distance-based brightness/saturation
             call_item = QTableWidgetItem(repeater["call"])
+            
+            # Make Skywarn color more or less saturated based on distance
             if distance < 25:
-                call_item.setBackground(QColor(0, 120, 0))  # Green for close
-                call_item.setForeground(QColor(255, 255, 255))
+                # Closer = more saturated Skywarn color
+                background_color = skywarn_color
+                text_color = QColor(255, 255, 255) if self.is_dark_color(skywarn_color) else QColor(0, 0, 0)
             elif distance < 75:
-                call_item.setBackground(QColor(140, 140, 0))  # Yellow for medium
-                call_item.setForeground(QColor(255, 255, 255))
+                # Medium distance = slightly desaturated Skywarn color
+                background_color = self.lighten_color(skywarn_color, 0.7)
+                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
             else:
-                call_item.setBackground(QColor(120, 0, 0))  # Red for far
-                call_item.setForeground(QColor(255, 255, 255))
+                # Farther = much lighter Skywarn color
+                background_color = self.lighten_color(skywarn_color, 0.4)
+                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
+                
+            call_item.setBackground(background_color)
+            call_item.setForeground(text_color)
             
             location_item = QTableWidgetItem(repeater["location"])
-            location_item.setForeground(QColor(255, 255, 255))
+            location_item.setForeground(skywarn_color)
             
             freq_item = QTableWidgetItem(f"{repeater['freq']} MHz")
-            freq_item.setForeground(QColor(255, 255, 255))
+            freq_item.setForeground(skywarn_color)
             
             tone_item = QTableWidgetItem(f"{repeater['tone']} Hz")
-            tone_item.setForeground(QColor(255, 255, 255))
+            tone_item.setForeground(skywarn_color)
             
             distance_item = QTableWidgetItem(f"{distance:.1f} mi")
-            distance_item.setForeground(QColor(255, 255, 255))
+            distance_item.setForeground(skywarn_color)
             
             bearing_item = QTableWidgetItem(f"{bearing:.0f}°")
-            bearing_item.setForeground(QColor(255, 255, 255))
+            bearing_item.setForeground(skywarn_color)
             
             self.skywarn_table.setItem(row, 0, call_item)
             self.skywarn_table.setItem(row, 1, location_item)
@@ -2352,36 +2581,47 @@ Longitude: {lon:.6f}°
             f"Call Sign {source_indicator}", "Location", "Output", "Input", "Tone", "Distance", "Bearing"
         ])
         
+        # Get band-specific color for this amateur radio band
+        band_color = self.get_band_color(band_name)
+        
         for row, (repeater, distance, bearing) in enumerate(repeater_distances):
-            # Color code by distance
+            # Use band-specific background color with distance-based brightness/saturation
             call_item = QTableWidgetItem(repeater["call"])
+            
+            # Make band color more or less saturated based on distance
             if distance < 25:
-                call_item.setBackground(QColor(0, 120, 0))  # Green for close
-                call_item.setForeground(QColor(255, 255, 255))
+                # Closer = more saturated band color
+                background_color = band_color
+                text_color = QColor(255, 255, 255) if self.is_dark_color(band_color) else QColor(0, 0, 0)
             elif distance < 75:
-                call_item.setBackground(QColor(140, 140, 0))  # Yellow for medium
-                call_item.setForeground(QColor(255, 255, 255))
+                # Medium distance = slightly desaturated band color  
+                background_color = self.lighten_color(band_color, 0.7)
+                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
             else:
-                call_item.setBackground(QColor(120, 0, 0))  # Red for far
-                call_item.setForeground(QColor(255, 255, 255))
+                # Farther = much lighter band color
+                background_color = self.lighten_color(band_color, 0.4)
+                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
+                
+            call_item.setBackground(background_color)
+            call_item.setForeground(text_color)
             
             location_item = QTableWidgetItem(repeater["location"])
-            location_item.setForeground(QColor(255, 255, 255))
+            location_item.setForeground(band_color)
             
             output_item = QTableWidgetItem(f"{repeater['output']} MHz")
-            output_item.setForeground(QColor(255, 255, 255))
+            output_item.setForeground(band_color)
             
             input_item = QTableWidgetItem(f"{repeater['input']} MHz")
-            input_item.setForeground(QColor(255, 255, 255))
+            input_item.setForeground(band_color)
             
             tone_item = QTableWidgetItem(f"{repeater['tone']}")
-            tone_item.setForeground(QColor(255, 255, 255))
+            tone_item.setForeground(band_color)
             
             distance_item = QTableWidgetItem(f"{distance:.1f} mi")
-            distance_item.setForeground(QColor(255, 255, 255))
+            distance_item.setForeground(band_color)
             
             bearing_item = QTableWidgetItem(f"{bearing:.0f}°")
-            bearing_item.setForeground(QColor(255, 255, 255))
+            bearing_item.setForeground(band_color)
             
             table.setItem(row, 0, call_item)
             table.setItem(row, 1, location_item)
@@ -2480,23 +2720,15 @@ Longitude: {lon:.6f}°
                     notes_item = QTableWidgetItem(entry['notes'])
                     table.setItem(row, 5, notes_item)
                     
-                    # Color coding by band
-                    band_colors = {
-                        '10m': QColor(255, 100, 100, 50),  # Light red
-                        '6m': QColor(255, 165, 0, 50),     # Light orange
-                        '2m': QColor(100, 100, 255, 50),   # Light blue
-                        '1.25m': QColor(255, 255, 100, 50), # Light yellow
-                        '70cm': QColor(100, 255, 100, 50), # Light green
-                        '33cm': QColor(255, 100, 255, 50), # Light magenta
-                        '23cm': QColor(100, 255, 255, 50), # Light cyan
-                        '13cm': QColor(200, 200, 200, 50)  # Light gray
-                    }
+                    # Use simplex-specific background color for all simplex entries
+                    simplex_background_color = self.get_band_color('simplex')
+                    text_color = QColor(255, 255, 255) if self.is_dark_color(simplex_background_color) else QColor(0, 0, 0)
                     
-                    band_color = band_colors.get(entry['band'], QColor(255, 255, 255, 30))
                     for col in range(6):
                         item = table.item(row, col)
                         if item:
-                            item.setBackground(band_color)
+                            item.setBackground(simplex_background_color)
+                            item.setForeground(text_color)
                 
                 except Exception as e:
                     print(f"⚠️ Error populating simplex row {row}: {e}")
