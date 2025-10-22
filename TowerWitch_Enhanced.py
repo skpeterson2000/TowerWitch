@@ -920,7 +920,7 @@ class EnhancedGPSWindow(QMainWindow):
         
         self.main_layout.addWidget(self.tabs)
 
-    def create_gps_tab(self):
+		def create_gps_tab(self):
         """Create GPS data display tab with table format"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -1200,14 +1200,7 @@ class EnhancedGPSWindow(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Skywarn info header
-        info_label = QLabel("🌦️ SKYWARN Weather Repeaters")
-        info_label.setFont(QFont("Arial", 16, QFont.Bold))
-        info_label.setStyleSheet("color: #00ff00; padding: 10px; text-align: center;")
-        info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info_label)
-        
-        # Skywarn table
+        # Skywarn table - maximize space for repeater data
         self.skywarn_table = QTableWidget()
         self.skywarn_table.setColumnCount(6)
         self.skywarn_table.setHorizontalHeaderLabels(["Call Sign", "Location", "Frequency", "Tone", "Distance", "Bearing"])
@@ -1221,8 +1214,8 @@ class EnhancedGPSWindow(QMainWindow):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Distance
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Bearing
         
-        # Make table touch-friendly
-        self.skywarn_table.setMinimumHeight(400)
+        # Make table touch-friendly with more space
+        self.skywarn_table.setMinimumHeight(450)
         self.skywarn_table.setAlternatingRowColors(True)
         self.skywarn_table.verticalHeader().setDefaultSectionSize(50)
         self.skywarn_table.setFont(self.table_font)
@@ -1239,14 +1232,7 @@ class EnhancedGPSWindow(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Amateur radio info header
-        info_label = QLabel("📻 Amateur Radio Repeaters")
-        info_label.setFont(QFont("Arial", 16, QFont.Bold))
-        info_label.setStyleSheet("color: #00ff00; padding: 10px; text-align: center;")
-        info_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info_label)
-        
-        # Create sub-tabs for different bands
+        # Create sub-tabs for different bands - maximize space for data
         self.amateur_subtabs = QTabWidget()
         
         # 10m Tab
@@ -1357,14 +1343,7 @@ class EnhancedGPSWindow(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Band description
-        desc_label = QLabel(band_description)
-        desc_label.setFont(QFont("Arial", 12, QFont.Bold))
-        desc_label.setStyleSheet("color: #ffffff; padding: 5px;")
-        desc_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(desc_label)
-        
-        # Create table for simplex frequencies
+        # Create table for simplex frequencies - maximize space for data
         table = QTableWidget()
         table.setColumnCount(6)  # Different columns for simplex
         table.setHorizontalHeaderLabels(["Frequency", "Description", "Type", "Mode", "Tone", "Notes"])
@@ -1378,8 +1357,8 @@ class EnhancedGPSWindow(QMainWindow):
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Tone
         header.setSectionResizeMode(5, QHeaderView.Stretch)  # Notes
         
-        # Make table touch-friendly
-        table.setMinimumHeight(350)
+        # Make table touch-friendly with more space
+        table.setMinimumHeight(400)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setDefaultSectionSize(45)
         table.setFont(self.table_font)
