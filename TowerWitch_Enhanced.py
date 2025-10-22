@@ -3,9 +3,9 @@ import time
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, 
                             QWidget, QGroupBox, QPushButton, QTableWidget, QTableWidgetItem, 
                             QHeaderView, QTabWidget, QFrame, QScrollArea, QGridLayout,
-                            QSizePolicy, QSpacerItem, QAction)
-from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
-from PyQt5.QtGui import QFont, QPalette, QColor
+                            QSizePolicy, QSpacerItem, QAction, QSplitter, QTextEdit)
+from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
+from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen
 import utm
 import maidenhead as mh
 import mgrs
@@ -1081,11 +1081,17 @@ class EnhancedGPSWindow(QMainWindow):
         return tab
 
     def create_grid_tab(self):
-        """Create grid systems display tab with table format"""
+        """Create grid systems display tab with table format and interactive map"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Create a table for grid systems
+        # Create a horizontal splitter to divide between table and map
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Left side: Create a table for grid systems
+        table_widget = QWidget()
+        table_layout = QVBoxLayout(table_widget)
+        
         self.grid_table = QTableWidget()
         self.grid_table.setColumnCount(2)
         self.grid_table.setHorizontalHeaderLabels(["GRID SYSTEM", "COORDINATES"])
@@ -1191,9 +1197,162 @@ class EnhancedGPSWindow(QMainWindow):
         self.grid_table.setItem(5, 0, self.grid_items['mgrs_coords_item'])
         self.grid_table.setItem(5, 1, self.grid_items['mgrs_coords_value'])
         
-        layout.addWidget(self.grid_table)
+        # Add table to left side
+        table_layout.addWidget(self.grid_table)
+        
+        # Right side: Create map widget
+        map_widget = QWidget()
+        map_layout = QVBoxLayout(map_widget)
+        
+        # Map title
+        map_title = QLabel("🗺️ Your Location")
+        map_title.setFont(QFont("Arial", 14, QFont.Bold))
+        map_title.setStyleSheet("color: #ffffff; padding: 10px; text-align: center;")
+        map_title.setAlignment(Qt.AlignCenter)
+        map_layout.addWidget(map_title)
+        
+        # Create coordinate display widget
+        self.coord_display = QTextEdit()
+        self.coord_display.setMinimumHeight(200)
+        self.coord_display.setMaximumHeight(250)
+        self.coord_display.setReadOnly(True)
+        self.coord_display.setStyleSheet("""
+            QTextEdit {
+                background-color: #2b2b2b;
+                color: #ffffff;
+                border: 2px solid #4a90e2;
+                border-radius: 8px;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                padding: 10px;
+            }
+        """)
+        
+        # Initialize coordinate display
+        self.update_coord_display()
+        
+        map_layout.addWidget(self.coord_display)
+        
+        # Add FoxTrot GPS launch button
+        self.launch_gps_button = QPushButton("🗺️ Open in FoxTrot GPS")
+        self.launch_gps_button.setFont(QFont("Arial", 12, QFont.Bold))
+        self.launch_gps_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 14px;
+                margin: 5px;
+            }
+            QPushButton:hover {
+                background-color: #357abd;
+            }
+            QPushButton:pressed {
+                background-color: #2968a3;
+            }
+        """)
+        self.launch_gps_button.clicked.connect(self.launch_foxtrot_gps)
+        
+        map_layout.addWidget(self.launch_gps_button)
+        
+        # Add both sides to splitter
+        splitter.addWidget(table_widget)
+        splitter.addWidget(map_widget)
+        
+        # Set initial sizes (40% table, 60% map)
+        splitter.setSizes([400, 600])
+        
+        layout.addWidget(splitter)
         
         return tab
+
+    def update_coord_display(self):
+        """Update the coordinate display with current location information"""
+        if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
+            lat, lon = self.last_lat, self.last_lon
+        else:
+            # Default to Minneapolis coordinates
+            lat, lon = 44.9778, -93.2650
+        
+        try:
+            # Calculate all coordinate systems
+            import utm
+            import maidenhead as mh
+            import mgrs
+            
+            utm_result = utm.from_latlon(lat, lon)
+            mh_grid = mh.to_maiden(lat, lon)
+            
+            m = mgrs.MGRS()
+            mgrs_result = m.toMGRS(lat, lon)
+            
+            # Create coordinate display text
+            coord_text = f"""📍 CURRENT LOCATION COORDINATES
+
+🌍 Decimal Degrees:
+   Latitude:  {lat:.6f}°
+   Longitude: {lon:.6f}°
+
+🗺️ UTM Coordinates:
+   Zone: {utm_result[2]}{utm_result[3]}
+   Easting:  {utm_result[0]:.0f} m
+   Northing: {utm_result[1]:.0f} m
+
+📡 Maidenhead Grid:
+   {mh_grid} (6-character)
+
+🪖 MGRS Coordinates:
+   {mgrs_result}
+
+🧭 What's Nearby:
+   • Repeaters sorted by distance in other tabs
+   • Grid square boundaries shown above
+   • Use FoxTrot GPS for detailed mapping
+
+💡 Click button below to view location on 
+   interactive map with FoxTrot GPS
+"""
+            
+            if hasattr(self, 'coord_display'):
+                self.coord_display.setPlainText(coord_text)
+                
+        except Exception as e:
+            error_text = f"""📍 COORDINATE CALCULATION
+
+⚠️ Waiting for GPS data or calculation error:
+{str(e)}
+
+Default coordinates shown (Minneapolis, MN)
+Latitude:  {lat:.6f}°
+Longitude: {lon:.6f}°
+"""
+            if hasattr(self, 'coord_display'):
+                self.coord_display.setPlainText(error_text)
+
+    def launch_foxtrot_gps(self):
+        """Launch FoxTrot GPS with current coordinates"""
+        import subprocess
+        import os
+        
+        if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
+            lat, lon = self.last_lat, self.last_lon
+        else:
+            # Default to Minneapolis coordinates
+            lat, lon = 44.9778, -93.2650
+        
+        try:
+            # Launch FoxTrot GPS with current coordinates
+            cmd = ['foxtrotgps', f'--lat={lat}', f'--lon={lon}']
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"🗺️ Launched FoxTrot GPS at coordinates {lat:.6f}, {lon:.6f}")
+        except Exception as e:
+            print(f"❌ Error launching FoxTrot GPS: {e}")
+
+    def update_map_location(self, lat, lon, accuracy=None):
+        """Update the coordinate display and enable FoxTrot GPS with new coordinates"""
+        self.update_coord_display()
 
     def create_skywarn_tab(self):
         """Create Skywarn weather repeater display tab"""
@@ -1645,6 +1804,9 @@ class EnhancedGPSWindow(QMainWindow):
             
         except Exception as e:
             print(f"Error calculating grid systems: {e}")
+
+        # Update map with current location
+        self.update_map_location(latitude, longitude)
 
         # Update Closest Towers
         self.display_closest_sites(latitude, longitude)
