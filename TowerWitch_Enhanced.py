@@ -1,5 +1,7 @@
 import sys
 import time
+import logging
+import traceback
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, 
                             QWidget, QGroupBox, QPushButton, QTableWidget, QTableWidgetItem, 
                             QHeaderView, QTabWidget, QFrame, QScrollArea, QGridLayout,
@@ -21,6 +23,42 @@ import urllib.parse
 import configparser
 import webbrowser
 import tempfile
+
+# Configure comprehensive logging
+log_filename = os.path.join(os.path.dirname(__file__), 'towerwitch_debug.log')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename, mode='w'),  # Overwrite log each run
+        logging.StreamHandler(sys.stdout)  # Also print to console
+    ]
+)
+logger = logging.getLogger(__name__)
+
+def debug_print(message, level="INFO"):
+    """Enhanced debug printing with logging integration"""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    formatted_msg = f"[{timestamp}] {level}: {message}"
+    
+    if level == "ERROR":
+        logger.error(message)
+        print(f"🔴 {formatted_msg}")
+    elif level == "WARNING":
+        logger.warning(message)
+        print(f"🟡 {formatted_msg}")
+    elif level == "SUCCESS":
+        logger.info(message)
+        print(f"🟢 {formatted_msg}")
+    else:
+        logger.info(message)
+        print(f"🔵 {formatted_msg}")
+
+# Log startup information
+debug_print("TowerWitch Enhanced starting up...", "SUCCESS")
+debug_print(f"Python version: {sys.version}", "INFO")
+debug_print(f"Working directory: {os.getcwd()}", "INFO")
+debug_print(f"Log file: {log_filename}", "INFO")
 
 # Conversion constants
 M_TO_FEET = 3.28084
@@ -694,103 +732,149 @@ class GPSWorker(QThread):
 # Enhanced Main Window Class
 class EnhancedGPSWindow(QMainWindow):
     def __init__(self):
+        debug_print("Initializing EnhancedGPSWindow...", "INFO")
         super().__init__()
         
-        # Initialize night mode state early to prevent AttributeError
-        self.night_mode_active = False
-        
-        self.setWindowTitle("TowerWitch - Enhanced GPS Tower Locator")
-        
-        # Optimize for 10" touchscreen (1024x600 typical resolution)
-        self.setGeometry(0, 0, 1024, 600)
-        self.setMinimumSize(800, 600)
-        
-        # Set up styling for touch interface
-        self.setup_styling()
-        
-        # Create main widget and layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setSpacing(10)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # Initialize configuration and API first
-        self.load_configuration()
-        self.radio_api = RadioReferenceAPI(self.api_key)
-        self.cache_dir = self.radio_api.cache_dir  # Reference to the radio API cache directory
-        
-        # Initialize caching variables for amateur radio data
-        self.cached_api_data = None
-        self.cached_api_location = None
-        self.cached_api_timestamp = None
-        self.cached_api_radius = 200  # Cache covers 200-mile radius
-        self.amateur_data_cache_timeout = 86400  # 24 hours (much longer for regional cache)
-        self.is_stationary = False
-        self.stationary_threshold = 0.01  # 0.01 miles = ~50 feet movement to trigger refresh
-        self.last_known_position = None
-        self.cache_region_radius = 150  # Stay within 150 miles of cache center before refresh
-        self.force_band_refresh = False  # Flag to force refresh of band displays when moving
-        
-        # Check if cache refresh is requested (after radio_api is initialized)
-        force_refresh = self.config.getboolean('API', 'force_refresh_cache', fallback=False)
-        if force_refresh:
-            print("🔄 Cache refresh requested - clearing all cached data")
-            self.radio_api.clear_all_cache()
-            # Reset the config option so it doesn't clear every time
-            self.config.set('API', 'force_refresh_cache', 'false')
-            with open(self.config_file, 'w') as f:
-                self.config.write(f)
-        
-        # Data source status
-        self.data_source_status = {
-            'armer': 'static',
-            'skywarn': 'static', 
-            'amateur': 'static'
-        }
-        
-        # Create header with title and status
-        self.create_header()
-        
-        # Create tabbed interface
-        self.create_tabs()
-        
-        # Tab colors are now set in main stylesheet
-        
-        # Create control buttons
-        self.create_control_buttons()
-        
-        # Path to the CSV file
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.csv_filepath = os.path.join(script_dir, "trs_sites_3508.csv")
-        
-        # Initialize Radio Reference API
-        self.load_configuration()
-        self.radio_api = RadioReferenceAPI(self.api_key)
-        
-        # Data source status
-        self.data_source_status = {
-            'armer': 'static',
-            'skywarn': 'static', 
-            'amateur': 'static'
-        }
-        
-        # Start GPS worker
-        self.gps_worker = GPSWorker()
-        self.gps_worker.gps_data_signal.connect(self.update_gps_data)
-        self.gps_worker.start()
-        
-        # Initialize with demo data if no GPS
-        self.last_lat = 44.9778  # Minneapolis default
-        self.last_lon = -93.2650
-        # Track fullscreen state
-        self._is_fullscreen = False
+        try:
+            # Initialize night mode state early to prevent AttributeError
+            self.night_mode_active = False
+            debug_print("Night mode state initialized", "INFO")
+            
+            self.setWindowTitle("TowerWitch - Enhanced GPS Tower Locator")
+            debug_print("Window title set", "INFO")
+            
+            # Optimize for 10" touchscreen (1024x600 typical resolution)
+            self.setGeometry(0, 0, 1024, 600)
+            self.setMinimumSize(800, 600)
+            debug_print("Window geometry set to 1024x600", "INFO")
+            
+            # Set up styling for touch interface
+            debug_print("Setting up styling...", "INFO")
+            self.setup_styling()
+            debug_print("Styling setup complete", "SUCCESS")
+            
+            # Create main widget and layout
+            debug_print("Creating main widget and layout...", "INFO")
+            self.central_widget = QWidget()
+            self.setCentralWidget(self.central_widget)
+            self.main_layout = QVBoxLayout(self.central_widget)
+            self.main_layout.setSpacing(10)
+            self.main_layout.setContentsMargins(10, 10, 10, 10)
+            debug_print("Main layout created", "SUCCESS")
+            
+            # Initialize configuration and API first
+            debug_print("Loading configuration...", "INFO")
+            self.load_configuration()
+            debug_print("Configuration loaded", "SUCCESS")
+            
+            debug_print("Initializing Radio Reference API...", "INFO")
+            self.radio_api = RadioReferenceAPI(self.api_key)
+            self.cache_dir = self.radio_api.cache_dir  # Reference to the radio API cache directory
+            debug_print("Radio Reference API initialized", "SUCCESS")
+            
+            # Initialize caching variables for amateur radio data
+            debug_print("Setting up caching variables...", "INFO")
+            self.cached_api_data = None
+            self.cached_api_location = None
+            self.cached_api_timestamp = None
+            self.cached_api_radius = 200  # Cache covers 200-mile radius
+            self.amateur_data_cache_timeout = 86400  # 24 hours (much longer for regional cache)
+            self.is_stationary = False
+            self.stationary_threshold = 0.01  # 0.01 miles = ~50 feet movement to trigger refresh
+            self.last_known_position = None
+            self.cache_region_radius = 150  # Stay within 150 miles of cache center before refresh
+            self.force_band_refresh = False  # Flag to force refresh of band displays when moving
+            debug_print("Caching variables initialized", "SUCCESS")
+            
+            # Check if cache refresh is requested (after radio_api is initialized)
+            force_refresh = self.config.getboolean('API', 'force_refresh_cache', fallback=False)
+            if force_refresh:
+                debug_print("Cache refresh requested - clearing all cached data", "INFO")
+                self.radio_api.clear_all_cache()
+                # Reset the config option so it doesn't clear every time
+                self.config.set('API', 'force_refresh_cache', 'false')
+                with open(self.config_file, 'w') as f:
+                    self.config.write(f)
+                debug_print("Cache cleared and config updated", "SUCCESS")
+            
+            # Data source status
+            debug_print("Setting up data source status...", "INFO")
+            self.data_source_status = {
+                'armer': 'static',
+                'skywarn': 'static', 
+                'amateur': 'static'
+            }
+            debug_print("Data source status initialized", "SUCCESS")
+            
+            # Create header with title and status
+            debug_print("Creating header...", "INFO")
+            self.create_header()
+            debug_print("Header created", "SUCCESS")
+            
+            # Create tabbed interface
+            debug_print("Creating tabbed interface...", "INFO")
+            self.create_tabs()
+            debug_print("Tabs created", "SUCCESS")
+            
+            # Create control buttons
+            debug_print("Creating control buttons...", "INFO")
+            self.create_control_buttons()
+            debug_print("Control buttons created", "SUCCESS")
+            
+            # Path to the CSV file
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.csv_filepath = os.path.join(script_dir, "trs_sites_3508.csv")
+            debug_print(f"CSV file path: {self.csv_filepath}", "INFO")
+            
+            # Start GPS worker
+            debug_print("Starting GPS worker...", "INFO")
+            self.gps_worker = GPSWorker()
+            self.gps_worker.gps_data_signal.connect(self.update_gps_data)
+            self.gps_worker.start()
+            debug_print("GPS worker started", "SUCCESS")
+            
+            # Initialize with demo data if no GPS
+            debug_print("Setting up GPS defaults...", "INFO")
+            self.last_lat = 44.9778  # Minneapolis default
+            self.last_lon = -93.2650
+            debug_print(f"GPS defaults: {self.last_lat}, {self.last_lon}", "INFO")
+            
+            # Track fullscreen state
+            self._is_fullscreen = False
+            debug_print("Fullscreen state initialized", "INFO")
 
-        # Create an action for toggling fullscreen with F11
-        self._toggle_fullscreen_act = QAction(self)
-        self._toggle_fullscreen_act.setShortcut('F11')
-        self._toggle_fullscreen_act.triggered.connect(self.toggle_fullscreen)
-        self.addAction(self._toggle_fullscreen_act)
+            # Create an action for toggling fullscreen with F11
+            debug_print("Setting up fullscreen action...", "INFO")
+            self._toggle_fullscreen_act = QAction(self)
+            self._toggle_fullscreen_act.setShortcut('F11')
+            self._toggle_fullscreen_act.triggered.connect(self.toggle_fullscreen)
+            self.addAction(self._toggle_fullscreen_act)
+            debug_print("Fullscreen action setup complete", "SUCCESS")
+            
+            debug_print("EnhancedGPSWindow initialization completed successfully!", "SUCCESS")
+            
+        except Exception as e:
+            debug_print(f"CRITICAL ERROR during initialization: {str(e)}", "ERROR")
+            debug_print(f"Exception type: {type(e).__name__}", "ERROR")
+            debug_print(f"Exception traceback: {traceback.format_exc()}", "ERROR")
+            # Don't re-raise - try to continue with partial initialization
+            debug_print("Attempting to continue with partial initialization...", "WARNING")
+    
+    def showEvent(self, event):
+        """Override showEvent to track window display"""
+        debug_print("Window showEvent triggered", "INFO")
+        super().showEvent(event)
+        debug_print("Window is now visible", "SUCCESS")
+    
+    def closeEvent(self, event):
+        """Override closeEvent to track window closing"""
+        debug_print("Window closeEvent triggered", "WARNING")
+        debug_print("Cleaning up GPS worker thread...", "INFO")
+        if hasattr(self, 'gps_worker') and self.gps_worker:
+            self.gps_worker.stop()
+        debug_print("Window closing cleanup complete", "INFO")
+        super().closeEvent(event)
+        debug_print("Window closed", "WARNING")
 
     def setup_styling(self, night_mode=False):
         """Set up fonts and colors for touch interface with day/night mode support"""
@@ -961,31 +1045,49 @@ class EnhancedGPSWindow(QMainWindow):
 
     def create_tabs(self):
         """Create tabbed interface for different information views"""
-        self.tabs = QTabWidget()
-        
-        # GPS Data Tab - use colored circle instead of location pin
-        self.gps_tab = self.create_gps_tab()
-        self.tabs.addTab(self.gps_tab, "� GPS")
-        
-        # Grid Systems Tab - use colored circle instead of grid emoji
-        self.grid_tab = self.create_grid_tab()
-        self.tabs.addTab(self.grid_tab, "🟢 Grids")
-        
-        # ARMER Data Tab - use colored circle instead of radio emoji
-        self.tower_tab = self.create_tower_tab()
-        self.tabs.addTab(self.tower_tab, "🔴 ARMER")
-        
-        # Skywarn Weather Tab - use colored circle instead of weather emoji
-        self.skywarn_tab = self.create_skywarn_tab()
-        self.tabs.addTab(self.skywarn_tab, "🟠 Skywarn")
+        try:
+            debug_print("Creating tab widget...", "INFO")
+            self.tabs = QTabWidget()
+            debug_print("Tab widget created", "SUCCESS")
             
-        # Amateur Radio Tab - use colored circle instead of radio emoji
-        self.amateur_tab = self.create_amateur_tab()
-        self.tabs.addTab(self.amateur_tab, "� Amateur")
-        
-        # Tab colors are now set directly in addTab calls
-        
-        self.main_layout.addWidget(self.tabs)
+            # GPS Data Tab
+            debug_print("Creating GPS tab...", "INFO")
+            self.gps_tab = self.create_gps_tab()
+            self.tabs.addTab(self.gps_tab, "GPS")
+            debug_print("GPS tab added", "SUCCESS")
+            
+            # Grid Systems Tab
+            debug_print("Creating Grid tab...", "INFO")
+            self.grid_tab = self.create_grid_tab()
+            self.tabs.addTab(self.grid_tab, "Grids")
+            debug_print("Grid tab added", "SUCCESS")
+            
+            # ARMER Data Tab
+            debug_print("Creating ARMER tab...", "INFO")
+            self.tower_tab = self.create_tower_tab()
+            self.tabs.addTab(self.tower_tab, "ARMER")
+            debug_print("ARMER tab added", "SUCCESS")
+            
+            # Skywarn Weather Tab
+            debug_print("Creating Skywarn tab...", "INFO")
+            self.skywarn_tab = self.create_skywarn_tab()
+            self.tabs.addTab(self.skywarn_tab, "Skywarn")
+            debug_print("Skywarn tab added", "SUCCESS")
+            
+            # Amateur Radio Tab
+            debug_print("Creating Amateur tab...", "INFO")
+            self.amateur_tab = self.create_amateur_tab()
+            self.tabs.addTab(self.amateur_tab, "Amateur")
+            debug_print("Amateur tab added", "SUCCESS")
+            
+            # Add tabs to main layout
+            debug_print("Adding tabs to main layout...", "INFO")
+            self.main_layout.addWidget(self.tabs)
+            debug_print("Tabs added to main layout", "SUCCESS")
+            
+        except Exception as e:
+            debug_print(f"ERROR creating tabs: {str(e)}", "ERROR")
+            debug_print(f"Exception traceback: {traceback.format_exc()}", "ERROR")
 
     def create_gps_tab(self):
         """Create GPS data display tab with table format"""
@@ -1004,7 +1106,7 @@ class EnhancedGPSWindow(QMainWindow):
         self.gps_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.gps_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
-        # Set column widths
+        # Set column  idths
         header = self.gps_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Measurement name column
         header.setSectionResizeMode(1, QHeaderView.Stretch)  # Value column expands
@@ -1401,48 +1503,31 @@ Longitude: {lon:.6f}°
         # Create sub-tabs for different bands - maximize space for data
         self.amateur_subtabs = QTabWidget()
         
-        # 10m Tab - Red circle
+        # 10m Tab
         self.amateur_10m_tab = self.create_band_tab("10m", "10 Meters (28-29.7 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_10m_tab, "🔴 10m")
+        self.amateur_subtabs.addTab(self.amateur_10m_tab, "10m")
         
-        # 6m Tab - Yellow circle
+        # 6m Tab
         self.amateur_6m_tab = self.create_band_tab("6m", "6 Meters (50-54 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_6m_tab, "🟡 6m")
+        self.amateur_subtabs.addTab(self.amateur_6m_tab, "6m")
         
-        # 2m Tab - Blue circle
+        # 2m Tab
         self.amateur_2m_tab = self.create_band_tab("2m", "2 Meters (144-148 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_2m_tab, "🔵 2m")
+        self.amateur_subtabs.addTab(self.amateur_2m_tab, "2m")
         
-        # 1.25m Tab - Green circle
+        # 1.25m Tab
         self.amateur_125m_tab = self.create_band_tab("1.25m", "1.25 Meters (220-225 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_125m_tab, "🟢 1.25m")
+        self.amateur_subtabs.addTab(self.amateur_125m_tab, "1.25m")
         
-        # 70cm Tab - Orange circle
+        # 70cm Tab
         self.amateur_70cm_tab = self.create_band_tab("70cm", "70 Centimeters (420-450 MHz)")
-        self.amateur_subtabs.addTab(self.amateur_70cm_tab, "🟠 70cm")
+        self.amateur_subtabs.addTab(self.amateur_70cm_tab, "70cm")
         
-        # Simplex Tab - Purple square
+        # Simplex Tab
         self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
-        self.amateur_subtabs.addTab(self.amateur_simplex_tab, "🟪 Simplex")
+        self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
         
-        # Set colors for amateur band sub-tabs with compact colored indicators
-        print(f"🎨 Amateur subtab count: {self.amateur_subtabs.count()}")
-        amateur_tab_replacements = [
-            ("10m", "🔴10m"),      # Red - no space
-            ("6m", "🟡6m"),        # Yellow - no space
-            ("2m", "🔵2m"),        # Blue - no space
-            ("1.25m", "🟢1.25m"),  # Green - no space
-            ("70cm", "🟨70cm"),    # Yellow square - no space
-            ("Simplex", "🟪Simplex") # Purple square - no space
-        ]
-        
-        for i, (old_text, new_text) in enumerate(amateur_tab_replacements):
-            if i < self.amateur_subtabs.count():
-                current_text = self.amateur_subtabs.tabText(i)
-                self.amateur_subtabs.setTabText(i, new_text)
-                print(f"🎨 Amateur tab {i}: '{current_text}' -> '{new_text}'")
-        
-        # Apply basic styling without complex colors
+        # Apply basic styling for amateur sub-tabs
         self.amateur_subtabs.setStyleSheet("""
             QTabWidget::pane {
                 border: 1px solid #555555;
@@ -1752,69 +1837,6 @@ Longitude: {lon:.6f}°
         self.amateur_subtabs.setStyleSheet(final_css)
         print("🎨 Amateur tab colors applied!")
     
-    def force_tab_colors(self):
-        """Brute force approach to set tab colors using multiple methods"""
-        print("🎨 FORCING tab colors with brute force approach...")
-        
-        # Method 1: Try setting background using tabBar().setTabButton
-        main_colors = ["#8E44AD", "#27AE60", "#E74C3C", "#F39C12", "#3498DB"]
-        tab_bar = self.tabs.tabBar()
-        
-        for i, color in enumerate(main_colors):
-            if i < tab_bar.count():
-                print(f"🎨 Setting main tab {i} to {color}")
-                
-                # Create a colored widget
-                colored_widget = QWidget()
-                colored_widget.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
-                colored_widget.setFixedSize(120, 30)
-                
-                # Try to replace the tab with colored widget
-                try:
-                    tab_bar.setTabButton(i, tab_bar.LeftSide, colored_widget)
-                except:
-                    pass
-                
-                try:
-                    tab_bar.setTabButton(i, tab_bar.RightSide, colored_widget)  
-                except:
-                    pass
-        
-        # Method 2: Replace existing emoji with color indicators to keep tabs compact
-        tab_replacements = [
-            ("📍 GPS Data", "🟣 GPS"),
-            ("🗗️ Grids", "🟢 Grids"), 
-            ("� ARMER", "� ARMER"),
-            ("🌦️ Skywarn", "🟠 Skywarn"),
-            ("📻 Amateur", "🔵 Amateur")
-        ]
-        
-        for i, (old_text, new_text) in enumerate(tab_replacements):
-            if i < self.tabs.count():
-                self.tabs.setTabText(i, new_text)
-                print(f"🎨 Set tab {i} text to: {new_text}")
-        
-        print("🎨 Brute force coloring completed")
-    
-    def set_tab_colors_direct(self):
-        """Try direct palette manipulation as backup"""
-        print("🎨 Trying direct palette approach...")
-        from PyQt5.QtGui import QPalette
-        
-        # Try to set main tab colors using palette
-        main_colors = ["#8E44AD", "#27AE60", "#E74C3C", "#F39C12", "#3498DB"]
-        for i, color_hex in enumerate(main_colors):
-            if i < self.tabs.count():
-                print(f"🎨 Setting tab {i} to {color_hex}")
-                # Try multiple approaches
-                self.tabs.tabBar().setTabTextColor(i, QColor("#ffffff"))
-                
-                # Create a widget to act as tab background
-                tab_widget = QWidget()
-                tab_widget.setStyleSheet(f"background-color: {color_hex}; border-radius: 5px;")
-                
-        print("🎨 Direct palette approach completed")
-
     def get_table_css(self):
         """Get CSS for tables based on current mode"""
         text_color = "#ff6666" if self.night_mode_active else "#ffffff"
@@ -1927,7 +1949,7 @@ Longitude: {lon:.6f}°
         self.last_lon = longitude
         
         # Update GPS status in header
-        self.gps_status.setText("GPS: Active 🟢")
+        self.gps_status.setText("GPS: Active")
         self.gps_status.setStyleSheet("color: #00ff00; padding: 12px; font-size: 14px;")
         
         # Update GPS table
@@ -1975,15 +1997,15 @@ Longitude: {lon:.6f}°
             self.gps_items['vector_value'].setText("Stationary")
         
         # Update GPS status and fix quality
-        self.gps_items['status_value'].setText("🟢 ACTIVE")
+        self.gps_items['status_value'].setText("ACTIVE")
         self.gps_items['status_value'].setForeground(QColor(0, 255, 0))  # Green text
         
         # Determine fix quality based on speed accuracy (rough estimate)
         if speed > 0.1:  # Moving
-            self.gps_items['fix_value'].setText("🟢 3D FIX (Moving)")
+            self.gps_items['fix_value'].setText("3D FIX (Moving)")
             self.gps_items['fix_value'].setForeground(QColor(0, 255, 0))
         else:  # Stationary
-            self.gps_items['fix_value'].setText("🟡 3D FIX (Stationary)")
+            self.gps_items['fix_value'].setText("3D FIX (Stationary)")
             self.gps_items['fix_value'].setForeground(QColor(255, 255, 0))
 
         # Update Grid Systems in table format
@@ -3041,13 +3063,49 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
 # Main Application
 if __name__ == "__main__":
-    # Enable high DPI scaling BEFORE creating QApplication
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
-    app = QApplication(sys.argv)
-    
-    window = EnhancedGPSWindow()
-    window.show()
-    
-    sys.exit(app.exec_())
+    try:
+        debug_print("Starting main application...", "INFO")
+        
+        # Enable high DPI scaling BEFORE creating QApplication
+        debug_print("Setting high DPI attributes...", "INFO")
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+        debug_print("High DPI attributes set", "SUCCESS")
+        
+        debug_print("Creating QApplication...", "INFO")
+        app = QApplication(sys.argv)
+        debug_print("QApplication created successfully", "SUCCESS")
+        
+        debug_print("Creating main window...", "INFO")
+        window = EnhancedGPSWindow()
+        debug_print("Main window created successfully", "SUCCESS")
+        
+        debug_print("Showing window...", "INFO")
+        window.show()
+        debug_print("Window displayed", "SUCCESS")
+        
+        debug_print("Starting event loop...", "INFO")
+        exit_code = app.exec_()
+        debug_print(f"Event loop exited with code: {exit_code}", "INFO")
+        
+        debug_print("Application shutting down normally", "SUCCESS")
+        sys.exit(exit_code)
+        
+    except Exception as e:
+        debug_print(f"FATAL ERROR in main application: {str(e)}", "ERROR")
+        debug_print(f"Exception type: {type(e).__name__}", "ERROR")
+        debug_print(f"Exception traceback: {traceback.format_exc()}", "ERROR")
+        
+        # Try to show an error dialog if possible
+        try:
+            if 'app' in locals():
+                from PyQt5.QtWidgets import QMessageBox
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Critical)
+                msg.setWindowTitle("TowerWitch Fatal Error")
+                msg.setText(f"A fatal error occurred:\n\n{str(e)}\n\nCheck the log file for details.")
+                msg.exec_()
+        except:
+            pass
+        
+        sys.exit(1)
