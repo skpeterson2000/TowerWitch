@@ -2,13 +2,13 @@
 
 **GPS-enabled Amateur Radio Tower & Repeater Locator**
 
-TowerWitch is a comprehensive amateur radio application that helps locate nearby radio towers, repeaters, and emergency communication resources using GPS positioning. Perfect for mobile operation, emergency preparedness, and exploring new areas.
+TowerWitch is a comprehensive amateur radio application that helps locate nearby radio repeaters and emergency services communication resources using GPS positioning. Perfect for mobile operation, emergency preparedness, and exploring new areas.
 
 ## Features
 
 ### 🗼 Multi-Service Support
 - **ARMER** - Allied Radio Matrix for Emergency Response (Minnesota P25 trunked system)
-- **Skywarn** - Weather spotting repeater networks
+- **Skywarn** - Weather spotting repeater networks for inclement weather
 - **Amateur Radio** - Repeaters across all bands (10m, 6m, 2m, 1.25m, 70cm, Simplex)
 - **GPS Tracking** - Real-time location with bearing/distance calculations
 - **Grid Systems** - Maidenhead, UTM, MGRS, USNG coordinate display
