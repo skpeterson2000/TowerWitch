@@ -6,6 +6,9 @@ An enhanced GPS-enabled tower locator application for amateur radio operators, e
 
 ### 🏗️ Comprehensive Radio Infrastructure
 - **Amateur Radio Repeaters**: 2m, 70cm, 6m, 10m, and 1.25m band coverage
+- **Simplex Frequencies**: 25 standardized calling and special frequencies
+- **ISS Communications**: Space station voice and packet frequencies
+- **Digital Modes**: APRS, D-STAR, and packet radio frequencies
 - **Skywarn Network**: Enhanced emergency weather communications
 - **ARMER System**: Minnesota state communications infrastructure
 - **Regional Coverage**: Smart caching with 200-mile radius
