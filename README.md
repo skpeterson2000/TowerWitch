@@ -40,7 +40,7 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - Mature PyQt5 interface
 - Complete GPS and Radio Reference integration
 
-### TowerWitch-K (Kivy) - v2.0 In Development 🚧
+### TowerWitch-K (Kivy) - v1.0 In Development 🚧
 - Native touch interface
 - Mobile deployment (Android APK)
 - Cross-platform consistency
