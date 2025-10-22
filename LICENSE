@@ -1,0 +1,46 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2025 TowerWitch Project
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+========================================================================================
+
+TowerWitch - GPS-enabled Amateur Radio Tower & Repeater Locator
+
+This software is designed for amateur radio operators, emergency services, and 
+communications enthusiasts to locate nearby radio infrastructure using GPS positioning.
+
+Key Features:
+- Real-time GPS integration
+- Amateur radio repeater databases
+- Emergency communication services (ARMER, Skywarn)
+- Touch-optimized interface for mobile operation
+- Night mode for field operations
+
+For more information, documentation, and support:
+https://github.com/yourusername/TowerWitch
+
+Amateur Radio Emergency Communication:
+This software supports emergency preparedness and public service communications.
+Emergency services integration includes weather spotting networks and public
+safety radio systems where legally accessible.
+
+73s and stay safe!
+
+========================================================================================
+
+The full text of the GNU General Public License v3.0 can be found at:
+https://www.gnu.org/licenses/gpl-3.0.txt
