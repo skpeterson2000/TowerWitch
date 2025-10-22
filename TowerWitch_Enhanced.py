@@ -2135,7 +2135,7 @@ class EnhancedGPSWindow(QMainWindow):
             table_attr = f'amateur_{band_name}_table'
         
         if not hasattr(self, table_attr):
-            print(f"Warning: Table attribute {table_attr} not found for band {band_name}")
+            print(f"❌ Warning: Table attribute {table_attr} not found for band {band_name}")
             return
             
         table = getattr(self, table_attr)
@@ -2270,35 +2270,80 @@ class EnhancedGPSWindow(QMainWindow):
         self.cached_skywarn_timestamp = None
         print("🗑️ Skywarn cache flushed")
 
-    def populate_all_amateur_data(self):
-        """Ensure all amateur data arrays are populated with comprehensive static data"""
-        # Force population of all band data arrays
-        self.amateur_10m_data = [
-            {"call": "WD0DET", "location": "St. Cloud", "output": "29.64", "input": "29.54", "tone": "114.8", "lat": 45.5579, "lon": -94.2476},
-            {"call": "KF0RWD", "location": "Alexandria", "output": "29.67", "input": "29.57", "tone": "94.8", "lat": 45.8855, "lon": -95.3772},
-            {"call": "K0DIS", "location": "Fergus Falls", "output": "29.62", "input": "29.52", "tone": "131.8", "lat": 46.2830, "lon": -96.0777},
-            {"call": "WA0TDA", "location": "Grand Rapids", "output": "29.69", "input": "29.59", "tone": "107.2", "lat": 47.2378, "lon": -93.5308},
-            {"call": "KF0RWD", "location": "Brainerd", "output": "29.61", "input": "29.51", "tone": "94.8", "lat": 46.3580, "lon": -94.2008}
-        ]
-        
-        self.amateur_6m_data = [
-            {"call": "KF0QCC", "location": "St. Cloud", "output": "53.77", "input": "52.77", "tone": "114.8", "lat": 45.5579, "lon": -94.2476},
-            {"call": "WD0DET", "location": "Alexandria", "output": "53.83", "input": "52.83", "tone": "94.8", "lat": 45.8855, "lon": -95.3772},
-            {"call": "K0DIS", "location": "Fergus Falls", "output": "53.89", "input": "52.89", "tone": "131.8", "lat": 46.2830, "lon": -96.0777},
-            {"call": "WA0TDA", "location": "Grand Rapids", "output": "53.93", "input": "52.93", "tone": "107.2", "lat": 47.2378, "lon": -93.5308},
-            {"call": "KF0QCC", "location": "Brainerd", "output": "53.85", "input": "52.85", "tone": "103.5", "lat": 46.3580, "lon": -94.2008}
-        ]
-        
-        self.amateur_1_25m_data = [
-            {"call": "KF0SME", "location": "St. Cloud", "output": "224.92", "input": "223.32", "tone": "114.8", "lat": 45.5579, "lon": -94.2476},
-            {"call": "WD0DET", "location": "Alexandria", "output": "224.96", "input": "223.36", "tone": "94.8", "lat": 45.8855, "lon": -95.3772},
-            {"call": "K0DIS", "location": "Fergus Falls", "output": "224.86", "input": "223.26", "tone": "131.8", "lat": 46.2830, "lon": -96.0777},
-            {"call": "WA0TDA", "location": "Grand Rapids", "output": "224.98", "input": "223.38", "tone": "107.2", "lat": 47.2378, "lon": -93.5308},
-            {"call": "KF0SME", "location": "Brainerd", "output": "224.88", "input": "223.28", "tone": "103.5", "lat": 46.3580, "lon": -94.2008}
-        ]
-        
-        # Load simplex data
-        self.load_simplex_data()
+    def populate_simplex_data(self):
+        """Populate the simplex frequencies table"""
+        try:
+            table = getattr(self, 'amateur_simplex_table', None)
+            if not table:
+                print("⚠️ Simplex table not found")
+                return
+            
+            # Clear existing data
+            table.setRowCount(0)
+            
+            if not hasattr(self, 'amateur_simplex_data') or not self.amateur_simplex_data:
+                self.load_simplex_data()
+            
+            # Populate table
+            table.setRowCount(len(self.amateur_simplex_data))
+            
+            for row, entry in enumerate(self.amateur_simplex_data):
+                try:
+                    # Frequency
+                    freq_item = QTableWidgetItem(entry['frequency_display'])
+                    freq_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 0, freq_item)
+                    
+                    # Description
+                    desc_item = QTableWidgetItem(entry['description'])
+                    table.setItem(row, 1, desc_item)
+                    
+                    # Type (Simplex/Repeater) with band
+                    type_text = f"{entry['type']} ({entry['band']})"
+                    type_item = QTableWidgetItem(type_text)
+                    type_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 2, type_item)
+                    
+                    # Mode
+                    mode_item = QTableWidgetItem(entry['mode'])
+                    mode_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 3, mode_item)
+                    
+                    # Tone
+                    tone_item = QTableWidgetItem(entry['tone'])
+                    tone_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 4, tone_item)
+                    
+                    # Notes
+                    notes_item = QTableWidgetItem(entry['notes'])
+                    table.setItem(row, 5, notes_item)
+                    
+                    # Color coding by band
+                    band_colors = {
+                        '10m': QColor(255, 100, 100, 50),  # Light red
+                        '6m': QColor(255, 165, 0, 50),     # Light orange
+                        '2m': QColor(100, 100, 255, 50),   # Light blue
+                        '1.25m': QColor(255, 255, 100, 50), # Light yellow
+                        '70cm': QColor(100, 255, 100, 50), # Light green
+                        '33cm': QColor(255, 100, 255, 50), # Light magenta
+                        '23cm': QColor(100, 255, 255, 50), # Light cyan
+                        '13cm': QColor(200, 200, 200, 50)  # Light gray
+                    }
+                    
+                    band_color = band_colors.get(entry['band'], QColor(255, 255, 255, 30))
+                    for col in range(6):
+                        item = table.item(row, col)
+                        if item:
+                            item.setBackground(band_color)
+                
+                except Exception as e:
+                    print(f"⚠️ Error populating simplex row {row}: {e}")
+                    continue
+            
+            print(f"✅ Populated {table.rowCount()} simplex frequencies")
+            
+        except Exception as e:
+            print(f"❌ Error populating simplex data: {e}")
 
     def load_simplex_data(self):
         """Load amateur radio simplex frequencies from CSV file"""
@@ -2394,81 +2439,6 @@ class EnhancedGPSWindow(QMainWindow):
             return "13cm"
         else:
             return "Other"
-
-    def populate_simplex_data(self):
-        """Populate the simplex frequencies table"""
-        try:
-            table = getattr(self, 'amateur_simplex_table', None)
-            if not table:
-                print("⚠️ Simplex table not found")
-                return
-            
-            # Clear existing data
-            table.setRowCount(0)
-            
-            if not hasattr(self, 'amateur_simplex_data') or not self.amateur_simplex_data:
-                self.load_simplex_data()
-            
-            # Populate table
-            table.setRowCount(len(self.amateur_simplex_data))
-            
-            for row, entry in enumerate(self.amateur_simplex_data):
-                try:
-                    # Frequency
-                    freq_item = QTableWidgetItem(entry['frequency_display'])
-                    freq_item.setTextAlignment(Qt.AlignCenter)
-                    table.setItem(row, 0, freq_item)
-                    
-                    # Description
-                    desc_item = QTableWidgetItem(entry['description'])
-                    table.setItem(row, 1, desc_item)
-                    
-                    # Type (Simplex/Repeater) with band
-                    type_text = f"{entry['type']} ({entry['band']})"
-                    type_item = QTableWidgetItem(type_text)
-                    type_item.setTextAlignment(Qt.AlignCenter)
-                    table.setItem(row, 2, type_item)
-                    
-                    # Mode
-                    mode_item = QTableWidgetItem(entry['mode'])
-                    mode_item.setTextAlignment(Qt.AlignCenter)
-                    table.setItem(row, 3, mode_item)
-                    
-                    # Tone
-                    tone_item = QTableWidgetItem(entry['tone'])
-                    tone_item.setTextAlignment(Qt.AlignCenter)
-                    table.setItem(row, 4, tone_item)
-                    
-                    # Notes
-                    notes_item = QTableWidgetItem(entry['notes'])
-                    table.setItem(row, 5, notes_item)
-                    
-                    # Color coding by band
-                    band_colors = {
-                        '10m': QColor(255, 100, 100, 50),  # Light red
-                        '6m': QColor(255, 165, 0, 50),     # Light orange
-                        '2m': QColor(100, 100, 255, 50),   # Light blue
-                        '1.25m': QColor(255, 255, 100, 50), # Light yellow
-                        '70cm': QColor(100, 255, 100, 50), # Light green
-                        '33cm': QColor(255, 100, 255, 50), # Light magenta
-                        '23cm': QColor(100, 255, 255, 50), # Light cyan
-                        '13cm': QColor(200, 200, 200, 50)  # Light gray
-                    }
-                    
-                    band_color = band_colors.get(entry['band'], QColor(255, 255, 255, 30))
-                    for col in range(6):
-                        item = table.item(row, col)
-                        if item:
-                            item.setBackground(band_color)
-                
-                except Exception as e:
-                    print(f"⚠️ Error populating simplex row {row}: {e}")
-                    continue
-            
-            print(f"✅ Populated {table.rowCount()} simplex frequencies")
-            
-        except Exception as e:
-            print(f"❌ Error populating simplex data: {e}")
 
     def get_cache_status(self):
         """Get information about the current cache status"""
