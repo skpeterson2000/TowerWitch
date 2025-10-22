@@ -1,0 +1,26 @@
+Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha Tag,PL Output Tone,PL Input Tone,Mode,Class Station Code,Tag
+29.6,0,,,10m FM Simplex,10m FM Simplx,,,FM,BM,Ham
+50.125,0,,,6m SSB Calling,6m SSB Call,,,USB,BM,Ham
+52.525,0,,,6m FM Primary Calling,6m FM Call Pri,,,FM,BM,Ham
+52.54,0,,,6m FM Secondary Calling,6m FM Call Sec,,,FM,BM,Ham
+144.2,0,,,2m SSB Calling,2m SSB Call,,,USB,BM,Ham
+144.39,0,,,Automatic Packet Reporting System,APRS,,,Telm,BM,Ham
+144.41,0,,,US Summits On The Air (SOTA),US SOTA,,,FM,BM,Ham
+145.67,0,,,2m D-STAR Calling,2m D-STAR Call,,,D-STAR,BM,Ham
+145.8,144.49,,,Voice Region 2-3,ISS Region 2-3,,,FM,RM,Ham
+145.8,145.2,,,Voice Region 1,ISS Region 1,,,FM,RM,Ham
+145.825,0,,,VHF Packet,ISS VHF Packet,,,Telm,BM,Ham
+146.52,0,,,2m FM Simplex Calling,2m FM Call,,,FM,BM,Ham
+146.58,0,,,North American Adventure (Alt to 144.410 & 146.520),N Amer Adventure,,,FM,BM,Ham
+222.1,0,,,1.25m SSB & CW Calling,1.25m SSB/CW,,,USB,BM,Ham
+223.5,0,,,1.25m FM Simplex Calling,1.25m FM,,,FM,BM,Ham
+432.1,0,,,70cm SSB Calling,70cm SSB Call,,,USB,BM,Ham
+437.55,0,,,UHF Packet,ISS UHF Packet,,,Telm,BM,Ham
+437.8,145.99,,,Cross-band Repeater,ISS Cross-band,CSQ,67.0 PL,FM,RM,Ham
+446,0,,,70cm FM Simplex Calling,70cm FM Simplx,,,FM,BM,Ham
+902.1,0,,,33cm SSB/CW Calling,33cm SSB CW,,,USB,BM,Ham
+927.5,0,,,33cm FM Simplex Calling,33cm FM Call,,,FMN,BM,Ham
+1294.5,0,,,23cm FM Simplex Calling,23cm FM Call,,,FM,BM,Ham
+1296.1,0,,,23cm SSB/CW Calling,23cm SSB/CW,,,USB,BM,Ham
+2304.1,0,,,13cm SSB/CW Simplex Calling,13cm SSB/CW,,,USB,BM,Ham
+2305.2,0,,,13cm FM Simplex Calling,13cm FM Simplx,,,FM,BM,Ham

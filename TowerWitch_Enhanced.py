@@ -1269,6 +1269,10 @@ class EnhancedGPSWindow(QMainWindow):
         self.amateur_70cm_tab = self.create_band_tab("70cm", "70 Centimeters (420-450 MHz)")
         self.amateur_subtabs.addTab(self.amateur_70cm_tab, "70cm")
         
+        # Simplex Tab (Special frequencies)
+        self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
+        self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
+        
         # Style the sub-tabs to match the main interface
         self.amateur_subtabs.setStyleSheet("""
             QTabWidget::pane {
@@ -1295,6 +1299,9 @@ class EnhancedGPSWindow(QMainWindow):
         
         # Populate all band data
         self.populate_all_amateur_data()
+        
+        # Populate simplex data
+        self.populate_simplex_data()
         
         return tab
 
@@ -1340,6 +1347,45 @@ class EnhancedGPSWindow(QMainWindow):
         else:
             table_name = f'amateur_{band_name.replace(".", "").replace("m", "")}_table'
         setattr(self, table_name, table)
+        
+        layout.addWidget(table)
+        
+        return tab
+
+    def create_simplex_tab(self, band_name, band_description):
+        """Create a tab for amateur radio simplex and special frequencies"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Band description
+        desc_label = QLabel(band_description)
+        desc_label.setFont(QFont("Arial", 12, QFont.Bold))
+        desc_label.setStyleSheet("color: #ffffff; padding: 5px;")
+        desc_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(desc_label)
+        
+        # Create table for simplex frequencies
+        table = QTableWidget()
+        table.setColumnCount(6)  # Different columns for simplex
+        table.setHorizontalHeaderLabels(["Frequency", "Description", "Type", "Mode", "Tone", "Notes"])
+        
+        # Set column widths for touch interface
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Frequency
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Description can expand
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Type
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Mode
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Tone
+        header.setSectionResizeMode(5, QHeaderView.Stretch)  # Notes
+        
+        # Make table touch-friendly
+        table.setMinimumHeight(350)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setDefaultSectionSize(45)
+        table.setFont(self.table_font)
+        
+        # Store reference to table for population
+        setattr(self, "amateur_simplex_table", table)
         
         layout.addWidget(table)
         
@@ -2271,6 +2317,179 @@ class EnhancedGPSWindow(QMainWindow):
             {"call": "WA0TDA", "location": "Grand Rapids", "output": "224.98", "input": "223.38", "tone": "107.2", "lat": 47.2378, "lon": -93.5308},
             {"call": "KF0SME", "location": "Brainerd", "output": "224.88", "input": "223.28", "tone": "103.5", "lat": 46.3580, "lon": -94.2008}
         ]
+        
+        # Load simplex data
+        self.load_simplex_data()
+
+    def load_simplex_data(self):
+        """Load amateur radio simplex frequencies from CSV file"""
+        try:
+            simplex_file = os.path.join(os.path.dirname(__file__), "AmateurSimplex.csv")
+            self.amateur_simplex_data = []
+            
+            print(f"📻 Loading simplex data from: {simplex_file}")
+            
+            if os.path.exists(simplex_file):
+                with open(simplex_file, 'r', encoding='utf-8') as file:
+                    csv_reader = csv.DictReader(file)
+                    for row in csv_reader:
+                        try:
+                            # Parse the CSV data
+                            freq_output = float(row['Frequency Output'])
+                            freq_input = float(row['Frequency Input']) if row['Frequency Input'] != '0' else None
+                            
+                            # Determine frequency type and band
+                            freq_type = "Repeater" if freq_input else "Simplex"
+                            band = self.determine_band(freq_output)
+                            
+                            # Format tone information
+                            tone_out = row.get('PL Output Tone', '').strip()
+                            tone_in = row.get('PL Input Tone', '').strip()
+                            tone_display = ""
+                            if tone_out and tone_out != 'CSQ':
+                                tone_display = tone_out
+                                if tone_in and tone_in != tone_out:
+                                    tone_display += f"/{tone_in}"
+                            
+                            # Create notes from multiple fields
+                            notes = []
+                            if row.get('Alpha Tag'):
+                                notes.append(row['Alpha Tag'])
+                            if row.get('Agency/Category'):
+                                notes.append(row['Agency/Category'])
+                            notes_text = " | ".join(notes) if notes else ""
+                            
+                            # Format frequency display
+                            if freq_input:
+                                freq_display = f"{freq_output} / {freq_input}"
+                            else:
+                                freq_display = str(freq_output)
+                            
+                            simplex_entry = {
+                                'frequency': freq_output,
+                                'frequency_display': freq_display,
+                                'description': row.get('Description', '').strip(),
+                                'type': freq_type,
+                                'mode': row.get('Mode', '').strip(),
+                                'tone': tone_display,
+                                'notes': notes_text,
+                                'band': band,
+                                'input_freq': freq_input
+                            }
+                            
+                            self.amateur_simplex_data.append(simplex_entry)
+                            
+                        except (ValueError, KeyError) as e:
+                            print(f"⚠️ Error parsing simplex entry: {e}")
+                            continue
+                
+                # Sort by frequency
+                self.amateur_simplex_data.sort(key=lambda x: x['frequency'])
+                print(f"✅ Loaded {len(self.amateur_simplex_data)} simplex frequencies")
+                
+            else:
+                print(f"⚠️ Simplex file not found: {simplex_file}")
+                self.amateur_simplex_data = []
+                
+        except Exception as e:
+            print(f"❌ Error loading simplex data: {e}")
+            self.amateur_simplex_data = []
+
+    def determine_band(self, frequency):
+        """Determine amateur radio band from frequency"""
+        if 28.0 <= frequency <= 29.7:
+            return "10m"
+        elif 50.0 <= frequency <= 54.0:
+            return "6m"
+        elif 144.0 <= frequency <= 148.0:
+            return "2m"
+        elif 220.0 <= frequency <= 225.0:
+            return "1.25m"
+        elif 420.0 <= frequency <= 450.0:
+            return "70cm"
+        elif 902.0 <= frequency <= 928.0:
+            return "33cm"
+        elif 1240.0 <= frequency <= 1300.0:
+            return "23cm"
+        elif 2300.0 <= frequency <= 2450.0:
+            return "13cm"
+        else:
+            return "Other"
+
+    def populate_simplex_data(self):
+        """Populate the simplex frequencies table"""
+        try:
+            table = getattr(self, 'amateur_simplex_table', None)
+            if not table:
+                print("⚠️ Simplex table not found")
+                return
+            
+            # Clear existing data
+            table.setRowCount(0)
+            
+            if not hasattr(self, 'amateur_simplex_data') or not self.amateur_simplex_data:
+                self.load_simplex_data()
+            
+            # Populate table
+            table.setRowCount(len(self.amateur_simplex_data))
+            
+            for row, entry in enumerate(self.amateur_simplex_data):
+                try:
+                    # Frequency
+                    freq_item = QTableWidgetItem(entry['frequency_display'])
+                    freq_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 0, freq_item)
+                    
+                    # Description
+                    desc_item = QTableWidgetItem(entry['description'])
+                    table.setItem(row, 1, desc_item)
+                    
+                    # Type (Simplex/Repeater) with band
+                    type_text = f"{entry['type']} ({entry['band']})"
+                    type_item = QTableWidgetItem(type_text)
+                    type_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 2, type_item)
+                    
+                    # Mode
+                    mode_item = QTableWidgetItem(entry['mode'])
+                    mode_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 3, mode_item)
+                    
+                    # Tone
+                    tone_item = QTableWidgetItem(entry['tone'])
+                    tone_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 4, tone_item)
+                    
+                    # Notes
+                    notes_item = QTableWidgetItem(entry['notes'])
+                    table.setItem(row, 5, notes_item)
+                    
+                    # Color coding by band
+                    band_colors = {
+                        '10m': QColor(255, 100, 100, 50),  # Light red
+                        '6m': QColor(255, 165, 0, 50),     # Light orange
+                        '2m': QColor(100, 100, 255, 50),   # Light blue
+                        '1.25m': QColor(255, 255, 100, 50), # Light yellow
+                        '70cm': QColor(100, 255, 100, 50), # Light green
+                        '33cm': QColor(255, 100, 255, 50), # Light magenta
+                        '23cm': QColor(100, 255, 255, 50), # Light cyan
+                        '13cm': QColor(200, 200, 200, 50)  # Light gray
+                    }
+                    
+                    band_color = band_colors.get(entry['band'], QColor(255, 255, 255, 30))
+                    for col in range(6):
+                        item = table.item(row, col)
+                        if item:
+                            item.setBackground(band_color)
+                
+                except Exception as e:
+                    print(f"⚠️ Error populating simplex row {row}: {e}")
+                    continue
+            
+            print(f"✅ Populated {table.rowCount()} simplex frequencies")
+            
+        except Exception as e:
+            print(f"❌ Error populating simplex data: {e}")
 
     def get_cache_status(self):
         """Get information about the current cache status"""
