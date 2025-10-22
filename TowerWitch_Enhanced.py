@@ -910,17 +910,17 @@ class EnhancedGPSWindow(QMainWindow):
         self.tower_tab = self.create_tower_tab()
         self.tabs.addTab(self.tower_tab, "� ARMER")
         
-        # Skywarn Weather Tab
+            # Skywarn Weather Tab
         self.skywarn_tab = self.create_skywarn_tab()
         self.tabs.addTab(self.skywarn_tab, "🌦️ Skywarn")
-        
-        # Amateur Radio Tab
+            
+            # Amateur Radio Tab
         self.amateur_tab = self.create_amateur_tab()
         self.tabs.addTab(self.amateur_tab, "📻 Amateur")
-        
+            
         self.main_layout.addWidget(self.tabs)
 
-		def create_gps_tab(self):
+    def create_gps_tab(self):
         """Create GPS data display tab with table format"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
