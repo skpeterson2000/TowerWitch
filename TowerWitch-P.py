@@ -9,6 +9,17 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHB
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
 from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen
 import utm
+
+# Version information
+__version__ = "1.0"
+
+# Import our custom style
+try:
+    from custom_qt_style import TowerWitchStyle
+    CUSTOM_STYLE_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Custom style not available: {e}")
+    CUSTOM_STYLE_AVAILABLE = False
 import maidenhead as mh
 import mgrs
 import json
@@ -25,7 +36,7 @@ import webbrowser
 import tempfile
 
 # Configure comprehensive logging
-log_filename = os.path.join(os.path.dirname(__file__), 'towerwitch_debug.log')
+log_filename = os.path.join(os.path.dirname(__file__), 'towerwitch-p_debug.log')
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
@@ -55,7 +66,7 @@ def debug_print(message, level="INFO"):
         print(f"🔵 {formatted_msg}")
 
 # Log startup information
-debug_print("TowerWitch Enhanced starting up...", "SUCCESS")
+debug_print("TowerWitch-P starting up...", "SUCCESS")
 debug_print(f"Python version: {sys.version}", "INFO")
 debug_print(f"Working directory: {os.getcwd()}", "INFO")
 debug_print(f"Log file: {log_filename}", "INFO")
@@ -740,7 +751,7 @@ class EnhancedGPSWindow(QMainWindow):
             self.night_mode_active = False
             debug_print("Night mode state initialized", "INFO")
             
-            self.setWindowTitle("TowerWitch - Enhanced GPS Tower Locator")
+            self.setWindowTitle("TowerWitch-P v1.0 - GPS Tower Locator")
             debug_print("Window title set", "INFO")
             
             # Optimize for 10" touchscreen (1024x600 typical resolution)
@@ -1015,7 +1026,7 @@ class EnhancedGPSWindow(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         
         # Title
-        title_label = QLabel("🗼 TowerWitch")
+        title_label = QLabel("🗼 TowerWitch-P v1.0")
         title_label.setFont(self.header_font)
         title_label.setStyleSheet("color: #00ff00; padding: 10px;")
         
@@ -1501,13 +1512,8 @@ Longitude: {lon:.6f}°
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Create sub-tabs for different bands - maximize space for data
+        # Create sub-tabs for different bands - clean professional styling
         self.amateur_subtabs = QTabWidget()
-        self.amateur_subtabs.setObjectName("amateur_subtabs")  # Set unique object name for CSS targeting
-        
-        # Also set object name for the tab bar for more specific targeting
-        tab_bar = self.amateur_subtabs.tabBar()
-        tab_bar.setObjectName("amateur_tab_bar")
         
         # 10m Tab
         self.amateur_10m_tab = self.create_band_tab("10m", "10 Meters (28-29.7 MHz)")
@@ -1532,27 +1538,6 @@ Longitude: {lon:.6f}°
         # Simplex Tab
         self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
         self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
-        
-        # Apply dynamic styling for amateur sub-tabs with band-specific colors
-        amateur_css = self.get_amateur_subtab_css()
-        debug_print(f"Applying amateur sub-tab CSS: {amateur_css[:200]}...", "INFO")
-        self.amateur_subtabs.setStyleSheet(amateur_css)
-        
-        # Also try programmatic approach for setting tab colors
-        self.set_amateur_tab_colors()
-        
-        # Also apply to the application level with delayed execution to override main styling
-        from PyQt5.QtCore import QTimer
-        def apply_delayed_styling():
-            debug_print("Applying delayed amateur sub-tab styling", "INFO")
-            self.amateur_subtabs.setStyleSheet(amateur_css)
-            self.set_amateur_tab_colors()
-            # Force style refresh
-            self.amateur_subtabs.style().unpolish(self.amateur_subtabs)
-            self.amateur_subtabs.style().polish(self.amateur_subtabs)
-        
-        # Apply styling after a short delay to ensure it overrides main styling
-        QTimer.singleShot(100, apply_delayed_styling)
         
         layout.addWidget(self.amateur_subtabs)
         
@@ -1719,7 +1704,6 @@ Longitude: {lon:.6f}°
         """Get the appropriate color for a specific amateur radio band"""
         mode = 'night' if self.night_mode_active else 'day'
         color = BAND_COLORS[mode].get(band_name, BAND_COLORS[mode]['default'])
-        print(f"🎨 Band color for '{band_name}' in {mode} mode: {color.name()}")
         return color
     
     def is_dark_color(self, color):
@@ -1786,62 +1770,7 @@ Longitude: {lon:.6f}°
         """)
         
         final_css = "\n".join(style_parts)
-        print(f"🎨 Applying main tab CSS: {final_css[:200]}...")
         self.tabs.setStyleSheet(final_css)
-        print("🎨 Main tab colors applied!")
-    
-    def set_amateur_tab_colors(self):
-        """Set unique colors for amateur band sub-tabs using Qt programmatic methods"""
-        print("🎨 Setting amateur tab colors...")
-        # Define colors and text colors for each amateur band tab
-        tab_data = [
-            ("#FF6B6B", "#ffffff"),  # 10m - Red
-            ("#4ECDC4", "#ffffff"),  # 6m - Teal
-            ("#45B7D1", "#ffffff"),  # 2m - Blue
-            ("#96CEB4", "#ffffff"),  # 1.25m - Green
-            ("#FFEAA7", "#000000"),  # 70cm - Yellow
-            ("#DDA0DD", "#ffffff")   # Simplex - Plum
-        ]
-        
-        # Get the tab bar and set colors programmatically
-        tab_bar = self.amateur_subtabs.tabBar()
-        
-        # Build stylesheet dynamically for each tab
-        style_parts = ["""
-            QTabWidget::pane {
-                border: 1px solid #555555;
-                background-color: #3b3b3b;
-            }
-            QTabBar::tab {
-                padding: 12px 20px;
-                margin-right: 2px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                min-width: 80px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-        """]
-        
-        # Add each tab color individually
-        for i, (bg_color, text_color) in enumerate(tab_data):
-            if i < tab_bar.count():
-                # Set text color programmatically
-                tab_bar.setTabTextColor(i, QColor(text_color))
-                # Add CSS for background
-                style_parts.append(f"QTabBar::tab:nth-child({i+1}) {{ background-color: {bg_color}; color: {text_color}; }}")
-        
-        style_parts.append("""
-            QTabBar::tab:selected {
-                border: 2px solid #ffffff;
-                font-weight: bolder;
-            }
-        """)
-        
-        final_css = "\n".join(style_parts)
-        print(f"🎨 Applying amateur tab CSS: {final_css[:200]}...")
-        self.amateur_subtabs.setStyleSheet(final_css)
-        print("🎨 Amateur tab colors applied!")
     
     def get_table_css(self):
         """Get CSS for tables based on current mode"""
@@ -2011,24 +1940,83 @@ Longitude: {lon:.6f}°
             
             tab_bar = self.amateur_subtabs.tabBar()
             
-            # Apply colors to each tab
+            # Force direct widget styling that bypasses theme
             for i, color in enumerate(band_colors):
                 if i < tab_bar.count():
-                    # Create a simple colored stylesheet for each tab
-                    tab_style = f"""
-                    QTabBar::tab:nth-child({i+1}) {{
-                        background-color: {color.name()} !important;
-                        color: white !important;
-                    }}
-                    """
-                    # Apply directly to the tab bar
-                    current_style = tab_bar.styleSheet()
-                    tab_bar.setStyleSheet(current_style + tab_style)
+                    # Try multiple approaches to force colors
+                    try:
+                        # Method 1: Direct palette modification
+                        palette = tab_bar.palette()
+                        palette.setColor(QPalette.Button, color)
+                        palette.setColor(QPalette.Window, color)
+                        palette.setColor(QPalette.Base, color)
+                        tab_bar.setPalette(palette)
+                        
+                        # Method 2: Force stylesheet with maximum specificity
+                        force_style = f"""
+                        QTabBar::tab:nth-child({i+1}) {{
+                            background-color: {color.name()} !important;
+                            background: {color.name()} !important;
+                            color: white !important;
+                            border: 2px solid {color.name()} !important;
+                        }}
+                        """
+                        current_style = tab_bar.styleSheet()
+                        tab_bar.setStyleSheet(current_style + force_style)
+                        
+                        # Method 3: Set autoFillBackground to force custom painting
+                        tab_bar.setAutoFillBackground(True)
+                        
+                    except Exception as e:
+                        debug_print(f"Error applying color method for tab {i}: {e}", "WARNING")
                     
-            debug_print(f"Set programmatic colors for {len(band_colors)} amateur tabs", "INFO")
+            debug_print(f"Applied multiple color methods for {len(band_colors)} amateur tabs", "INFO")
             
         except Exception as e:
             debug_print(f"Error setting amateur tab colors: {e}", "ERROR")
+
+    def apply_custom_style_colors(self):
+        """Apply colors to custom style if available"""
+        try:
+            app = QApplication.instance()
+            if hasattr(app, 'custom_style') and app.custom_style is not None:
+                # Define band-specific colors for custom style
+                if self.night_mode_active:
+                    band_colors = [
+                        QColor(77, 26, 26),    # Dark red-brown for 10m HF
+                        QColor(77, 77, 26),    # Dark yellow-red for 6m
+                        QColor(26, 26, 77),    # Dark blue-red for 2m VHF
+                        QColor(26, 77, 26),    # Dark green-red for 1.25m
+                        QColor(77, 51, 26),    # Dark orange-red for 70cm UHF
+                        QColor(77, 26, 77)     # Dark purple-red for simplex
+                    ]
+                else:
+                    band_colors = [
+                        QColor(255, 68, 68),   # Red for 10m HF
+                        QColor(255, 170, 68),  # Orange for 6m 
+                        QColor(68, 136, 255),  # Blue for 2m VHF
+                        QColor(68, 255, 68),   # Green for 1.25m
+                        QColor(255, 136, 68),  # Orange-red for 70cm UHF
+                        QColor(170, 68, 255)   # Purple for simplex
+                    ]
+                
+                # Apply colors to custom style
+                app.custom_style.set_tab_colors("amateur_subtabs", band_colors)
+                debug_print("Applied band colors to custom style", "SUCCESS")
+                
+                # Also apply main tab colors
+                main_colors = [
+                    QColor(255, 0, 255),   # GPS - Bright Magenta
+                    QColor(0, 255, 0),     # Grids - Bright Green
+                    QColor(255, 0, 0),     # ARMER - Bright Red
+                    QColor(255, 170, 0),   # Skywarn - Bright Orange
+                    QColor(0, 136, 255)    # Amateur - Bright Blue
+                ]
+                app.custom_style.set_tab_colors("main_tabs", main_colors)
+                debug_print("Applied main tab colors to custom style", "SUCCESS")
+                
+        except Exception as e:
+            debug_print(f"Error applying custom style colors: {e}", "ERROR")
 
     def update_table_colors_for_mode(self, night_mode_on):
         """Update table item colors based on current mode"""
@@ -2100,11 +2088,6 @@ Longitude: {lon:.6f}°
         
         # Update all table item colors to match the new theme
         self.update_table_colors_for_mode(night_mode_on)
-        
-        # Update amateur sub-tabs with band-specific colors for the new mode
-        if hasattr(self, 'amateur_subtabs'):
-            self.amateur_subtabs.setStyleSheet(self.get_amateur_subtab_css())
-            self.set_amateur_tab_colors()
 
     def update_gps_data(self, latitude, longitude, altitude, speed, heading):
         """Update all GPS-related displays"""
@@ -3238,6 +3221,23 @@ if __name__ == "__main__":
         debug_print("Creating QApplication...", "INFO")
         app = QApplication(sys.argv)
         debug_print("QApplication created successfully", "SUCCESS")
+        
+        # Initialize custom style for better color control
+        if CUSTOM_STYLE_AVAILABLE:
+            debug_print("Applying custom TowerWitch style...", "INFO")
+            try:
+                custom_style = TowerWitchStyle()
+                app.setStyle(custom_style)
+                debug_print("Custom TowerWitch style applied successfully", "SUCCESS")
+                
+                # Store reference for later use
+                app.custom_style = custom_style
+            except Exception as e:
+                debug_print(f"Could not apply custom style: {e}", "WARNING")
+                app.custom_style = None
+        else:
+            debug_print("Custom style not available, using system style", "WARNING")
+            app.custom_style = None
         
         debug_print("Creating main window...", "INFO")
         window = EnhancedGPSWindow()

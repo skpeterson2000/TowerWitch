@@ -1,0 +1,61 @@
+# TowerWitch Configuration File
+# Copy this to towerwitch_config.ini and customize for your setup
+
+[API]
+# Radio Reference API credentials (optional but recommended)
+# Sign up at https://www.radioreference.com/ to get credentials
+radio_reference_username = your_username_here
+radio_reference_password = your_password_here
+
+[GPS]
+# GPS daemon settings
+gpsd_host = 127.0.0.1
+gpsd_port = 2947
+# GPS update interval in seconds
+update_interval = 1.0
+
+[UI]
+# Interface settings
+window_width = 1024
+window_height = 600
+# Enable night mode by default (true/false)
+default_night_mode = false
+# Font size scaling factor (1.0 = normal)
+font_scale = 1.0
+
+[DATA]
+# Data refresh settings
+# How often to refresh API data when stationary (hours)
+refresh_interval_hours = 24
+# Distance threshold for new data fetch (miles)
+movement_threshold_miles = 0.5
+# Regional data cache radius (miles)
+cache_radius_miles = 200
+
+[BANDS]
+# Amateur radio band preferences
+# Enable/disable specific bands (true/false)
+enable_10m = true
+enable_6m = true
+enable_2m = true
+enable_125m = true
+enable_70cm = true
+enable_simplex = true
+
+[EMERGENCY]
+# Emergency services settings
+# Include ARMER sites (Minnesota P25 system)
+include_armer = true
+# Include Skywarn weather networks
+include_skywarn = true
+# Emergency frequency scanning (future feature)
+emergency_scan = false
+
+[ADVANCED]
+# Advanced settings for power users
+# Enable debug logging (generates large log files)
+debug_logging = false
+# API request timeout (seconds)
+api_timeout = 30
+# Maximum cache file age (days)
+max_cache_age_days = 7

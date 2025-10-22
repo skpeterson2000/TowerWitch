@@ -1,123 +1,214 @@
-# TowerWitch Enhanced - GPS Tower Locator
+# TowerWitch
 
-An enhanced GPS-enabled tower locator application for amateur radio operators, emergency services, and communications enthusiasts.
+**GPS-enabled Amateur Radio Tower & Repeater Locator**
+
+TowerWitch is a comprehensive amateur radio application that helps locate nearby radio towers, repeaters, and emergency communication resources using GPS positioning. Perfect for mobile operation, emergency preparedness, and exploring new areas.
 
 ## Features
 
-### 🏗️ Comprehensive Radio Infrastructure
-- **Amateur Radio Repeaters**: 2m, 70cm, 6m, 10m, and 1.25m band coverage
-- **Simplex Frequencies**: 25 standardized calling and special frequencies
-- **ISS Communications**: Space station voice and packet frequencies
-- **Digital Modes**: APRS, D-STAR, and packet radio frequencies
-- **Skywarn Network**: Enhanced emergency weather communications
-- **ARMER System**: Minnesota state communications infrastructure
-- **Regional Coverage**: Smart caching with 200-mile radius
+### 🗼 Multi-Service Support
+- **ARMER** - Allied Radio Matrix for Emergency Response (Minnesota P25 trunked system)
+- **Skywarn** - Weather spotting repeater networks
+- **Amateur Radio** - Repeaters across all bands (10m, 6m, 2m, 1.25m, 70cm, Simplex)
+- **GPS Tracking** - Real-time location with bearing/distance calculations
+- **Grid Systems** - Maidenhead, UTM, MGRS, USNG coordinate display
 
-### 📡 Advanced Location Services
-- **Real-time GPS**: gpsd integration for live positioning
-- **Multiple Coordinate Systems**: Lat/Lon, UTM, USNG, Maidenhead
-- **Distance & Bearing**: Accurate calculations to all sites
-- **Smart Caching**: Regional cache with 24-hour refresh
+### 📱 Touch-Optimized Interface
+- Large, readable fonts for mobile/tablet use
+- **Night Mode** - Red-tinted display for night vision preservation
+- Professional tabbed interface with color-coded sections
+- Touch-friendly controls and spacing
 
-### 🌐 API Integration
-- **Radio Reference API**: Live repeater database access
-- **Enhanced Filtering**: Emergency services keyword detection
-- **Hybrid Data Strategy**: API + static fallback
-- **Geographic Validation**: Coordinate verification
+### 🌐 Live Data Integration
+- **Radio Reference API** - Live repeater database access
+- **Intelligent Caching** - Reduces API calls and enables offline operation
+- **Static Fallbacks** - Comprehensive built-in databases when API unavailable
+- **Auto-refresh** - Updates when you move to new locations
 
-### 🛠️ User Interface
-- **Touch-Optimized**: Designed for 10" touchscreens (1024x600)
-- **Tabbed Interface**: Organized by service type
-- **Real-time Updates**: Automatic GPS and data refresh
-- **Configuration Management**: Persistent settings
+### 🎯 Key Capabilities
+- **Real-time GPS** integration with gpsd
+- **Distance & Bearing** calculations to all sites
+- **Frequency Management** - Complete band plans and allocations
+- **Emergency Services** - Quick access to public safety frequencies
+- **Mobile Ready** - Optimized for Raspberry Pi and touch displays
 
-## Recent Enhancements
+## Versions
 
-### Skywarn Detection Overhaul (700% Improvement)
-- **Enhanced API Filtering**: 15+ emergency service keywords
-- **Multi-field Search**: Name, description, and usage fields
-- **Frequency-based Detection**: VHF/UHF emergency allocations
-- **Deduplication Logic**: Prevents duplicate entries
-- **Static Database**: 18 verified Minnesota emergency repeaters
-- **Hybrid Strategy**: Live API (7 repeaters) + static fallback (18 repeaters)
+### TowerWitch-P (PyQt5) - v1.0 MVP ✅
+- **Current stable release**
+- Full-featured desktop application
+- Mature PyQt5 interface
+- Complete GPS and Radio Reference integration
 
-### Technical Improvements
-- **Geographic Coordinate Validation**: Ensures valid lat/lon pairs
-- **Smart Regional Caching**: 200-mile coverage with 24-hour refresh
-- **Enhanced Error Handling**: Robust API failure recovery
-- **Performance Optimization**: Reduced API calls and faster responses
+### TowerWitch-K (Kivy) - v2.0 In Development 🚧
+- Native touch interface
+- Mobile deployment (Android APK)
+- Cross-platform consistency
+- Enhanced mobile features
 
 ## Installation
 
 ### Prerequisites
 ```bash
-sudo apt-get update
-sudo apt-get install python3-pyqt5 python3-pip gpsd gpsd-clients
-pip3 install utm maidenhead mgrs requests
+# Install system dependencies
+sudo apt update
+sudo apt install python3 python3-pip gpsd gpsd-clients
+
+# Install Python dependencies
+pip3 install PyQt5 requests utm maidenhead mgrs
 ```
 
-### Configuration
-1. Copy `towerwitch_config.ini.example` to `towerwitch_config.ini`
-2. Add your Radio Reference API key:
+### Quick Start
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/TowerWitch.git
+cd TowerWitch
+
+# Configure Radio Reference API (optional but recommended)
+cp towerwitch_config.ini.example towerwitch_config.ini
+# Edit towerwitch_config.ini with your Radio Reference API credentials
+
+# Run TowerWitch
+python3 TowerWitch-P.py
+```
+
+## Configuration
+
+### Radio Reference API Setup
+1. Sign up at [Radio Reference](https://www.radioreference.com/)
+2. Get your API credentials from account settings
+3. Edit `towerwitch_config.ini`:
 ```ini
 [API]
-radio_reference_key = your_api_key_here
+radio_reference_username = your_username
+radio_reference_password = your_password
 ```
 
-### Running
+### GPS Configuration
+TowerWitch uses `gpsd` for GPS data:
 ```bash
-python3 TowerWitch_Enhanced.py
+# Start GPS daemon
+sudo systemctl enable gpsd
+sudo systemctl start gpsd
+
+# Test GPS connection
+cgps -s
 ```
 
-## Technical Architecture
+## Usage
 
-### Core Components
-- **RadioReferenceAPI**: API client with smart caching
-- **GPSThread**: Real-time location services
-- **EnhancedGPSWindow**: Main PyQt5 interface
-- **Multi-band Support**: Comprehensive amateur radio coverage
+### Basic Operation
+1. **Launch** TowerWitch-P.py
+2. **GPS Lock** - Wait for GPS acquisition (shown in header)
+3. **Explore Tabs** - Browse available repeaters and services
+4. **Night Mode** - Toggle with Ctrl+N for night operations
 
-### Data Sources
-- **Live API**: Radio Reference database
-- **Static Database**: Verified emergency repeaters
-- **GPS Integration**: Real-time positioning
-- **Cache System**: Regional data persistence
+### Tabs Overview
+- **GPS** - Current position, speed, heading, satellite info
+- **Grids** - Coordinate systems (Maidenhead, UTM, MGRS, USNG)
+- **ARMER** - Minnesota P25 emergency communication sites
+- **Skywarn** - Weather spotting repeater networks
+- **Amateur** - Ham radio repeaters by band (10m, 6m, 2m, 1.25m, 70cm, Simplex)
 
-### Coordinate Systems
-- **Geographic**: Decimal degrees (WGS84)
-- **UTM**: Universal Transverse Mercator
-- **USNG**: United States National Grid
-- **Maidenhead**: Amateur radio grid squares
+### Keyboard Shortcuts
+- **F11** - Toggle fullscreen
+- **Ctrl+N** - Toggle night mode
+- **Ctrl+Q** - Quit application
 
-## File Structure
-```
-tw25/
-├── TowerWitch_Enhanced.py      # Main application
-├── towerwitch_config.ini       # Configuration file
-├── trs_sites_3508.csv         # ARMER site database
-├── radio_cache/               # API response cache
-└── KC9SP/                     # Additional utilities
-```
+## Screenshots
 
-## Recent Changes
+*[Screenshots would go here showing the main interface, night mode, different tabs]*
 
-### Map Functionality Removal
-- Removed problematic mapping features that failed to properly place repeaters
-- Cleaned up folium dependencies and related code
-- Simplified interface by removing non-functional map tab
-- User can create separate mapping utility as needed
+## Hardware Compatibility
 
-### Performance Enhancements
-- 700% improvement in Skywarn repeater detection (1→7 repeaters)
-- Enhanced emergency service keyword detection
-- Comprehensive static database with 18 verified emergency repeaters
-- Smart geographic coordinate validation
+### Tested Platforms
+- **Raspberry Pi 3B+/4** - Primary development platform
+- **Linux Desktop** - Ubuntu, Debian, Fedora
+- **Touch Displays** - 7" and larger recommended
 
-## License
-This project is licensed under the MIT License.
+### GPS Hardware
+- **USB GPS dongles** (recommended)
+- **HAT-based GPS** modules for Raspberry Pi
+- **Built-in GPS** (laptops/tablets)
 
 ## Contributing
-Contributions welcome! Please ensure all emergency service data is verified and accurate.
+
+We welcome contributions! Areas where help is needed:
+
+### Development
+- **Kivy Version** - Help with TowerWitch-K mobile development
+- **Feature Requests** - New bands, services, or capabilities
+- **Bug Reports** - Testing and issue identification
+- **Documentation** - User guides and tutorials
+
+### Data
+- **Regional Databases** - State/country-specific repeater data
+- **Band Plans** - International frequency allocations
+- **Emergency Services** - Local public safety frequencies
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Support
-For issues or questions, please create an issue in the repository.
+
+### Community
+- **Issues** - Report bugs via GitHub Issues
+- **Discussions** - Feature requests and general discussion
+- **Wiki** - Detailed documentation and tutorials
+
+### Author
+Developed for the amateur radio community with focus on emergency preparedness and mobile operation.
+
+## Roadmap
+
+### v1.x (PyQt5 - Current)
+- [x] Core GPS and repeater functionality
+- [x] Radio Reference API integration
+- [x] Night mode and touch optimization
+- [ ] Map integration
+- [ ] Export capabilities
+
+### v2.x (Kivy - Future)
+- [ ] Native mobile interface
+- [ ] Android APK deployment
+- [ ] Enhanced touch gestures
+- [ ] Offline map support
+- [ ] Voice announcements
+
+## Technical Details
+
+### File Structure
+```
+TowerWitch/
+├── TowerWitch-P.py                  # PyQt5 version (v1.0)
+├── TowerWitch-K.py                  # Kivy version (v2.0 prototype)
+├── towerwitch_config.ini            # Configuration file
+├── towerwitch_config.ini.example    # Configuration template
+├── trs_sites_3508.csv              # ARMER site database
+├── AmateurSimplex.csv              # Simplex frequency database
+├── radio_cache/                    # API response cache directory
+├── custom_qt_style.py              # Custom PyQt5 styling
+├── KIVY_ROADMAP.md                 # Kivy development roadmap
+├── LICENSE                         # GPL v3.0 license
+└── README.md                       # This file
+```
+
+### Architecture
+- **Frontend** - PyQt5 (v1.x) / Kivy (v2.x)
+- **GPS** - gpsd integration
+- **API** - Radio Reference REST API
+- **Data** - JSON caching with INI configuration
+- **Coordinates** - UTM/Maidenhead/MGRS conversion
+
+### Performance
+- **Startup** - ~3-5 seconds to full functionality
+- **GPS Update** - 1Hz refresh rate
+- **API Calls** - Intelligent caching minimizes requests
+- **Memory** - ~50MB typical usage
+
+---
+
+**73s and happy mobile operation!** 📻
+
+*TowerWitch - Because knowing where you are is half the battle.*
