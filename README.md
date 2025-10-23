@@ -1,14 +1,14 @@
-# TowerWitch by KC9SP
+# TowerWitch
 
 **GPS-enabled Amateur Radio Tower & Repeater Locator**
 
-TowerWitch is a comprehensive amateur radio application that helps locate nearby radio towers, repeaters, and emergency communication resources using GPS positioning. Perfect for mobile operation, emergency preparedness, and exploring new areas.
+TowerWitch is a comprehensive amateur radio application that helps locate nearby radio repeaters and emergency services communication resources using GPS positioning. Perfect for mobile operation, emergency preparedness, and exploring new areas.
 
 ## Features
 
 ### 🗼 Multi-Service Support
 - **ARMER** - Allied Radio Matrix for Emergency Response (Minnesota P25 trunked system)
-- **Skywarn** - Weather spotting repeater networks
+- **Skywarn** - Weather spotting repeater networks for inclement weather
 - **Amateur Radio** - Repeaters across all bands (10m, 6m, 2m, 1.25m, 70cm, Simplex)
 - **GPS Tracking** - Real-time location with bearing/distance calculations
 - **Grid Systems** - Maidenhead, UTM, MGRS, USNG coordinate display
@@ -47,7 +47,7 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - Mature PyQt5 interface
 - Complete GPS and Radio Reference integration
 
-### TowerWitch-K (Kivy) - v2.0 In Development 🚧
+### TowerWitch-K (Kivy) - v1.0 In Development 🚧
 - Native touch interface
 - Mobile deployment (Android APK)
 - Cross-platform consistency
@@ -312,4 +312,4 @@ TowerWitch/
 
 **73s and happy mobile operation!** 📻
 
-*TowerWitch by KC9SP - Because knowing where you are is half the battle.*
+*TowerWitch - Because knowing where you are is half the battle.*
