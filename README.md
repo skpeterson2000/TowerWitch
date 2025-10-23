@@ -1,4 +1,4 @@
-# TowerWitch
+# TowerWitch by KC9SP
 
 **GPS-enabled Amateur Radio Tower & Repeater Locator**
 
@@ -20,9 +20,10 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - Touch-friendly controls and spacing
 
 ### 🌐 Live Data Integration
-- **Radio Reference API** - Live repeater database access
+- **Radio Reference API** - Live repeater database access (premium account)
+- **CSV Databases** - Comprehensive built-in data (no account needed)
 - **Intelligent Caching** - Reduces API calls and enables offline operation
-- **Static Fallbacks** - Comprehensive built-in databases when API unavailable
+- **Static Fallbacks** - Works without internet connectivity
 - **Auto-refresh** - Updates when you move to new locations
 
 ### 🎯 Key Capabilities
@@ -31,6 +32,12 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - **Frequency Management** - Complete band plans and allocations
 - **Emergency Services** - Quick access to public safety frequencies
 - **Mobile Ready** - Optimized for Raspberry Pi and touch displays
+
+### 📤 Export & Broadcasting
+- **PDF Export** - Professional reports saved to Downloads folder (Ctrl+P)
+- **UDP Broadcasting** - Real-time closest 2 ARMER towers via JSON over UDP
+- **Network Integration** - Broadcast location and tower data for external systems
+- **Configurable Output** - Customizable broadcast intervals and destinations
 
 ## Versions
 
@@ -64,17 +71,24 @@ pip3 install PyQt5 requests utm maidenhead mgrs
 git clone https://github.com/yourusername/TowerWitch.git
 cd TowerWitch
 
-# Configure Radio Reference API (optional but recommended)
-cp towerwitch_config.ini.example towerwitch_config.ini
-# Edit towerwitch_config.ini with your Radio Reference API credentials
+# Use automated launcher (recommended)
+chmod +x towerwitch.sh
+./towerwitch.sh
 
-# Run TowerWitch
+# OR configure manually:
+# Copy configuration template (optional - works without API)
+cp towerwitch_config.ini.example towerwitch_config.ini
+# Edit towerwitch_config.ini with your Radio Reference API credentials (optional)
+
+# Run TowerWitch directly
 python3 TowerWitch-P.py
 ```
 
+**Note:** TowerWitch works immediately with built-in CSV databases - no API setup required!
+
 ## Configuration
 
-### Radio Reference API Setup
+### Radio Reference API Setup (Recommended)
 1. Sign up at [Radio Reference](https://www.radioreference.com/)
 2. Get your API credentials from account settings
 3. Edit `towerwitch_config.ini`:
@@ -83,6 +97,25 @@ python3 TowerWitch-P.py
 radio_reference_username = your_username
 radio_reference_password = your_password
 ```
+
+### Alternative: CSV Data Sources (No API Required)
+**Don't have a Radio Reference premium account?** TowerWitch includes comprehensive CSV databases:
+
+- **`trs_sites_3508.csv`** - Complete ARMER (Minnesota P25) site database
+- **`AmateurSimplex.csv`** - Amateur radio simplex frequencies by band
+- **Built-in Static Data** - Extensive repeater databases for emergency fallback
+
+TowerWitch automatically uses these CSV sources when:
+- No API credentials are configured
+- API is temporarily unavailable
+- Working in offline environments
+- Limited API calls remaining
+
+**Benefits of CSV mode:**
+- ✅ **No subscription required** - Works immediately out of the box
+- ✅ **Offline capability** - Perfect for remote field operations  
+- ✅ **Fast performance** - No network delays
+- ✅ **Emergency backup** - Always available as fallback
 
 ### GPS Configuration
 TowerWitch uses `gpsd` for GPS data:
@@ -100,20 +133,65 @@ cgps -s
 ### Basic Operation
 1. **Launch** TowerWitch-P.py
 2. **GPS Lock** - Wait for GPS acquisition (shown in header)
+   - Green "GPS: Active (Stationary)" - GPS locked, not moving
+   - Green "GPS: Active (Walking X.X mph)" - GPS locked, walking speed
+   - Orange "GPS: Active (Vehicle XX mph)" - GPS locked, vehicle speed
 3. **Explore Tabs** - Browse available repeaters and services
-4. **Night Mode** - Toggle with Ctrl+N for night operations
+4. **Night Mode** - Click 🌙 button for red-tinted night operations
+5. **Fullscreen** - Press F11 for full-screen mobile operation
+
+### Motion-Aware Updates
+TowerWitch automatically adjusts update behavior based on your speed:
+- **Stationary** (0-1.1 mph) - Full updates for all services
+- **Walking** (1.1-5 mph) - Full updates for all services  
+- **Vehicle** (>5 mph) - Smart updates: ARMER/Skywarn every 25s, Amateur every 35s
 
 ### Tabs Overview
-- **GPS** - Current position, speed, heading, satellite info
-- **Grids** - Coordinate systems (Maidenhead, UTM, MGRS, USNG)
-- **ARMER** - Minnesota P25 emergency communication sites
+- **Location** - GPS coordinates, speed, heading + Grid systems (Maidenhead, UTM, MGRS)
+- **ARMER** - Minnesota P25 emergency communication sites (8 closest towers)
 - **Skywarn** - Weather spotting repeater networks
 - **Amateur** - Ham radio repeaters by band (10m, 6m, 2m, 1.25m, 70cm, Simplex)
 
+### Data Sources & Modes
+**With Radio Reference API:**
+- Live repeater data from premium database
+- Automatic location-based updates
+- Comprehensive coverage
+
+**Without API (CSV Mode):**
+- Built-in ARMER database (trs_sites_3508.csv)
+- Simplex frequencies (AmateurSimplex.csv)
+- Static repeater fallback data
+- Full offline operation
+
 ### Keyboard Shortcuts
 - **F11** - Toggle fullscreen
-- **Ctrl+N** - Toggle night mode
+- **Escape** - Exit fullscreen (when in fullscreen mode)
 - **Ctrl+Q** - Quit application
+- **Ctrl+C** - Quit application (alternative)
+- **Ctrl+N** - Toggle night mode
+- **Ctrl+R** - Refresh all data
+- **Ctrl+P** - Export PDF to Downloads folder
+- **Ctrl+E** - Export PDF to Downloads folder (alternative)
+- **Ctrl+1** - Switch to Location tab
+- **Ctrl+2** - Switch to ARMER tab
+- **Ctrl+3** - Switch to Skywarn tab
+- **Ctrl+4** - Switch to Amateur tab
+
+### Button Controls
+- **🔄 Refresh All** - Force refresh all repeater data (Ctrl+R)
+- **� Export PDF** - Export current data to PDF in Downloads folder (Ctrl+P or Ctrl+E)
+- **🌙 Night Mode** - Toggle red-tinted night vision display (Ctrl+N)
+
+### Advanced Features
+- **Motion-Aware Updates** - Automatic update intervals based on GPS speed
+- **Intelligent Caching** - Reduces API calls and enables offline operation
+- **Distance & Bearing** - Calculated to all repeaters from current position
+- **Color-Coded Display** - Different colors for day/night modes and status
+- **Touch Optimization** - Large buttons and readable fonts for mobile devices
+- **Unified Location Tab** - GPS and coordinate systems in one view
+- **PDF Export** - Professional reports saved to Downloads folder
+- **Emergency Ready** - Works offline with CSV databases when API unavailable
 
 ## Screenshots
 
@@ -141,8 +219,13 @@ We welcome contributions! Areas where help is needed:
 - **Bug Reports** - Testing and issue identification
 - **Documentation** - User guides and tutorials
 
-### Data
-- **Regional Databases** - State/country-specific repeater data
+### Data Sources
+- **Radio Reference API** - Premium live database access
+- **CSV Files** - Local databases included (no subscription required)
+  - `trs_sites_3508.csv` - Complete ARMER site data
+  - `AmateurSimplex.csv` - Amateur simplex frequencies
+- **Static Databases** - Emergency fallback data
+- **Regional Files** - State/country-specific repeater data
 - **Band Plans** - International frequency allocations
 - **Emergency Services** - Local public safety frequencies
 
@@ -151,6 +234,24 @@ We welcome contributions! Areas where help is needed:
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Support
+
+### Quick Tips
+- **No GPS?** Check `sudo systemctl status gpsd` and ensure GPS hardware is connected
+- **Slow Updates?** Normal behavior - updates every 25-35 seconds during motion for battery conservation
+- **No Radio Reference Data?** Application works fine with built-in CSV databases - no API required
+- **Touch Screen Issues?** Use fullscreen mode (F11) for optimal mobile experience
+- **Night Operations?** Night mode (Ctrl+N) preserves night vision with red-tinted display
+
+### Keyboard Quick Reference
+```
+F11          - Fullscreen toggle
+Escape       - Exit fullscreen  
+Ctrl+N       - Night mode
+Ctrl+R       - Refresh data
+Ctrl+P/E     - Export PDF
+Ctrl+1/2/3/4 - Switch tabs
+Ctrl+Q/C     - Quit
+```
 
 ### Community
 - **Issues** - Report bugs via GitHub Issues
@@ -211,4 +312,4 @@ TowerWitch/
 
 **73s and happy mobile operation!** 📻
 
-*TowerWitch - Because knowing where you are is half the battle.*
+*TowerWitch by KC9SP - Because knowing where you are is half the battle.*
