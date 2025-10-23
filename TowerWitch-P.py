@@ -17,7 +17,9 @@ from math import radians, sin, cos, sqrt, atan2, degrees
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, 
                             QWidget, QGroupBox, QPushButton, QTableWidget, QTableWidgetItem, 
                             QHeaderView, QTabWidget, QFrame, QScrollArea, QGridLayout,
-                            QSizePolicy, QSpacerItem, QAction, QSplitter, QTextEdit)
+                            QSizePolicy, QSpacerItem, QAction, QSplitter, QTextEdit,
+                            QDialog, QLineEdit, QFormLayout, QDialogButtonBox, QMessageBox,
+                            QComboBox, QPushButton)
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
 from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QPixmap
 
@@ -81,8 +83,8 @@ logger = logging.getLogger(__name__)
 
 def debug_print(message, level="INFO"):
     """Enhanced debug printing with emojis and levels - controlled by DEBUG_MODE"""
-    if not DEBUG_MODE and level == "INFO":
-        return  # Suppress INFO messages when not in debug mode
+    if not DEBUG_MODE and level in ["INFO", "DEBUG"]:
+        return  # Suppress INFO and DEBUG messages when not in debug mode
         
     if level == "ERROR":
         print(f"❌ {message}")
@@ -90,6 +92,8 @@ def debug_print(message, level="INFO"):
         print(f"⚠️ {message}")
     elif level == "SUCCESS":
         print(f"✓ {message}")
+    elif level == "DEBUG":
+        print(f"🔍 {message}")  # Only show when DEBUG_MODE is True
     else:  # INFO
         print(f"ℹ️ {message}")
 
@@ -844,6 +848,44 @@ class GPSWorker(QThread):
     def stop(self):
         self.running = False
 
+# Utilities Window Class
+class UtilitiesWindow(QDialog):
+    """Separate utilities window for location tools and data management"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.setWindowTitle("TowerWitch Utilities")
+        self.setGeometry(100, 100, 800, 600)
+        self.setModal(True)
+        
+        # Apply the same styling as main window if night mode is active
+        if hasattr(parent, 'night_mode_active') and parent.night_mode_active:
+            self.setStyleSheet(parent.styleSheet())
+        
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Set up the utilities UI"""
+        layout = QVBoxLayout(self)
+        
+        # Create the utilities content using the existing method
+        if hasattr(self.parent, 'create_utilities_tab'):
+            utilities_content = self.parent.create_utilities_tab()
+            layout.addWidget(utilities_content)
+        
+        # Add close button
+        close_layout = QHBoxLayout()
+        close_layout.addStretch()
+        
+        close_btn = QPushButton("✖ Close")
+        if hasattr(self.parent, 'button_font'):
+            close_btn.setFont(self.parent.button_font)
+        close_btn.clicked.connect(self.close)
+        
+        close_layout.addWidget(close_btn)
+        layout.addLayout(close_layout)
+
 # Enhanced Main Window Class
 class EnhancedGPSWindow(QMainWindow):
     def __init__(self):
@@ -1128,14 +1170,31 @@ class EnhancedGPSWindow(QMainWindow):
             /* Main tab colors - only apply to main tab widget */
             QTabWidget#main_tabs QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* Location (GPS+Grid) - Purple */
             QTabWidget#main_tabs QTabBar::tab:nth-child(2) {{ background-color: #E74C3C; }}  /* ARMER - Red */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #3498DB; }}  /* Amateur - Blue */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #F39C12; }}  /* SKYWARN - Orange */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #2ECC71; }}  /* NOAA - Green */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(5) {{ background-color: #3498DB; }}  /* Amateur - Blue */
+            
+            /* Alternative simpler approach - try without nth-child */
+            QTabWidget#main_tabs QTabBar::tab {{ 
+                background-color: #666666;  /* Default gray background */
+                color: {text_color};
+                padding: 15px 25px;
+                margin-right: 2px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+                min-width: 120px;
+                font-size: 14px;
+                font-weight: bold;
+            }}
             
             QTabWidget#main_tabs QTabBar::tab:selected {{
                 border: 2px solid #ffffff;
                 font-weight: bolder;
             }}
         """)
+        
+        # Debug: Print that we're setting up main tab styling
+        print("🎨 Setting up main tab colors with object name 'main_tabs'...")
 
     def create_header(self):
         """Create header with title, date/time, and GPS status"""
@@ -1176,6 +1235,7 @@ class EnhancedGPSWindow(QMainWindow):
         try:
             debug_print("Creating tab widget...", "INFO")
             self.tabs = QTabWidget()
+            self.tabs.setObjectName("main_tabs")  # Set object name for CSS styling
             self.tabs.setObjectName("main_tabs")  # Set object name for specific CSS targeting
             debug_print("Tab widget created", "SUCCESS")
             
@@ -1208,11 +1268,16 @@ class EnhancedGPSWindow(QMainWindow):
             self.amateur_tab = self.create_amateur_tab()
             self.tabs.addTab(self.amateur_tab, "Amateur")
             debug_print("Amateur tab added", "SUCCESS")
+
+            # Note: Utilities moved to bottom button for better UX
             
             # Add tabs to main layout
             debug_print("Adding tabs to main layout...", "INFO")
             self.main_layout.addWidget(self.tabs)
             debug_print("Tabs added to main layout", "SUCCESS")
+            
+            # Set tab colors programmatically as backup to CSS
+            self.set_main_tab_colors()
             
         except Exception as e:
             debug_print(f"ERROR creating tabs: {str(e)}", "ERROR")
@@ -1760,6 +1825,122 @@ class EnhancedGPSWindow(QMainWindow):
         
         return tab
 
+    def create_utilities_tab(self):
+        """Create Utilities tab with location tools and data management"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Location Tools Section
+        location_group = QGroupBox("🌐 Location Tools")
+        location_group.setFont(QFont("Arial", 14, QFont.Bold))
+        location_layout = QVBoxLayout(location_group)
+        
+        # Location tools description
+        location_desc = QLabel("Control your location source for tower and repeater calculations:")
+        location_desc.setFont(QFont("Arial", 12))
+        location_desc.setWordWrap(True)
+        location_desc.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 5px;")
+        location_layout.addWidget(location_desc)
+        
+        # Location buttons in a grid
+        location_buttons_frame = QFrame()
+        location_buttons_layout = QGridLayout(location_buttons_frame)
+        
+        # Manual Location button
+        manual_location_btn = QPushButton("📍 Set Manual Location")
+        manual_location_btn.setFont(self.button_font)
+        manual_location_btn.clicked.connect(self.open_location_dialog)
+        manual_location_btn.setMinimumHeight(60)
+        manual_location_btn.setToolTip("Enter coordinates manually using various formats (DD, DMS, Grid, UTM, MGRS)")
+        
+        # IP Location button
+        ip_location_btn = QPushButton("🌐 Get IP Location")
+        ip_location_btn.setFont(self.button_font)
+        ip_location_btn.clicked.connect(self.get_ip_location)
+        ip_location_btn.setMinimumHeight(60)
+        ip_location_btn.setToolTip("Automatically detect approximate location from internet connection")
+        
+        # Return to GPS button
+        gps_return_btn = QPushButton("🛰️ Return to GPS")
+        gps_return_btn.setFont(self.button_font)
+        gps_return_btn.clicked.connect(self.return_to_gps)
+        gps_return_btn.setMinimumHeight(60)
+        gps_return_btn.setToolTip("Resume automatic GPS tracking (if available)")
+        
+        # Current Location Status
+        location_status_btn = QPushButton("📊 Show Current Location")
+        location_status_btn.setFont(self.button_font)
+        location_status_btn.clicked.connect(self.show_location_status)
+        location_status_btn.setMinimumHeight(60)
+        location_status_btn.setToolTip("Display detailed information about current location source")
+        
+        # Add buttons to grid layout (2x2)
+        location_buttons_layout.addWidget(manual_location_btn, 0, 0)
+        location_buttons_layout.addWidget(ip_location_btn, 0, 1)
+        location_buttons_layout.addWidget(gps_return_btn, 1, 0)
+        location_buttons_layout.addWidget(location_status_btn, 1, 1)
+        
+        location_layout.addWidget(location_buttons_frame)
+        layout.addWidget(location_group)
+        
+        # Data Management Section
+        data_group = QGroupBox("📂 Data Management")
+        data_group.setFont(QFont("Arial", 14, QFont.Bold))
+        data_layout = QVBoxLayout(data_group)
+        
+        # Data management description
+        data_desc = QLabel("Import additional data to enhance repeater and tower information:")
+        data_desc.setFont(QFont("Arial", 12))
+        data_desc.setWordWrap(True)
+        data_desc.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 5px;")
+        data_layout.addWidget(data_desc)
+        
+        # Data management buttons
+        data_buttons_frame = QFrame()
+        data_buttons_layout = QGridLayout(data_buttons_frame)
+        
+        # Import CSV button
+        import_csv_btn = QPushButton("📊 Import CSV Data")
+        import_csv_btn.setFont(self.button_font)
+        import_csv_btn.clicked.connect(self.import_csv_data)
+        import_csv_btn.setMinimumHeight(60)
+        import_csv_btn.setToolTip("Import repeater or tower data from CSV files")
+        
+        # Import JSON button
+        import_json_btn = QPushButton("📋 Import JSON Data")
+        import_json_btn.setFont(self.button_font)
+        import_json_btn.clicked.connect(self.import_json_data)
+        import_json_btn.setMinimumHeight(60)
+        import_json_btn.setToolTip("Import structured data from JSON files")
+        
+        # Export Data button
+        export_data_btn = QPushButton("💾 Export Current Data")
+        export_data_btn.setFont(self.button_font)
+        export_data_btn.clicked.connect(self.export_current_data)
+        export_data_btn.setMinimumHeight(60)
+        export_data_btn.setToolTip("Export current tower and repeater data to CSV/JSON")
+        
+        # Clear Cache button
+        clear_cache_btn = QPushButton("🗑️ Clear Data Cache")
+        clear_cache_btn.setFont(self.button_font)
+        clear_cache_btn.clicked.connect(self.clear_data_cache)
+        clear_cache_btn.setMinimumHeight(60)
+        clear_cache_btn.setToolTip("Clear cached API data to force fresh downloads")
+        
+        # Add buttons to grid layout (2x2)
+        data_buttons_layout.addWidget(import_csv_btn, 0, 0)
+        data_buttons_layout.addWidget(import_json_btn, 0, 1)
+        data_buttons_layout.addWidget(export_data_btn, 1, 0)
+        data_buttons_layout.addWidget(clear_cache_btn, 1, 1)
+        
+        data_layout.addWidget(data_buttons_frame)
+        layout.addWidget(data_group)
+        
+        # Add stretch to push everything to the top
+        layout.addStretch()
+        
+        return tab
+
     def create_control_buttons(self):
         """Create touch-friendly control buttons"""
         button_frame = QFrame()
@@ -1771,9 +1952,14 @@ class EnhancedGPSWindow(QMainWindow):
         refresh_btn.clicked.connect(self.refresh_towers)
         
         # Export button  
-        export_btn = QPushButton("� Export PDF")
+        export_btn = QPushButton("📄 Export PDF")
         export_btn.setFont(self.button_font)
         export_btn.clicked.connect(self.export_data)
+        
+        # Utilities button
+        utilities_btn = QPushButton("🔧 Utilities")
+        utilities_btn.setFont(self.button_font)
+        utilities_btn.clicked.connect(self.open_utilities_window)
         
         # Night Mode toggle button
         self.night_mode_btn = QPushButton("🌙 Night Mode")
@@ -1783,6 +1969,7 @@ class EnhancedGPSWindow(QMainWindow):
         
         button_layout.addWidget(refresh_btn)
         button_layout.addWidget(export_btn)
+        button_layout.addWidget(utilities_btn)
         button_layout.addWidget(self.night_mode_btn)
         
         self.main_layout.addWidget(button_frame)
@@ -1794,6 +1981,11 @@ class EnhancedGPSWindow(QMainWindow):
             self.populate_skywarn_data()
             self.populate_noaa_frequency_data()
             self.populate_all_amateur_data()
+
+    def open_utilities_window(self):
+        """Open utilities window as a separate dialog"""
+        utilities_window = UtilitiesWindow(self)
+        utilities_window.exec_()
 
     def export_data(self):
         """Export current tower data to PDF in Downloads folder"""
@@ -1840,7 +2032,7 @@ class EnhancedGPSWindow(QMainWindow):
             
             # Export each tab's data
             current_tab = self.tabs.currentIndex()
-            tab_names = ["Location", "ARMER", "SKYWARN", "NOAA", "Amateur"]
+            tab_names = ["Location", "ARMER", "SKYWARN", "NOAA", "Amateur", "Utilities"]
             
             # Check if user is currently on simplex tab for special handling
             current_amateur_tab = getattr(self, 'amateur_subtabs', None)
@@ -2009,6 +2201,45 @@ class EnhancedGPSWindow(QMainWindow):
                     
                     # Skip the normal table processing for amateur tab
                     table_widget = None
+                elif tab_index == 5:  # Utilities tab
+                    # Utilities tab doesn't have tabular data to export
+                    utilities_style = ParagraphStyle(
+                        'UtilitiesTitle',
+                        parent=styles['Heading3'],
+                        fontSize=14,
+                        spaceAfter=10,
+                        textColor=colors.purple
+                    )
+                    story.append(Paragraph("Utilities - Location & Data Management", utilities_style))
+                    story.append(Paragraph("The Utilities tab provides tools for location control and data management:", styles['Normal']))
+                    
+                    # Add utilities information
+                    utilities_info = [
+                        "• Manual Location Entry: Set coordinates using various formats",
+                        "• IP Geolocation: Automatically detect location from internet connection", 
+                        "• GPS Control: Return to GPS tracking mode",
+                        "• Data Import: Import custom repeater and tower data",
+                        "• Cache Management: Clear cached data for fresh downloads"
+                    ]
+                    
+                    for info in utilities_info:
+                        story.append(Paragraph(info, styles['Normal']))
+                    
+                    story.append(Spacer(1, 10))
+                    
+                    # Add current location status if available
+                    if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
+                        location_source = "Unknown"
+                        if hasattr(self, 'manual_location_mode') and self.manual_location_mode:
+                            location_source = f"Manual: {getattr(self, 'manual_location_name', 'Custom Location')}"
+                        elif hasattr(self, 'last_gps_lat') and self.last_gps_lat:
+                            location_source = "GPS Tracking"
+                        
+                        story.append(Paragraph(f"<b>Current Location Source:</b> {location_source}", styles['Normal']))
+                        story.append(Paragraph(f"<b>Coordinates:</b> {self.last_lat:.6f}°, {self.last_lon:.6f}°", styles['Normal']))
+                    
+                    # Skip table processing for utilities tab
+                    table_widget = None
                 
                 if table_widget and hasattr(table_widget, 'rowCount'):
                     # Extract table data
@@ -2131,16 +2362,19 @@ class EnhancedGPSWindow(QMainWindow):
                 self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                 
-                # Initialize timing
+                # Initialize timing and success tracking
                 self.last_udp_send = 0
+                self.udp_startup_logged = False
+                self.udp_error_count = 0
                 
-                print(f"✓ UDP broadcasting enabled on {self.udp_broadcast_ip}:{self.udp_port}")
+                print(f"✓ UDP broadcasting configured for {self.udp_broadcast_ip}:{self.udp_port}")
             else:
                 self.udp_socket = None
                 print("UDP broadcasting disabled in configuration")
                 
         except Exception as e:
-            print(f"Warning: UDP setup failed: {e}")
+            print(f"❌ UDP setup failed: {e}")
+            debug_print(f"UDP setup error details: {traceback.format_exc()}", "ERROR")
             self.udp_enabled = False
             self.udp_socket = None
 
@@ -2192,10 +2426,35 @@ class EnhancedGPSWindow(QMainWindow):
             self.udp_socket.sendto(message, (self.udp_broadcast_ip, self.udp_port))
             self.last_udp_send = current_time
             
-            print(f"📡 UDP: Sent {len(closest_towers)} ARMER towers to {self.udp_broadcast_ip}:{self.udp_port}")
+            # Show confirmation only on first successful transmission
+            if not self.udp_startup_logged:
+                print(f"✅ UDP broadcasting started - sending {len(closest_towers)} towers every {self.udp_send_interval}s")
+                self.udp_startup_logged = True
+            
+            # Reset error count on successful send
+            self.udp_error_count = 0
+            
+            # Debug logging for troubleshooting (only when debug enabled)
+            debug_print(f"UDP: Sent {len(closest_towers)} towers to {self.udp_broadcast_ip}:{self.udp_port}", "DEBUG")
             
         except Exception as e:
-            print(f"UDP send error: {e}")
+            self.udp_error_count += 1
+            
+            # Show errors but not too frequently  
+            if self.udp_error_count <= 3 or self.udp_error_count % 10 == 0:
+                print(f"❌ UDP send error #{self.udp_error_count}: {e}")
+                debug_print(f"UDP error details: {traceback.format_exc()}", "ERROR")
+                
+            # Disable UDP after too many consecutive errors to prevent spam
+            if self.udp_error_count >= 50:
+                print(f"❌ UDP disabled after {self.udp_error_count} consecutive errors")
+                self.udp_enabled = False
+                if self.udp_socket:
+                    try:
+                        self.udp_socket.close()
+                    except:
+                        pass
+                    self.udp_socket = None
 
     def toggle_night_mode_button(self):
         """Toggle night mode when button is clicked"""
@@ -2234,6 +2493,355 @@ class EnhancedGPSWindow(QMainWindow):
         r, g, b = color.red(), color.green(), color.blue()
         luminance = (0.299 * r + 0.587 * g + 0.114 * b)
         return luminance < 128
+
+    def get_ip_location(self):
+        """Get approximate location from IP address geolocation"""
+        try:
+            print("🌐 Getting location from IP address...")
+            
+            # Try multiple IP geolocation services for reliability
+            services = [
+                ("ipinfo.io", "https://ipinfo.io/json"),
+                ("ipapi.co", "https://ipapi.co/json/"),
+                ("ip-api.com", "http://ip-api.com/json/")
+            ]
+            
+            for service_name, url in services:
+                try:
+                    print(f"🔍 Trying {service_name}...")
+                    response = requests.get(url, timeout=10)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        # Parse response based on service
+                        if service_name == "ipinfo.io":
+                            if 'loc' in data:
+                                lat, lon = map(float, data['loc'].split(','))
+                                city = data.get('city', 'Unknown')
+                                region = data.get('region', 'Unknown')
+                                country = data.get('country', 'Unknown')
+                                location_name = f"{city}, {region}, {country}"
+                        elif service_name == "ipapi.co":
+                            lat = float(data.get('latitude', 0))
+                            lon = float(data.get('longitude', 0))
+                            city = data.get('city', 'Unknown')
+                            region = data.get('region', 'Unknown')
+                            country = data.get('country_name', 'Unknown')
+                            location_name = f"{city}, {region}, {country}"
+                        elif service_name == "ip-api.com":
+                            lat = float(data.get('lat', 0))
+                            lon = float(data.get('lon', 0))
+                            city = data.get('city', 'Unknown')
+                            region = data.get('regionName', 'Unknown')
+                            country = data.get('country', 'Unknown')
+                            location_name = f"{city}, {region}, {country}"
+                        
+                        if lat != 0 and lon != 0:
+                            print(f"✅ Found location via {service_name}: {location_name}")
+                            print(f"📍 Coordinates: {lat:.6f}, {lon:.6f}")
+                            
+                            # Update location and refresh data
+                            self.set_manual_location(lat, lon, f"IP Location: {location_name}")
+                            return True
+                            
+                except Exception as e:
+                    print(f"❌ {service_name} failed: {e}")
+                    continue
+            
+            # If all services failed
+            QMessageBox.warning(self, "IP Location Error", 
+                              "Could not determine location from IP address.\n"
+                              "Please check your internet connection or try manual location entry.")
+            return False
+            
+        except Exception as e:
+            print(f"❌ IP geolocation error: {e}")
+            QMessageBox.critical(self, "IP Location Error", 
+                               f"Error getting IP location: {str(e)}")
+            return False
+
+    def open_location_dialog(self):
+        """Open dialog for manual location entry"""
+        dialog = LocationInputDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            lat, lon, location_name = dialog.get_location()
+            if lat is not None and lon is not None:
+                self.set_manual_location(lat, lon, location_name)
+
+    def set_manual_location(self, latitude, longitude, location_name="Manual Location"):
+        """Set location manually and update all displays"""
+        try:
+            # Validate coordinates
+            if not (-90 <= latitude <= 90):
+                raise ValueError("Latitude must be between -90 and 90 degrees")
+            if not (-180 <= longitude <= 180):
+                raise ValueError("Longitude must be between -180 and 180 degrees")
+            
+            print(f"📍 Setting manual location: {location_name}")
+            print(f"📊 Coordinates: {latitude:.6f}, {longitude:.6f}")
+            
+            # Set manual location mode flag
+            self.manual_location_mode = True
+            self.manual_location_name = location_name
+            
+            # Update location variables
+            self.last_lat = latitude
+            self.last_lon = longitude
+            
+            # Update GPS status to show manual location
+            self.gps_status.setText(f"📍 Manual: {location_name}")
+            self.gps_status.setStyleSheet("color: #00aaff; padding: 12px; font-size: 14px;")  # Blue for manual
+            
+            # Update all location-based data
+            self.update_location_displays(latitude, longitude)
+            self.display_closest_sites(latitude, longitude)
+            self.populate_skywarn_data()
+            self.populate_noaa_frequency_data()
+            self.populate_all_amateur_data()
+            
+            print(f"✅ Manual location set successfully")
+            
+        except ValueError as e:
+            QMessageBox.warning(self, "Invalid Coordinates", str(e))
+        except Exception as e:
+            print(f"❌ Error setting manual location: {e}")
+            QMessageBox.critical(self, "Location Error", f"Error setting location: {str(e)}")
+
+    def update_location_displays(self, latitude, longitude):
+        """Update location display tables with new coordinates"""
+        try:
+            # Update GPS data display (simulated GPS for manual location)
+            self.set_table_item_text_with_color(self.location_items['lat_value'], f"{latitude:.6f}°")
+            self.set_table_item_text_with_color(self.location_items['lon_value'], f"{longitude:.6f}°")
+            
+            # Set manual location indicators
+            self.set_table_item_text_with_color(self.location_items['alt_value'], "Manual Entry")
+            self.set_table_item_text_with_color(self.location_items['speed_value'], "0.0 m/s (Manual)")
+            self.set_table_item_text_with_color(self.location_items['heading_value'], "--° (Manual)")
+            self.set_table_item_text_with_color(self.location_items['vector_value'], "Manual Location")
+            self.set_table_item_text_with_color(self.location_items['status_value'], "MANUAL")
+            self.set_table_item_text_with_color(self.location_items['fix_value'], "Manual Entry")
+            
+            # Update coordinate systems
+            # UTM coordinate system
+            utm_result = utm.from_latlon(latitude, longitude)
+            utm_str = f"Zone {utm_result[2]}{utm_result[3]} E:{utm_result[0]:.0f} N:{utm_result[1]:.0f}"
+            self.set_table_item_text_with_color(self.location_items['utm_value'], utm_str)
+            
+            # Maidenhead
+            mh_grid = mh.to_maiden(latitude, longitude)
+            self.set_table_item_text_with_color(self.location_items['mh_value'], mh_grid)
+            
+            # MGRS
+            m = mgrs.MGRS()
+            mgrs_result = m.toMGRS(latitude, longitude)
+            mgrs_zone = mgrs_result[:3]
+            mgrs_grid = mgrs_result[3:5]
+            mgrs_coords = mgrs_result[5:]
+            
+            # Split MGRS coordinates into easting and northing
+            if len(mgrs_coords) >= 6:
+                mid_point = len(mgrs_coords) // 2
+                easting = mgrs_coords[:mid_point]
+                northing = mgrs_coords[mid_point:]
+                formatted_coords = f"{easting} {northing}"
+            else:
+                formatted_coords = mgrs_coords
+                
+            self.set_table_item_text_with_color(self.location_items['mgrs_zone_value'], f"{mgrs_zone} {mgrs_grid}")
+            self.set_table_item_text_with_color(self.location_items['mgrs_coords_value'], formatted_coords)
+            
+            # DMS (Degrees, Minutes, Seconds) format
+            def decimal_to_dms(decimal_degrees, is_latitude=True):
+                abs_degrees = abs(decimal_degrees)
+                degrees = int(abs_degrees)
+                minutes_float = (abs_degrees - degrees) * 60
+                minutes = int(minutes_float)
+                seconds = (minutes_float - minutes) * 60
+                
+                if is_latitude:
+                    direction = 'N' if decimal_degrees >= 0 else 'S'
+                else:
+                    direction = 'E' if decimal_degrees >= 0 else 'W'
+                
+                return f"{degrees}°{minutes:02d}'{seconds:05.2f}\"{direction}"
+            
+            dms_lat = decimal_to_dms(latitude, True)
+            dms_lon = decimal_to_dms(longitude, False)
+            self.set_table_item_text_with_color(self.location_items['dms_lat_value'], dms_lat)
+            self.set_table_item_text_with_color(self.location_items['dms_lon_value'], dms_lon)
+            
+        except Exception as e:
+            print(f"Error updating location displays: {e}")
+
+    def return_to_gps(self):
+        """Return to GPS tracking mode after manual location was set"""
+        try:
+            print("🛰️ Returning to GPS tracking mode...")
+            
+            # Check if GPS worker is available and running
+            if not hasattr(self, 'gps_worker') or not self.gps_worker:
+                QMessageBox.warning(self, "GPS Not Available", 
+                                  "GPS worker is not running.\n"
+                                  "GPS functionality may not be available on this device.")
+                return
+            
+            # Reset manual location mode flag if we have one
+            if hasattr(self, 'manual_location_mode'):
+                self.manual_location_mode = False
+            
+            # Update GPS status to show we're waiting for GPS
+            self.gps_status.setText("🛰️ GPS: Searching for signal...")
+            self.gps_status.setStyleSheet("color: #ffaa00; padding: 12px; font-size: 14px;")  # Orange for searching
+            
+            # Clear manual location indicators in the location table
+            self.set_table_item_text_with_color(self.location_items['status_value'], "Searching...")
+            self.set_table_item_text_with_color(self.location_items['fix_value'], "Waiting for GPS...")
+            self.set_table_item_text_with_color(self.location_items['alt_value'], "Waiting for GPS...")
+            self.set_table_item_text_with_color(self.location_items['speed_value'], "Waiting for GPS...")
+            self.set_table_item_text_with_color(self.location_items['heading_value'], "Waiting for GPS...")
+            self.set_table_item_text_with_color(self.location_items['vector_value'], "Waiting for GPS...")
+            
+            # Check if we have recent GPS data to restore
+            if hasattr(self, 'last_gps_lat') and hasattr(self, 'last_gps_lon'):
+                print(f"📍 Restoring last GPS location: {self.last_gps_lat:.6f}, {self.last_gps_lon:.6f}")
+                self.last_lat = self.last_gps_lat
+                self.last_lon = self.last_gps_lon
+                
+                # Update displays with last known GPS location
+                self.update_location_displays(self.last_gps_lat, self.last_gps_lon)
+                self.display_closest_sites(self.last_gps_lat, self.last_gps_lon)
+                self.populate_skywarn_data()
+                self.populate_noaa_frequency_data()
+                self.populate_all_amateur_data()
+                
+                self.gps_status.setText("🛰️ GPS: Using last known location")
+                self.gps_status.setStyleSheet("color: #00ff00; padding: 12px; font-size: 14px;")  # Green for active
+            else:
+                print("📍 No previous GPS data available, waiting for new GPS fix...")
+                # Set default location while waiting for GPS
+                self.last_lat = 44.9778  # Minneapolis default
+                self.last_lon = -93.2650
+                self.set_table_item_text_with_color(self.location_items['lat_value'], "Waiting for GPS...")
+                self.set_table_item_text_with_color(self.location_items['lon_value'], "Waiting for GPS...")
+            
+            print("✅ Returned to GPS tracking mode")
+            
+        except Exception as e:
+            print(f"❌ Error returning to GPS: {e}")
+            QMessageBox.critical(self, "GPS Error", f"Error returning to GPS mode: {str(e)}")
+
+    def show_location_status(self):
+        """Show detailed information about current location source"""
+        try:
+            status_info = "📊 Current Location Status\n\n"
+            
+            # Determine location source
+            if hasattr(self, 'manual_location_mode') and self.manual_location_mode:
+                location_source = f"Manual Location: {getattr(self, 'manual_location_name', 'Unknown')}"
+                source_icon = "📍"
+            elif hasattr(self, 'last_gps_lat') and self.last_gps_lat:
+                location_source = "GPS Tracking"
+                source_icon = "🛰️"
+            else:
+                location_source = "Unknown/Default"
+                source_icon = "❓"
+            
+            status_info += f"{source_icon} Source: {location_source}\n"
+            
+            # Current coordinates
+            if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
+                status_info += f"📍 Coordinates: {self.last_lat:.6f}°, {self.last_lon:.6f}°\n"
+                
+                # Grid references
+                try:
+                    # Maidenhead
+                    mh_grid = mh.to_maiden(self.last_lat, self.last_lon)
+                    status_info += f"📡 Maidenhead: {mh_grid}\n"
+                    
+                    # UTM
+                    utm_result = utm.from_latlon(self.last_lat, self.last_lon)
+                    status_info += f"🗺️ UTM: Zone {utm_result[2]}{utm_result[3]} E:{utm_result[0]:.0f} N:{utm_result[1]:.0f}\n"
+                    
+                    # MGRS
+                    m = mgrs.MGRS()
+                    mgrs_result = m.toMGRS(self.last_lat, self.last_lon)
+                    status_info += f"🪖 MGRS: {mgrs_result}\n"
+                    
+                except Exception as e:
+                    status_info += f"⚠️ Grid calculation error: {e}\n"
+            else:
+                status_info += "❌ No location data available\n"
+            
+            # GPS worker status
+            if hasattr(self, 'gps_worker') and self.gps_worker:
+                status_info += "\n🛰️ GPS Worker: Active\n"
+            else:
+                status_info += "\n❌ GPS Worker: Inactive\n"
+            
+            # Show the status
+            QMessageBox.information(self, "Location Status", status_info)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Status Error", f"Error getting location status: {str(e)}")
+
+    def import_csv_data(self):
+        """Import repeater/tower data from CSV files"""
+        QMessageBox.information(self, "Feature Coming Soon", 
+                              "CSV data import functionality will be implemented soon!\n\n"
+                              "This will allow you to:\n"
+                              "• Import custom repeater lists\n"
+                              "• Add local tower information\n"
+                              "• Supplement API data with local knowledge")
+
+    def import_json_data(self):
+        """Import structured data from JSON files"""
+        QMessageBox.information(self, "Feature Coming Soon", 
+                              "JSON data import functionality will be implemented soon!\n\n"
+                              "This will allow you to:\n"
+                              "• Import complex structured data\n"
+                              "• Add custom frequency databases\n"
+                              "• Import exported data from other applications")
+
+    def export_current_data(self):
+        """Export current tower and repeater data"""
+        QMessageBox.information(self, "Feature Coming Soon", 
+                              "Data export functionality will be implemented soon!\n\n"
+                              "This will allow you to:\n"
+                              "• Export all current tower data to CSV\n"
+                              "• Save repeater lists in JSON format\n"
+                              "• Backup your customized data")
+
+    def clear_data_cache(self):
+        """Clear cached API data to force fresh downloads"""
+        try:
+            reply = QMessageBox.question(self, "Clear Cache", 
+                                       "This will clear all cached data and force fresh downloads from the API.\n\n"
+                                       "Are you sure you want to continue?",
+                                       QMessageBox.Yes | QMessageBox.No, 
+                                       QMessageBox.No)
+            
+            if reply == QMessageBox.Yes:
+                # Clear the radio cache directory
+                cache_dir = os.path.join(os.path.dirname(__file__), "radio_cache")
+                if os.path.exists(cache_dir):
+                    import shutil
+                    try:
+                        shutil.rmtree(cache_dir)
+                        os.makedirs(cache_dir, exist_ok=True)
+                        print("🗑️ Cache cleared successfully")
+                        QMessageBox.information(self, "Cache Cleared", 
+                                              "Data cache has been cleared successfully!\n\n"
+                                              "The next data refresh will download fresh information from the API.")
+                    except Exception as e:
+                        print(f"❌ Error clearing cache: {e}")
+                        QMessageBox.warning(self, "Cache Error", f"Error clearing cache: {str(e)}")
+                else:
+                    QMessageBox.information(self, "No Cache", "No cache directory found - nothing to clear.")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "Clear Cache Error", f"Error clearing cache: {str(e)}")
     
     def lighten_color(self, color, factor):
         """Lighten a color by mixing it with white"""
@@ -2245,36 +2853,90 @@ class EnhancedGPSWindow(QMainWindow):
     def set_main_tab_colors(self):
         """Set unique colors for main tabs using Qt programmatic methods"""
         print("🎨 Setting main tab colors...")
-        # Define colors for each main tab
+        # Define colors for each main tab (5 tabs now - utilities moved to button)
         tab_colors = [
-            "#8E44AD",  # GPS - Purple
-            "#27AE60",  # Grids - Green  
+            "#8E44AD",  # Location - Purple
             "#E74C3C",  # ARMER - Red
-            "#F39C12",  # Skywarn - Orange
+            "#F39C12",  # SKYWARN - Orange  
+            "#2ECC71",  # NOAA - Green
             "#3498DB"   # Amateur - Blue
         ]
         print(f"🎨 Tab count: {self.tabs.count()}, Colors: {tab_colors}")
         
-        # Get the tab bar and set colors using tabButton or direct manipulation
-        tab_bar = self.tabs.tabBar()
-        
-        # Build stylesheet dynamically for each tab
-        style_parts = ["""
-            QTabWidget::pane {
-                border: 1px solid #555555;
-                background-color: #3b3b3b;
-            }
-            QTabBar::tab {
+        # Try a simple approach - set stylesheet on each tab directly
+        try:
+            tab_bar = self.tabs.tabBar()
+            if tab_bar:
+                print(f"🎨 Tab bar found with {tab_bar.count()} tabs")
+                
+                # Method 1: Try setting individual tab styles
+                for i in range(min(len(tab_colors), tab_bar.count())):
+                    color = tab_colors[i]
+                    print(f"🎨 Setting tab {i} to color {color}")
+                    
+                    # Try setting the tab's stylesheet directly
+                    try:
+                        # Create a style for this specific tab
+                        tab_style = f"""
+                        QTabBar::tab:nth-child({i+1}) {{
+                            background-color: {color};
+                            color: #ffffff;
+                            padding: 15px 25px;
+                            margin-right: 2px;
+                            border-top-left-radius: 5px;
+                            border-top-right-radius: 5px;
+                            min-width: 120px;
+                            font-size: 14px;
+                            font-weight: bold;
+                        }}
+                        """
+                        # This approach applies to the whole tab bar
+                        current_style = tab_bar.styleSheet()
+                        tab_bar.setStyleSheet(current_style + tab_style)
+                        
+                    except Exception as e:
+                        print(f"❌ Error setting style for tab {i}: {e}")
+                
+                print("✅ Tab colors set programmatically")
+            else:
+                print("❌ No tab bar found")
+                
+        except Exception as e:
+            print(f"❌ Error in set_main_tab_colors: {e}")
+            
+        # Method 2: Also try the global stylesheet approach
+        try:
+            main_widget_style = f"""
+            QTabWidget#main_tabs QTabBar::tab {{
                 color: #ffffff;
-                padding: 12px 20px;
+                padding: 15px 25px;
                 margin-right: 2px;
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
                 min-width: 120px;
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: bold;
-            }
-        """]
+                background-color: #666666;  /* Default */
+            }}
+            """
+            
+            # Add individual colors
+            for i, color in enumerate(tab_colors):
+                main_widget_style += f"""
+                QTabWidget#main_tabs QTabBar::tab:nth-child({i+1}) {{
+                    background-color: {color};
+                }}
+                """
+            
+            # Apply to the main widget
+            self.setStyleSheet(self.styleSheet() + main_widget_style)
+            print("✅ Global tab stylesheet applied")
+            
+        except Exception as e:
+            print(f"❌ Error applying global stylesheet: {e}")
+        
+        # Alternative method: Create CSS string for individual tab styling
+        style_parts = []  # Initialize the style_parts list
         
         # Add each tab color individually
         for i, color in enumerate(tab_colors):
@@ -2631,6 +3293,13 @@ class EnhancedGPSWindow(QMainWindow):
         """Update all GPS-related displays"""
         self.last_lat = latitude
         self.last_lon = longitude
+        
+        # Store GPS coordinates for return to GPS functionality
+        self.last_gps_lat = latitude
+        self.last_gps_lon = longitude
+        self.last_gps_altitude = altitude
+        self.last_gps_speed = speed
+        self.last_gps_heading = heading
         
         # Update GPS table with proper colors
         self.set_table_item_text_with_color(self.location_items['lat_value'], f"{latitude:.6f}°")
@@ -4036,6 +4705,217 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     return (degrees(atan2(x, y)) + 360) % 360
 
 # Main Application
+
+class LocationInputDialog(QDialog):
+    """Dialog for manual location entry with multiple input methods"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Set Location")
+        self.setFixedSize(500, 400)
+        self.result_lat = None
+        self.result_lon = None
+        self.result_name = None
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        # Method selection
+        method_group = QGroupBox("Location Input Method")
+        method_layout = QVBoxLayout(method_group)
+        
+        self.method_combo = QComboBox()
+        self.method_combo.addItems([
+            "Decimal Degrees (DD)",
+            "Degrees Minutes Seconds (DMS)", 
+            "Maidenhead Grid Square",
+            "UTM Coordinates",
+            "MGRS Coordinates"
+        ])
+        self.method_combo.currentTextChanged.connect(self.on_method_changed)
+        method_layout.addWidget(self.method_combo)
+        
+        layout.addWidget(method_group)
+        
+        # Input fields (will be dynamically created)
+        self.input_group = QGroupBox("Coordinates")
+        self.input_layout = QFormLayout(self.input_group)
+        layout.addWidget(self.input_group)
+        
+        # Location name
+        name_group = QGroupBox("Location Name (Optional)")
+        name_layout = QFormLayout(name_group)
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("e.g., Home, Office, Emergency Shelter...")
+        name_layout.addRow("Name:", self.name_input)
+        layout.addWidget(name_group)
+        
+        # Buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept_location)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+        
+        # Initialize with decimal degrees
+        self.on_method_changed("Decimal Degrees (DD)")
+    
+    def on_method_changed(self, method):
+        """Update input fields based on selected method"""
+        # Clear existing inputs
+        while self.input_layout.count():
+            child = self.input_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        if method == "Decimal Degrees (DD)":
+            self.lat_input = QLineEdit()
+            self.lat_input.setPlaceholderText("e.g., 44.9778")
+            self.lon_input = QLineEdit()
+            self.lon_input.setPlaceholderText("e.g., -93.2650")
+            
+            self.input_layout.addRow("Latitude (°):", self.lat_input)
+            self.input_layout.addRow("Longitude (°):", self.lon_input)
+        
+        elif method == "Degrees Minutes Seconds (DMS)":
+            # Latitude DMS
+            self.lat_deg = QLineEdit()
+            self.lat_deg.setPlaceholderText("44")
+            self.lat_min = QLineEdit() 
+            self.lat_min.setPlaceholderText("58")
+            self.lat_sec = QLineEdit()
+            self.lat_sec.setPlaceholderText("40.1")
+            self.lat_dir = QComboBox()
+            self.lat_dir.addItems(["N", "S"])
+            
+            # Longitude DMS
+            self.lon_deg = QLineEdit()
+            self.lon_deg.setPlaceholderText("93")
+            self.lon_min = QLineEdit()
+            self.lon_min.setPlaceholderText("15")
+            self.lon_sec = QLineEdit()
+            self.lon_sec.setPlaceholderText("54.0")
+            self.lon_dir = QComboBox()
+            self.lon_dir.addItems(["E", "W"])
+            
+            # Create horizontal layouts for DMS inputs
+            lat_layout = QHBoxLayout()
+            lat_layout.addWidget(self.lat_deg)
+            lat_layout.addWidget(QLabel("°"))
+            lat_layout.addWidget(self.lat_min) 
+            lat_layout.addWidget(QLabel("'"))
+            lat_layout.addWidget(self.lat_sec)
+            lat_layout.addWidget(QLabel("\""))
+            lat_layout.addWidget(self.lat_dir)
+            
+            lon_layout = QHBoxLayout()
+            lon_layout.addWidget(self.lon_deg)
+            lon_layout.addWidget(QLabel("°"))
+            lon_layout.addWidget(self.lon_min)
+            lon_layout.addWidget(QLabel("'"))
+            lon_layout.addWidget(self.lon_sec)
+            lon_layout.addWidget(QLabel("\""))
+            lon_layout.addWidget(self.lon_dir)
+            
+            lat_widget = QWidget()
+            lat_widget.setLayout(lat_layout)
+            lon_widget = QWidget()
+            lon_widget.setLayout(lon_layout)
+            
+            self.input_layout.addRow("Latitude:", lat_widget)
+            self.input_layout.addRow("Longitude:", lon_widget)
+        
+        elif method == "Maidenhead Grid Square":
+            self.grid_input = QLineEdit()
+            self.grid_input.setPlaceholderText("e.g., EN34xr")
+            self.input_layout.addRow("Grid Square:", self.grid_input)
+        
+        elif method == "UTM Coordinates":
+            self.utm_zone = QLineEdit()
+            self.utm_zone.setPlaceholderText("e.g., 15")
+            self.utm_band = QComboBox()
+            self.utm_band.addItems(list("CDEFGHJKLMNPQRSTUVWX"))
+            self.utm_band.setCurrentText("T")
+            self.utm_easting = QLineEdit()
+            self.utm_easting.setPlaceholderText("e.g., 482384")
+            self.utm_northing = QLineEdit()
+            self.utm_northing.setPlaceholderText("e.g., 4979645")
+            
+            self.input_layout.addRow("Zone:", self.utm_zone)
+            self.input_layout.addRow("Band:", self.utm_band)
+            self.input_layout.addRow("Easting:", self.utm_easting)
+            self.input_layout.addRow("Northing:", self.utm_northing)
+        
+        elif method == "MGRS Coordinates":
+            self.mgrs_input = QLineEdit()
+            self.mgrs_input.setPlaceholderText("e.g., 15TVM8238479645")
+            self.input_layout.addRow("MGRS:", self.mgrs_input)
+    
+    def accept_location(self):
+        """Parse input and convert to decimal degrees"""
+        try:
+            method = self.method_combo.currentText()
+            
+            if method == "Decimal Degrees (DD)":
+                lat = float(self.lat_input.text().strip())
+                lon = float(self.lon_input.text().strip())
+            
+            elif method == "Degrees Minutes Seconds (DMS)":
+                # Parse latitude
+                lat_d = float(self.lat_deg.text().strip())
+                lat_m = float(self.lat_min.text().strip())
+                lat_s = float(self.lat_sec.text().strip())
+                lat = lat_d + lat_m/60 + lat_s/3600
+                if self.lat_dir.currentText() == "S":
+                    lat = -lat
+                
+                # Parse longitude
+                lon_d = float(self.lon_deg.text().strip())
+                lon_m = float(self.lon_min.text().strip())
+                lon_s = float(self.lon_sec.text().strip())
+                lon = lon_d + lon_m/60 + lon_s/3600
+                if self.lon_dir.currentText() == "W":
+                    lon = -lon
+            
+            elif method == "Maidenhead Grid Square":
+                grid = self.grid_input.text().strip().upper()
+                lat, lon = mh.to_location(grid)
+            
+            elif method == "UTM Coordinates":
+                zone = int(self.utm_zone.text().strip())
+                band = self.utm_band.currentText()
+                easting = float(self.utm_easting.text().strip())
+                northing = float(self.utm_northing.text().strip())
+                lat, lon = utm.to_latlon(easting, northing, zone, band)
+            
+            elif method == "MGRS Coordinates":
+                mgrs_str = self.mgrs_input.text().strip().upper()
+                m = mgrs.MGRS()
+                lat, lon = m.toLatLon(mgrs_str)
+            
+            # Validate coordinates
+            if not (-90 <= lat <= 90):
+                raise ValueError("Latitude must be between -90 and 90 degrees")
+            if not (-180 <= lon <= 180):
+                raise ValueError("Longitude must be between -180 and 180 degrees")
+            
+            # Store results
+            self.result_lat = lat
+            self.result_lon = lon
+            self.result_name = self.name_input.text().strip() or f"Manual ({method})"
+            
+            self.accept()
+            
+        except ValueError as e:
+            QMessageBox.warning(self, "Invalid Input", f"Please check your coordinates:\n{str(e)}")
+        except Exception as e:
+            QMessageBox.critical(self, "Input Error", f"Error parsing coordinates:\n{str(e)}")
+    
+    def get_location(self):
+        """Return the parsed location"""
+        return self.result_lat, self.result_lon, self.result_name
+
+
 if __name__ == "__main__":
     try:
         debug_print("Starting main application...", "INFO")
