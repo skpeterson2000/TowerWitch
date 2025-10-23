@@ -8,7 +8,8 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 
 ### 🗼 Multi-Service Support
 - **ARMER** - Allied Radio Matrix for Emergency Response (Minnesota P25 trunked system)
-- **Skywarn** - Weather spotting repeater networks for inclement weather
+- **SKYWARN** - Weather spotting repeater networks for severe weather operations
+- **NOAA Weather Radio** - All 7 standard frequencies with distance calculations
 - **Amateur Radio** - Repeaters across all bands (10m, 6m, 2m, 1.25m, 70cm, Simplex)
 - **GPS Tracking** - Real-time location with bearing/distance calculations
 - **Grid Systems** - Maidenhead, UTM, MGRS, USNG coordinate display
@@ -16,8 +17,10 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 ### 📱 Touch-Optimized Interface
 - Large, readable fonts for mobile/tablet use
 - **Night Mode** - Red-tinted display for night vision preservation
-- Professional tabbed interface with color-coded sections
+- **5-Tab Interface** - Streamlined tabbed layout with color-coded sections
+- **Utilities Button** - Separate dialog for location tools and data management
 - Touch-friendly controls and spacing
+- **Tab Colors** - Purple (Location), Red (ARMER), Orange (SKYWARN), Green (NOAA), Blue (Amateur)
 
 ### 🌐 Live Data Integration
 - **Radio Reference API** - Live repeater database access (premium account)
@@ -34,10 +37,11 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - **Mobile Ready** - Optimized for Raspberry Pi and touch displays
 
 ### 📤 Export & Broadcasting
-- **PDF Export** - Professional reports saved to Downloads folder (Ctrl+P)
-- **UDP Broadcasting** - Real-time closest 2 ARMER towers via JSON over UDP
+- **PDF Export** - Professional reports with configurable tower count (10 towers default)
+- **UDP Broadcasting** - Real-time closest towers via JSON over UDP
 - **Network Integration** - Broadcast location and tower data for external systems
 - **Configurable Output** - Customizable broadcast intervals and destinations
+- **Clean Logging** - Minimal console output with comprehensive error handling
 
 ## Versions
 
@@ -144,13 +148,15 @@ cgps -s
 TowerWitch automatically adjusts update behavior based on your speed:
 - **Stationary** (0-1.1 mph) - Full updates for all services
 - **Walking** (1.1-5 mph) - Full updates for all services  
-- **Vehicle** (>5 mph) - Smart updates: ARMER/Skywarn every 25s, Amateur every 35s
+- **Vehicle** (>5 mph) - Smart updates: ARMER/SKYWARN every 25s, Amateur every 35s
 
 ### Tabs Overview
 - **Location** - GPS coordinates, speed, heading + Grid systems (Maidenhead, UTM, MGRS)
-- **ARMER** - Minnesota P25 emergency communication sites (8 closest towers)
-- **Skywarn** - Weather spotting repeater networks
+- **ARMER** - Minnesota P25 emergency communication sites (10 closest towers default)
+- **SKYWARN** - Weather spotting repeater networks for severe weather operations
+- **NOAA** - Weather Radio frequencies (162.400-162.550 MHz) sorted by distance
 - **Amateur** - Ham radio repeaters by band (10m, 6m, 2m, 1.25m, 70cm, Simplex)
+- **Utilities** - Location tools and data management (accessed via 🔧 button)
 
 ### Data Sources & Modes
 **With Radio Reference API:**
@@ -175,23 +181,28 @@ TowerWitch automatically adjusts update behavior based on your speed:
 - **Ctrl+E** - Export PDF to Downloads folder (alternative)
 - **Ctrl+1** - Switch to Location tab
 - **Ctrl+2** - Switch to ARMER tab
-- **Ctrl+3** - Switch to Skywarn tab
-- **Ctrl+4** - Switch to Amateur tab
+- **Ctrl+3** - Switch to SKYWARN tab
+- **Ctrl+4** - Switch to NOAA tab
+- **Ctrl+5** - Switch to Amateur tab
 
 ### Button Controls
 - **🔄 Refresh All** - Force refresh all repeater data (Ctrl+R)
-- **� Export PDF** - Export current data to PDF in Downloads folder (Ctrl+P or Ctrl+E)
+- **📄 Export PDF** - Export current data to PDF in Downloads folder (Ctrl+P or Ctrl+E)
+- **🔧 Utilities** - Open utilities dialog with location tools and data management
 - **🌙 Night Mode** - Toggle red-tinted night vision display (Ctrl+N)
 
 ### Advanced Features
 - **Motion-Aware Updates** - Automatic update intervals based on GPS speed
 - **Intelligent Caching** - Reduces API calls and enables offline operation
 - **Distance & Bearing** - Calculated to all repeaters from current position
-- **Color-Coded Display** - Different colors for day/night modes and status
+- **Color-Coded Display** - Tab colors and status indicators for quick identification
 - **Touch Optimization** - Large buttons and readable fonts for mobile devices
 - **Unified Location Tab** - GPS and coordinate systems in one view
-- **PDF Export** - Professional reports saved to Downloads folder
+- **PDF Export** - Professional reports with configurable tower count
 - **Emergency Ready** - Works offline with CSV databases when API unavailable
+- **NOAA Weather Radio** - All 7 standard frequencies with distance-based priority
+- **Utilities Dialog** - Separate window for location tools and data management
+- **Clean UDP Logging** - Minimal console output with comprehensive error handling
 
 ## Screenshots
 
@@ -244,13 +255,13 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ### Keyboard Quick Reference
 ```
-F11          - Fullscreen toggle
-Escape       - Exit fullscreen  
-Ctrl+N       - Night mode
-Ctrl+R       - Refresh data
-Ctrl+P/E     - Export PDF
-Ctrl+1/2/3/4 - Switch tabs
-Ctrl+Q/C     - Quit
+F11             - Fullscreen toggle
+Escape          - Exit fullscreen  
+Ctrl+N          - Night mode
+Ctrl+R          - Refresh data
+Ctrl+P/E        - Export PDF
+Ctrl+1/2/3/4/5  - Switch tabs (Location/ARMER/SKYWARN/NOAA/Amateur)
+Ctrl+Q/C        - Quit
 ```
 
 ### Community
@@ -296,11 +307,13 @@ TowerWitch/
 ```
 
 ### Architecture
-- **Frontend** - PyQt5 (v1.x) / Kivy (v2.x)
-- **GPS** - gpsd integration
-- **API** - Radio Reference REST API
+- **Frontend** - PyQt5 (v1.x) with 5-tab interface and utilities dialog
+- **GPS** - gpsd integration with motion-aware updates
+- **API** - Radio Reference REST API with intelligent caching
 - **Data** - JSON caching with INI configuration
 - **Coordinates** - UTM/Maidenhead/MGRS conversion
+- **UDP** - Configurable broadcasting with error handling
+- **Export** - PDF generation with configurable tower count
 
 ### Performance
 - **Startup** - ~3-5 seconds to full functionality
