@@ -2,16 +2,61 @@ import sys
 import time
 import logging
 import traceback
+import os
+import socket
+import json
+import csv
+import subprocess
+import configparser
+import tempfile
+import requests
+import urllib.parse
+from datetime import datetime
+from math import radians, sin, cos, sqrt, atan2, degrees
+
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, 
                             QWidget, QGroupBox, QPushButton, QTableWidget, QTableWidgetItem, 
                             QHeaderView, QTabWidget, QFrame, QScrollArea, QGridLayout,
                             QSizePolicy, QSpacerItem, QAction, QSplitter, QTextEdit)
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
-from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen
-import utm
+from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QPixmap
 
-# Version information
+import utm
+import maidenhead as mh
+import mgrs
+
+# PDF generation imports
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.units import inch
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    print("Warning: reportlab not available - PDF export disabled")
+
+# Application metadata
 __version__ = "1.0"
+__title__ = "TowerWitch"
+
+# Debug Control - Set to False for production
+DEBUG_MODE = False
+
+# PDF Export Configuration - Easy to adjust
+PDF_EXPORT_LIMITS = {
+    'location': 8,      # Location towers to export
+    'armer': 10,        # ARMER towers to export  
+    'skywarn': 8,       # Skywarn towers to export
+    'amateur_bands': 8  # Amateur radio repeaters per band
+}
+
+# UDP Configuration
+UDP_CONFIG = {
+    'port': 12345,
+    'armer_tower_count': 2  # Number of closest ARMER towers to broadcast
+}
 
 # Import our custom style
 try:
@@ -20,20 +65,6 @@ try:
 except ImportError as e:
     print(f"Warning: Custom style not available: {e}")
     CUSTOM_STYLE_AVAILABLE = False
-import maidenhead as mh
-import mgrs
-import json
-import csv
-from math import radians, sin, cos, sqrt, atan2, degrees
-from datetime import datetime
-import os
-import subprocess
-import time
-import requests
-import urllib.parse
-import configparser
-import webbrowser
-import tempfile
 
 # Configure comprehensive logging
 log_filename = os.path.join(os.path.dirname(__file__), 'towerwitch-p_debug.log')
@@ -48,28 +79,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def debug_print(message, level="INFO"):
-    """Enhanced debug printing with logging integration"""
-    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    formatted_msg = f"[{timestamp}] {level}: {message}"
-    
+    """Enhanced debug printing with emojis and levels - controlled by DEBUG_MODE"""
+    if not DEBUG_MODE and level == "INFO":
+        return  # Suppress INFO messages when not in debug mode
+        
     if level == "ERROR":
-        logger.error(message)
-        print(f"🔴 {formatted_msg}")
+        print(f"❌ {message}")
     elif level == "WARNING":
-        logger.warning(message)
-        print(f"🟡 {formatted_msg}")
+        print(f"⚠️ {message}")
     elif level == "SUCCESS":
-        logger.info(message)
-        print(f"🟢 {formatted_msg}")
-    else:
-        logger.info(message)
-        print(f"🔵 {formatted_msg}")
+        print(f"✓ {message}")
+    else:  # INFO
+        print(f"ℹ️ {message}")
 
-# Log startup information
-debug_print("TowerWitch-P starting up...", "SUCCESS")
-debug_print(f"Python version: {sys.version}", "INFO")
-debug_print(f"Working directory: {os.getcwd()}", "INFO")
-debug_print(f"Log file: {log_filename}", "INFO")
+# Essential startup info
+print("TowerWitch starting...")
 
 # Conversion constants
 M_TO_FEET = 3.28084
@@ -125,7 +149,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     return (degrees(atan2(x, y)) + 360) % 360
 
 # Find closest sites from CSV
-def find_closest_sites(csv_filepath, user_lat, user_lon, num_sites=5):
+def find_closest_sites(csv_filepath, user_lat, user_lon, num_sites=50):
     try:
         with open(csv_filepath, "r", encoding="utf-8") as file:
             # Read raw CSV data to handle frequency columns correctly
@@ -235,7 +259,6 @@ class RadioReferenceAPI:
         
         # If we've never fetched data, do it now
         if self.last_api_location is None:
-            print("📍 First time fetching data for this location")
             return True
             
         # Calculate distance moved since last API call
@@ -251,7 +274,6 @@ class RadioReferenceAPI:
             
         # Check if we've moved significantly
         if distance_moved > self.min_movement_threshold:
-            print(f"🚗 Moved {distance_moved:.2f} miles - fetching new data")
             return True
             
         # Check if we're stationary and enough time has passed
@@ -751,7 +773,7 @@ class EnhancedGPSWindow(QMainWindow):
             self.night_mode_active = False
             debug_print("Night mode state initialized", "INFO")
             
-            self.setWindowTitle("TowerWitch-P v1.0 - GPS Tower Locator")
+            self.setWindowTitle("TowerWitch - GPS Tower Locator")
             debug_print("Window title set", "INFO")
             
             # Optimize for 10" touchscreen (1024x600 typical resolution)
@@ -783,6 +805,11 @@ class EnhancedGPSWindow(QMainWindow):
             self.cache_dir = self.radio_api.cache_dir  # Reference to the radio API cache directory
             debug_print("Radio Reference API initialized", "SUCCESS")
             
+            # Initialize UDP broadcasting
+            debug_print("Setting up UDP broadcasting...", "INFO")
+            self.setup_udp()
+            debug_print("UDP broadcasting configured", "SUCCESS")
+            
             # Initialize caching variables for amateur radio data
             debug_print("Setting up caching variables...", "INFO")
             self.cached_api_data = None
@@ -795,6 +822,15 @@ class EnhancedGPSWindow(QMainWindow):
             self.last_known_position = None
             self.cache_region_radius = 150  # Stay within 150 miles of cache center before refresh
             self.force_band_refresh = False  # Flag to force refresh of band displays when moving
+            
+            # Motion-aware update system
+            self.last_armer_update = 0
+            self.last_skywarn_update = 0
+            self.last_amateur_update = 0
+            self.is_vehicle_speed = False  # Track if we're moving at vehicle speeds
+            self.WALKING_SPEED_THRESHOLD = 1.5  # m/s (~3.4 mph) - threshold for walking vs vehicle speed
+            self.ARMER_SKYWARN_INTERVAL = 25  # seconds - update interval for ARMER/SKYWARN when moving
+            self.AMATEUR_INTERVAL = 35  # seconds - update interval for Amateur when moving
             debug_print("Caching variables initialized", "SUCCESS")
             
             # Check if cache refresh is requested (after radio_api is initialized)
@@ -1008,11 +1044,10 @@ class EnhancedGPSWindow(QMainWindow):
                 font-weight: bold;
             }}
             /* Main tab colors - only apply to main tab widget */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* GPS - Purple */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(2) {{ background-color: #27AE60; }}  /* Grids - Green */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #E74C3C; }}  /* ARMER - Red */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
-            QTabWidget#main_tabs QTabBar::tab:nth-child(5) {{ background-color: #3498DB; }}  /* Amateur - Blue */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(1) {{ background-color: #8E44AD; }}  /* Location (GPS+Grid) - Purple */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(2) {{ background-color: #E74C3C; }}  /* ARMER - Red */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
+            QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #3498DB; }}  /* Amateur - Blue */
             
             QTabBar::tab:selected {{
                 border: 2px solid #ffffff;
@@ -1026,7 +1061,7 @@ class EnhancedGPSWindow(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         
         # Title
-        title_label = QLabel("🗼 TowerWitch-P v1.0")
+        title_label = QLabel("🗼 TowerWitch")
         title_label.setFont(self.header_font)
         title_label.setStyleSheet("color: #00ff00; padding: 10px;")
         
@@ -1062,17 +1097,11 @@ class EnhancedGPSWindow(QMainWindow):
             self.tabs.setObjectName("main_tabs")  # Set object name for specific CSS targeting
             debug_print("Tab widget created", "SUCCESS")
             
-            # GPS Data Tab
-            debug_print("Creating GPS tab...", "INFO")
-            self.gps_tab = self.create_gps_tab()
-            self.tabs.addTab(self.gps_tab, "GPS")
-            debug_print("GPS tab added", "SUCCESS")
-            
-            # Grid Systems Tab
-            debug_print("Creating Grid tab...", "INFO")
-            self.grid_tab = self.create_grid_tab()
-            self.tabs.addTab(self.grid_tab, "Grids")
-            debug_print("Grid tab added", "SUCCESS")
+            # Unified Location Tab (GPS + Coordinate Systems)
+            debug_print("Creating Location tab...", "INFO")
+            self.location_tab = self.create_location_tab()
+            self.tabs.addTab(self.location_tab, "Location")
+            debug_print("Location tab added", "SUCCESS")
             
             # ARMER Data Tab
             debug_print("Creating ARMER tab...", "INFO")
@@ -1101,104 +1130,171 @@ class EnhancedGPSWindow(QMainWindow):
             debug_print(f"ERROR creating tabs: {str(e)}", "ERROR")
             debug_print(f"Exception traceback: {traceback.format_exc()}", "ERROR")
 
-    def create_gps_tab(self):
-        """Create GPS data display tab with table format"""
+    def create_location_tab(self):
+        """Create unified Location tab with GPS data and coordinate systems side-by-side"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Create a table for GPS data
-        self.gps_table = QTableWidget()
-        self.gps_table.setColumnCount(2)
-        self.gps_table.setHorizontalHeaderLabels(["MEASUREMENT", "VALUE"])
-        self.gps_table.setRowCount(8)  # 8 different measurements (added heading and vector speed)
+        # Create a single comprehensive table for all location data (side-by-side layout)
+        self.location_table = QTableWidget()
+        self.location_table.setColumnCount(4)
+        self.location_table.setHorizontalHeaderLabels(["GPS DATA", "VALUES", "COORDINATE SYSTEMS", "VALUES"])
+        self.location_table.setRowCount(8)  # Max of GPS rows (8) and coordinate system rows (6) = 8 total
         
         # Set up table appearance
-        self.gps_table.setAlternatingRowColors(True)
-        self.gps_table.verticalHeader().setVisible(False)
-        self.gps_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.gps_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.location_table.setAlternatingRowColors(True)
+        self.location_table.verticalHeader().setVisible(False)
+        self.location_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.location_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
-        # Set column  idths
-        header = self.gps_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Measurement name column
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Value column expands
+        # Set column widths for side-by-side layout
+        header = self.location_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # GPS labels column
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # GPS values column
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Coordinate system labels column  
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Coordinate system values column
         
         # Set row height for better readability
-        self.gps_table.verticalHeader().setDefaultSectionSize(45)
+        self.location_table.verticalHeader().setDefaultSectionSize(45)
         
-        # Style the GPS table dynamically based on current mode
-        self.gps_table.setStyleSheet(self.get_table_css())
+        # Style the location table dynamically based on current mode
+        self.location_table.setStyleSheet(self.get_table_css())
         
-        # Initialize GPS labels for updating
-        self.gps_items = {}
+        # Initialize location labels for updating (GPS + Grid combined)
+        self.location_items = {}
         
+        # GPS Data (Rows 0-7)
         # Row 0: Latitude
-        self.gps_items['lat_item'] = QTableWidgetItem("📍 LATITUDE")
-        self.gps_items['lat_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['lat_value'] = QTableWidgetItem("Waiting for GPS...")
-        self.gps_items['lat_value'].setFont(QFont("Arial", 12))
+        self.location_items['lat_item'] = QTableWidgetItem("📍 LATITUDE")
+        self.location_items['lat_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['lat_value'] = QTableWidgetItem("Waiting for GPS...")
+        self.location_items['lat_value'].setFont(QFont("Arial", 12))
         
         # Row 1: Longitude  
-        self.gps_items['lon_item'] = QTableWidgetItem("� LONGITUDE")
-        self.gps_items['lon_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['lon_value'] = QTableWidgetItem("Waiting for GPS...")
-        self.gps_items['lon_value'].setFont(QFont("Arial", 12))
+        self.location_items['lon_item'] = QTableWidgetItem("📍 LONGITUDE")
+        self.location_items['lon_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['lon_value'] = QTableWidgetItem("Waiting for GPS...")
+        self.location_items['lon_value'].setFont(QFont("Arial", 12))
         
         # Row 2: Altitude
-        self.gps_items['alt_item'] = QTableWidgetItem("⛰️ ALTITUDE")
-        self.gps_items['alt_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['alt_value'] = QTableWidgetItem("N/A")
-        self.gps_items['alt_value'].setFont(QFont("Arial", 12))
+        self.location_items['alt_item'] = QTableWidgetItem("⛰️ ALTITUDE")
+        self.location_items['alt_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['alt_value'] = QTableWidgetItem("N/A")
+        self.location_items['alt_value'].setFont(QFont("Arial", 12))
         
         # Row 3: Speed
-        self.gps_items['speed_item'] = QTableWidgetItem("🚗 SPEED")
-        self.gps_items['speed_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['speed_value'] = QTableWidgetItem("N/A")
-        self.gps_items['speed_value'].setFont(QFont("Arial", 12))
+        self.location_items['speed_item'] = QTableWidgetItem("🚗 SPEED")
+        self.location_items['speed_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['speed_value'] = QTableWidgetItem("N/A")
+        self.location_items['speed_value'].setFont(QFont("Arial", 12))
         
         # Row 4: Heading/Direction
-        self.gps_items['heading_item'] = QTableWidgetItem("🧭 HEADING")
-        self.gps_items['heading_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['heading_value'] = QTableWidgetItem("N/A")
-        self.gps_items['heading_value'].setFont(QFont("Arial", 12))
+        self.location_items['heading_item'] = QTableWidgetItem("🧭 HEADING")
+        self.location_items['heading_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['heading_value'] = QTableWidgetItem("N/A")
+        self.location_items['heading_value'].setFont(QFont("Arial", 12))
         
         # Row 5: Vector Speed (speed + direction)
-        self.gps_items['vector_item'] = QTableWidgetItem("🏃 VECTOR SPEED")
-        self.gps_items['vector_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['vector_value'] = QTableWidgetItem("N/A")
-        self.gps_items['vector_value'].setFont(QFont("Arial", 12))
+        self.location_items['vector_item'] = QTableWidgetItem("🏃 VECTOR SPEED")
+        self.location_items['vector_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['vector_value'] = QTableWidgetItem("N/A")
+        self.location_items['vector_value'].setFont(QFont("Arial", 12))
         
         # Row 6: GPS Status
-        self.gps_items['status_item'] = QTableWidgetItem("🛰️ GPS STATUS")
-        self.gps_items['status_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['status_value'] = QTableWidgetItem("Searching...")
-        self.gps_items['status_value'].setFont(QFont("Arial", 12))
+        self.location_items['status_item'] = QTableWidgetItem("🛰️ GPS STATUS")
+        self.location_items['status_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['status_value'] = QTableWidgetItem("Searching...")
+        self.location_items['status_value'].setFont(QFont("Arial", 12))
         
         # Row 7: Fix Quality
-        self.gps_items['fix_item'] = QTableWidgetItem("📡 FIX QUALITY")
-        self.gps_items['fix_item'].setFont(QFont("Arial", 12, QFont.Bold))
-        self.gps_items['fix_value'] = QTableWidgetItem("No Fix")
-        self.gps_items['fix_value'].setFont(QFont("Arial", 12))
+        self.location_items['fix_item'] = QTableWidgetItem("📡 FIX QUALITY")
+        self.location_items['fix_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['fix_value'] = QTableWidgetItem("No Fix")
+        self.location_items['fix_value'].setFont(QFont("Arial", 12))
         
-        # Add items to table
-        self.gps_table.setItem(0, 0, self.gps_items['lat_item'])
-        self.gps_table.setItem(0, 1, self.gps_items['lat_value'])
-        self.gps_table.setItem(1, 0, self.gps_items['lon_item'])
-        self.gps_table.setItem(1, 1, self.gps_items['lon_value'])
-        self.gps_table.setItem(2, 0, self.gps_items['alt_item'])
-        self.gps_table.setItem(2, 1, self.gps_items['alt_value'])
-        self.gps_table.setItem(3, 0, self.gps_items['speed_item'])
-        self.gps_table.setItem(3, 1, self.gps_items['speed_value'])
-        self.gps_table.setItem(4, 0, self.gps_items['heading_item'])
-        self.gps_table.setItem(4, 1, self.gps_items['heading_value'])
-        self.gps_table.setItem(5, 0, self.gps_items['vector_item'])
-        self.gps_table.setItem(5, 1, self.gps_items['vector_value'])
-        self.gps_table.setItem(6, 0, self.gps_items['status_item'])
-        self.gps_table.setItem(6, 1, self.gps_items['status_value'])
-        self.gps_table.setItem(7, 0, self.gps_items['fix_item'])
-        self.gps_table.setItem(7, 1, self.gps_items['fix_value'])
+        # Coordinate Systems (Rows 8-13)
+        # Row 8: UTM
+        self.location_items['utm_item'] = QTableWidgetItem("🗺️ UTM")
+        self.location_items['utm_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['utm_value'] = QTableWidgetItem("N/A")
+        self.location_items['utm_value'].setFont(QFont("Arial", 12))
         
-        layout.addWidget(self.gps_table)
+        # Row 9: Maidenhead
+        self.location_items['mh_item'] = QTableWidgetItem("📡 MAIDENHEAD")
+        self.location_items['mh_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['mh_value'] = QTableWidgetItem("N/A")
+        self.location_items['mh_value'].setFont(QFont("Arial", 12))
+        
+        # Row 10: MGRS Zone/Grid
+        self.location_items['mgrs_zone_item'] = QTableWidgetItem("🪖 MGRS ZONE/GRID")
+        self.location_items['mgrs_zone_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['mgrs_zone_value'] = QTableWidgetItem("N/A")
+        self.location_items['mgrs_zone_value'].setFont(QFont("Arial", 12))
+        
+        # Row 11: MGRS Coordinates
+        self.location_items['mgrs_coords_item'] = QTableWidgetItem("🔢 MGRS EASTING/NORTHING")
+        self.location_items['mgrs_coords_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['mgrs_coords_value'] = QTableWidgetItem("N/A")
+        self.location_items['mgrs_coords_value'].setFont(QFont("Arial", 12))
+        
+        # Row 12: Decimal Degrees - Lat (redundant with Row 0 - skip this)
+        # Row 13: Decimal Degrees - Lon (redundant with Row 1 - skip this)
+        # Actually, let's use these rows for additional precision formats:
+        
+        # Row 12: DMS (Degrees, Minutes, Seconds) Latitude
+        self.location_items['dms_lat_item'] = QTableWidgetItem("📐 DMS LATITUDE")
+        self.location_items['dms_lat_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['dms_lat_value'] = QTableWidgetItem("N/A")
+        self.location_items['dms_lat_value'].setFont(QFont("Arial", 12))
+        
+        # Row 13: DMS Longitude
+        self.location_items['dms_lon_item'] = QTableWidgetItem("📐 DMS LONGITUDE")
+        self.location_items['dms_lon_item'].setFont(QFont("Arial", 12, QFont.Bold))
+        self.location_items['dms_lon_value'] = QTableWidgetItem("N/A")
+        self.location_items['dms_lon_value'].setFont(QFont("Arial", 12))
+        
+        # Add items to table (side-by-side layout)
+        # GPS data on the left (columns 0-1)
+        self.location_table.setItem(0, 0, self.location_items['lat_item'])
+        self.location_table.setItem(0, 1, self.location_items['lat_value'])
+        self.location_table.setItem(1, 0, self.location_items['lon_item'])
+        self.location_table.setItem(1, 1, self.location_items['lon_value'])
+        self.location_table.setItem(2, 0, self.location_items['alt_item'])
+        self.location_table.setItem(2, 1, self.location_items['alt_value'])
+        self.location_table.setItem(3, 0, self.location_items['speed_item'])
+        self.location_table.setItem(3, 1, self.location_items['speed_value'])
+        self.location_table.setItem(4, 0, self.location_items['heading_item'])
+        self.location_table.setItem(4, 1, self.location_items['heading_value'])
+        self.location_table.setItem(5, 0, self.location_items['vector_item'])
+        self.location_table.setItem(5, 1, self.location_items['vector_value'])
+        self.location_table.setItem(6, 0, self.location_items['status_item'])
+        self.location_table.setItem(6, 1, self.location_items['status_value'])
+        self.location_table.setItem(7, 0, self.location_items['fix_item'])
+        self.location_table.setItem(7, 1, self.location_items['fix_value'])
+        
+        # Coordinate system data on the right (columns 2-3)
+        self.location_table.setItem(0, 2, self.location_items['utm_item'])
+        self.location_table.setItem(0, 3, self.location_items['utm_value'])
+        self.location_table.setItem(1, 2, self.location_items['mh_item'])
+        self.location_table.setItem(1, 3, self.location_items['mh_value'])
+        self.location_table.setItem(2, 2, self.location_items['mgrs_zone_item'])
+        self.location_table.setItem(2, 3, self.location_items['mgrs_zone_value'])
+        self.location_table.setItem(3, 2, self.location_items['mgrs_coords_item'])
+        self.location_table.setItem(3, 3, self.location_items['mgrs_coords_value'])
+        self.location_table.setItem(4, 2, self.location_items['dms_lat_item'])
+        self.location_table.setItem(4, 3, self.location_items['dms_lat_value'])
+        self.location_table.setItem(5, 2, self.location_items['dms_lon_item'])
+        self.location_table.setItem(5, 3, self.location_items['dms_lon_value'])
+        
+        # Rows 6-7 on the right side will be empty, creating visual balance
+        
+        # Set initial colors for all location table items
+        text_color = self.get_text_color()
+        for item_key, item in self.location_items.items():
+            if item:
+                item.setForeground(text_color)
+        
+        layout.addWidget(self.location_table)
         
         return tab
 
@@ -1244,8 +1340,8 @@ class EnhancedGPSWindow(QMainWindow):
         table_layout = QVBoxLayout(table_widget)
         
         self.grid_table = QTableWidget()
-        self.grid_table.setColumnCount(2)
-        self.grid_table.setHorizontalHeaderLabels(["GRID SYSTEM", "COORDINATES"])
+        self.grid_table.setColumnCount(4)
+        self.grid_table.setHorizontalHeaderLabels(["", "GRID SYSTEM", "COORDINATES", ""])
         self.grid_table.setRowCount(6)  # 6 different coordinate systems
         
         # Set up table appearance
@@ -1254,10 +1350,12 @@ class EnhancedGPSWindow(QMainWindow):
         self.grid_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.grid_table.setEditTriggers(QTableWidget.NoEditTriggers)
         
-        # Set column widths
+        # Set column widths for centered layout
         header = self.grid_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # System name column
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Coordinates column expands
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Left spacer column
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # System name column
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Coordinates column
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Right spacer column
         
         # Set row height for better readability
         self.grid_table.verticalHeader().setDefaultSectionSize(45)
@@ -1304,38 +1402,55 @@ class EnhancedGPSWindow(QMainWindow):
         self.grid_items['mgrs_coords_value'] = QTableWidgetItem("N/A")
         self.grid_items['mgrs_coords_value'].setFont(QFont("Arial", 12))
         
-        # Add items to table
-        self.grid_table.setItem(0, 0, self.grid_items['lat_item'])
-        self.grid_table.setItem(0, 1, self.grid_items['lat_value'])
-        self.grid_table.setItem(1, 0, self.grid_items['lon_item'])
-        self.grid_table.setItem(1, 1, self.grid_items['lon_value'])
-        self.grid_table.setItem(2, 0, self.grid_items['utm_item'])
-        self.grid_table.setItem(2, 1, self.grid_items['utm_value'])
-        self.grid_table.setItem(3, 0, self.grid_items['mh_item'])
-        self.grid_table.setItem(3, 1, self.grid_items['mh_value'])
-        self.grid_table.setItem(4, 0, self.grid_items['mgrs_zone_item'])
-        self.grid_table.setItem(4, 1, self.grid_items['mgrs_zone_value'])
-        self.grid_table.setItem(5, 0, self.grid_items['mgrs_coords_item'])
-        self.grid_table.setItem(5, 1, self.grid_items['mgrs_coords_value'])
+        # Add items to table (centered layout with spacer columns 0 and 3)
+        # Add empty spacer items for columns 0 and 3
+        for row in range(6):
+            left_spacer = QTableWidgetItem("")
+            left_spacer.setFlags(left_spacer.flags() & ~Qt.ItemIsSelectable)
+            self.grid_table.setItem(row, 0, left_spacer)
+            
+            right_spacer = QTableWidgetItem("")
+            right_spacer.setFlags(right_spacer.flags() & ~Qt.ItemIsSelectable)
+            self.grid_table.setItem(row, 3, right_spacer)
         
-        # Add table to left side
-        table_layout.addWidget(self.grid_table)
+        # Add data items to columns 1 and 2
+        self.grid_table.setItem(0, 1, self.grid_items['lat_item'])
+        self.grid_table.setItem(0, 2, self.grid_items['lat_value'])
+        self.grid_table.setItem(1, 1, self.grid_items['lon_item'])
+        self.grid_table.setItem(1, 2, self.grid_items['lon_value'])
+        self.grid_table.setItem(2, 1, self.grid_items['utm_item'])
+        self.grid_table.setItem(2, 2, self.grid_items['utm_value'])
+        self.grid_table.setItem(3, 1, self.grid_items['mh_item'])
+        self.grid_table.setItem(3, 2, self.grid_items['mh_value'])
+        self.grid_table.setItem(4, 1, self.grid_items['mgrs_zone_item'])
+        self.grid_table.setItem(4, 2, self.grid_items['mgrs_zone_value'])
+        self.grid_table.setItem(5, 1, self.grid_items['mgrs_coords_item'])
+        self.grid_table.setItem(5, 2, self.grid_items['mgrs_coords_value'])
         
-        # Right side: Create map widget
-        map_widget = QWidget()
-        map_layout = QVBoxLayout(map_widget)
+        # Set initial colors for all Grid table items
+        text_color = self.get_text_color()
+        for item_key, item in self.grid_items.items():
+            if item:
+                item.setForeground(text_color)
         
-        # Map title
-        map_title = QLabel("🗺️ Your Location")
-        map_title.setFont(QFont("Arial", 14, QFont.Bold))
-        map_title.setStyleSheet("color: #ffffff; padding: 10px; text-align: center;")
-        map_title.setAlignment(Qt.AlignCenter)
-        map_layout.addWidget(map_title)
+        # Add table to layout - now takes full width
+        layout.addWidget(self.grid_table)
+        
+        return tab
+        
+        # Coordinate display title with dynamic color
+        coord_title = QLabel("� Your Location")
+        coord_title.setFont(QFont("Arial", 14, QFont.Bold))
+        coord_title.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 10px; text-align: center;")
+        coord_title.setAlignment(Qt.AlignCenter)
+        coord_layout.addWidget(coord_title)
+        
+        # Store reference for night mode updates
+        self.coord_title_label = coord_title
         
         # Create coordinate display widget
         self.coord_display = QTextEdit()
-        self.coord_display.setMinimumHeight(200)
-        self.coord_display.setMaximumHeight(250)
+        self.coord_display.setMinimumHeight(400)
         self.coord_display.setReadOnly(True)
         self.coord_display.setStyleSheet("""
             QTextEdit {
@@ -1352,128 +1467,18 @@ class EnhancedGPSWindow(QMainWindow):
         # Initialize coordinate display
         self.update_coord_display()
         
-        map_layout.addWidget(self.coord_display)
-        
-        # Add FoxTrot GPS launch button
-        self.launch_gps_button = QPushButton("🗺️ Open in FoxTrot GPS")
-        self.launch_gps_button.setFont(QFont("Arial", 12, QFont.Bold))
-        self.launch_gps_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4a90e2;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 12px;
-                font-size: 14px;
-                margin: 5px;
-            }
-            QPushButton:hover {
-                background-color: #357abd;
-            }
-            QPushButton:pressed {
-                background-color: #2968a3;
-            }
-        """)
-        self.launch_gps_button.clicked.connect(self.launch_foxtrot_gps)
-        
-        map_layout.addWidget(self.launch_gps_button)
+        coord_layout.addWidget(self.coord_display)
         
         # Add both sides to splitter
         splitter.addWidget(table_widget)
-        splitter.addWidget(map_widget)
+        splitter.addWidget(coord_widget)
         
-        # Set initial sizes (40% table, 60% map)
-        splitter.setSizes([400, 600])
+        # Set initial sizes (60% table, 40% coordinates)
+        splitter.setSizes([600, 400])
         
         layout.addWidget(splitter)
         
         return tab
-
-    def update_coord_display(self):
-        """Update the coordinate display with current location information"""
-        if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
-            lat, lon = self.last_lat, self.last_lon
-        else:
-            # Default to Minneapolis coordinates
-            lat, lon = 44.9778, -93.2650
-        
-        try:
-            # Calculate all coordinate systems
-            import utm
-            import maidenhead as mh
-            import mgrs
-            
-            utm_result = utm.from_latlon(lat, lon)
-            mh_grid = mh.to_maiden(lat, lon)
-            
-            m = mgrs.MGRS()
-            mgrs_result = m.toMGRS(lat, lon)
-            
-            # Create coordinate display text
-            coord_text = f"""📍 CURRENT LOCATION COORDINATES
-
-🌍 Decimal Degrees:
-   Latitude:  {lat:.6f}°
-   Longitude: {lon:.6f}°
-
-🗺️ UTM Coordinates:
-   Zone: {utm_result[2]}{utm_result[3]}
-   Easting:  {utm_result[0]:.0f} m
-   Northing: {utm_result[1]:.0f} m
-
-📡 Maidenhead Grid:
-   {mh_grid} (6-character)
-
-🪖 MGRS Coordinates:
-   {mgrs_result}
-
-🧭 What's Nearby:
-   • Repeaters sorted by distance in other tabs
-   • Grid square boundaries shown above
-   • Use FoxTrot GPS for detailed mapping
-
-💡 Click button below to view location on 
-   interactive map with FoxTrot GPS
-"""
-            
-            if hasattr(self, 'coord_display'):
-                self.coord_display.setPlainText(coord_text)
-                
-        except Exception as e:
-            error_text = f"""📍 COORDINATE CALCULATION
-
-⚠️ Waiting for GPS data or calculation error:
-{str(e)}
-
-Default coordinates shown (Minneapolis, MN)
-Latitude:  {lat:.6f}°
-Longitude: {lon:.6f}°
-"""
-            if hasattr(self, 'coord_display'):
-                self.coord_display.setPlainText(error_text)
-
-    def launch_foxtrot_gps(self):
-        """Launch FoxTrot GPS with current coordinates"""
-        import subprocess
-        import os
-        
-        if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
-            lat, lon = self.last_lat, self.last_lon
-        else:
-            # Default to Minneapolis coordinates
-            lat, lon = 44.9778, -93.2650
-        
-        try:
-            # Launch FoxTrot GPS with current coordinates
-            cmd = ['foxtrotgps', f'--lat={lat}', f'--lon={lon}']
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print(f"🗺️ Launched FoxTrot GPS at coordinates {lat:.6f}, {lon:.6f}")
-        except Exception as e:
-            print(f"❌ Error launching FoxTrot GPS: {e}")
-
-    def update_map_location(self, lat, lon, accuracy=None):
-        """Update the coordinate display and enable FoxTrot GPS with new coordinates"""
-        self.update_coord_display()
 
     def create_skywarn_tab(self):
         """Create Skywarn weather repeater display tab"""
@@ -1554,12 +1559,17 @@ Longitude: {lon:.6f}°
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Band description
+        # Band description with dynamic color
         desc_label = QLabel(band_description)
         desc_label.setFont(QFont("Arial", 12, QFont.Bold))
-        desc_label.setStyleSheet("color: #ffffff; padding: 5px;")
+        desc_label.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 5px;")
         desc_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(desc_label)
+        
+        # Store reference for night mode updates
+        if not hasattr(self, 'band_description_labels'):
+            self.band_description_labels = []
+        self.band_description_labels.append(desc_label)
         
         # Create table for this band
         table = QTableWidget()
@@ -1639,7 +1649,7 @@ Longitude: {lon:.6f}°
         refresh_btn.clicked.connect(self.refresh_towers)
         
         # Export button  
-        export_btn = QPushButton("💾 Export Data")
+        export_btn = QPushButton("� Export PDF")
         export_btn.setFont(self.button_font)
         export_btn.clicked.connect(self.export_data)
         
@@ -1663,14 +1673,311 @@ Longitude: {lon:.6f}°
             self.populate_all_amateur_data()
 
     def export_data(self):
-        """Export current tower data"""
-        # Placeholder for export functionality
-        print("Export functionality - could save to file or copy to clipboard")
+        """Export current tower data to PDF in Downloads folder"""
+        if not PDF_AVAILABLE:
+            print("PDF export not available - reportlab not installed")
+            return
+            
+        try:
+            # Get Downloads folder path
+            downloads_path = os.path.expanduser("~/Downloads")
+            if not os.path.exists(downloads_path):
+                # Fallback to home directory if Downloads doesn't exist
+                downloads_path = os.path.expanduser("~")
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"TowerWitch_Export_{timestamp}.pdf"
+            filepath = os.path.join(downloads_path, filename)
+            
+            # Create PDF document
+            doc = SimpleDocTemplate(filepath, pagesize=letter)
+            story = []
+            styles = getSampleStyleSheet()
+            
+            # Title
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=20,
+                alignment=1  # Center alignment
+            )
+            story.append(Paragraph("TowerWitch - Radio Data Export", title_style))
+            
+            # Current location and time
+            location_info = f"Export Date: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}<br/>"
+            if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
+                location_info += f"Location: {self.last_lat:.6f}°, {self.last_lon:.6f}°"
+            else:
+                location_info += "Location: GPS not available"
+            
+            story.append(Paragraph(location_info, styles['Normal']))
+            story.append(Spacer(1, 20))
+            
+            # Export each tab's data
+            current_tab = self.tabs.currentIndex()
+            tab_names = ["Location", "ARMER", "Skywarn", "Amateur"]
+            
+            # Check if user is currently on simplex tab for special handling
+            current_amateur_tab = getattr(self, 'amateur_subtabs', None)
+            is_simplex_active = False
+            if current_amateur_tab and hasattr(current_amateur_tab, 'currentIndex'):
+                is_simplex_active = current_amateur_tab.currentIndex() == 5  # Simplex is 6th tab (index 5)
+            
+            # Normal multi-tab export (default behavior)
+            for tab_index, tab_name in enumerate(tab_names):
+                if tab_index > 0:  # Add padding between sections
+                    story.append(Spacer(1, 25))
+                
+                # Section header
+                section_style = ParagraphStyle(
+                    'SectionHeader',
+                    parent=styles['Heading2'],
+                    fontSize=14,
+                    spaceAfter=10,
+                    textColor=colors.darkblue
+                )
+                story.append(Paragraph(f"{tab_name} Data", section_style))
+                
+                # Get the table widget for this tab
+                table_widget = None
+                if tab_index == 0:  # Location tab
+                    table_widget = getattr(self, 'location_table', None)
+                elif tab_index == 1:  # ARMER tab
+                    table_widget = getattr(self, 'table', None)  # ARMER uses self.table
+                elif tab_index == 2:  # Skywarn tab
+                    table_widget = getattr(self, 'skywarn_table', None)
+                elif tab_index == 3:  # Amateur tab
+                    # Special handling: if on simplex tab, show comprehensive simplex reference
+                    if is_simplex_active:
+                        # Override normal amateur processing for simplex-only export
+                        simplex_style = ParagraphStyle(
+                            'SimplexTitle',
+                            parent=styles['Heading3'],
+                            fontSize=14,
+                            spaceAfter=10,
+                            textColor=colors.purple
+                        )
+                        story.append(Paragraph("Amateur Radio Simplex Frequency Reference", simplex_style))
+                        story.append(Paragraph("Complete simplex frequency reference for field operations", styles['Normal']))
+                        story.append(Spacer(1, 10))
+                        
+                        # Get simplex table (no row limit for comprehensive reference)
+                        table_widget = getattr(self, 'amateur_simplex_table', None)
+                        if table_widget and hasattr(table_widget, 'rowCount'):
+                            # Extract ALL simplex data (no 8-row limit)
+                            table_data = []
+                            
+                            # Get headers
+                            headers = []
+                            for col in range(table_widget.columnCount()):
+                                header_item = table_widget.horizontalHeaderItem(col)
+                                headers.append(header_item.text() if header_item else f"Column {col+1}")
+                            table_data.append(headers)
+                            
+                            # Get ALL simplex rows
+                            for row in range(table_widget.rowCount()):
+                                row_data = []
+                                for col in range(table_widget.columnCount()):
+                                    item = table_widget.item(row, col)
+                                    row_data.append(item.text() if item else "")
+                                table_data.append(row_data)
+                            
+                            if table_data and len(table_data) > 1:
+                                # Create comprehensive simplex PDF table
+                                pdf_table = Table(table_data)
+                                table_style = TableStyle([
+                                    ('BACKGROUND', (0, 0), (-1, 0), colors.purple),
+                                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                                    ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                                    ('BACKGROUND', (0, 1), (-1, -1), colors.lavender),
+                                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                                    ('FONTSIZE', (0, 1), (-1, -1), 8),
+                                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                                ])
+                                pdf_table.setStyle(table_style)
+                                story.append(pdf_table)
+                                story.append(Spacer(1, 10))
+                                story.append(Paragraph(f"<i>Complete reference - {table_widget.rowCount()} simplex frequencies</i>", styles['Italic']))
+                        else:
+                            story.append(Paragraph("Simplex data not available", styles['Italic']))
+                        
+                        # Skip normal table processing for this tab
+                        table_widget = None
+                    else:
+                        # Normal export - exclude simplex but include all repeater bands
+                        amateur_bands = [
+                            ("10m", "amateur_10_table"),
+                            ("6m", "amateur_6_table"), 
+                            ("2m", "amateur_2_table"),
+                            ("1.25m", "amateur_125_table"),
+                            ("70cm", "amateur_70cm_table")
+                            # Simplex excluded from normal exports
+                        ]
+                        
+                        for band_name, table_attr in amateur_bands:
+                            # Add sub-section for each band
+                            band_style = ParagraphStyle(
+                                'BandHeader',
+                                parent=styles['Heading3'],
+                                fontSize=12,
+                                spaceAfter=8,
+                                textColor=colors.darkgreen
+                            )
+                            story.append(Paragraph(f"Amateur Radio - {band_name} Band", band_style))
+                            
+                            # Get the table widget for this band
+                            table_widget = getattr(self, table_attr, None)
+                            
+                            if table_widget and hasattr(table_widget, 'rowCount'):
+                                # Extract table data
+                                table_data = []
+                                
+                                # Get headers
+                                headers = []
+                                for col in range(table_widget.columnCount()):
+                                    header_item = table_widget.horizontalHeaderItem(col)
+                                    headers.append(header_item.text() if header_item else f"Column {col+1}")
+                                table_data.append(headers)
+                                
+                                # Get data rows using configurable limit
+                                max_rows = min(PDF_EXPORT_LIMITS['amateur_bands'], table_widget.rowCount())
+                                for row in range(max_rows):
+                                    row_data = []
+                                    for col in range(table_widget.columnCount()):
+                                        item = table_widget.item(row, col)
+                                        row_data.append(item.text() if item else "")
+                                    table_data.append(row_data)
+                                
+                                if table_data and len(table_data) > 1:  # Has headers and data
+                                    # Create PDF table
+                                    pdf_table = Table(table_data)
+                                    
+                                    # Style the table
+                                    table_style = TableStyle([
+                                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                        ('FONTSIZE', (0, 0), (-1, 0), 9),
+                                        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                                        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                                        ('FONTSIZE', (0, 1), (-1, -1), 7),
+                                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                                    ])
+                                    pdf_table.setStyle(table_style)
+                                    story.append(pdf_table)
+                                    
+                                    if max_rows == PDF_EXPORT_LIMITS['amateur_bands'] and table_widget.rowCount() > PDF_EXPORT_LIMITS['amateur_bands']:
+                                        story.append(Paragraph(f"<i>... and {table_widget.rowCount() - PDF_EXPORT_LIMITS['amateur_bands']} more entries</i>", styles['Italic']))
+                                else:
+                                    story.append(Paragraph("No data available", styles['Italic']))
+                            else:
+                                story.append(Paragraph("Table not available", styles['Italic']))
+                            
+                            story.append(Spacer(1, 8))
+                    
+                    # Skip the normal table processing for amateur tab
+                    table_widget = None
+                
+                if table_widget and hasattr(table_widget, 'rowCount'):
+                    # Extract table data
+                    table_data = []
+                    
+                    # Get headers
+                    headers = []
+                    for col in range(table_widget.columnCount()):
+                        header_item = table_widget.horizontalHeaderItem(col)
+                        headers.append(header_item.text() if header_item else f"Column {col+1}")
+                    table_data.append(headers)
+                    
+                    # Get data rows using configurable limits
+                    if tab_index == 0:  # Location
+                        max_rows = min(PDF_EXPORT_LIMITS['location'], table_widget.rowCount())
+                    elif tab_index == 1:  # ARMER
+                        max_rows = min(PDF_EXPORT_LIMITS['armer'], table_widget.rowCount())
+                    elif tab_index == 2:  # Skywarn
+                        max_rows = min(PDF_EXPORT_LIMITS['skywarn'], table_widget.rowCount())
+                    else:
+                        max_rows = min(8, table_widget.rowCount())  # Default fallback
+                    for row in range(max_rows):
+                        row_data = []
+                        for col in range(table_widget.columnCount()):
+                            item = table_widget.item(row, col)
+                            row_data.append(item.text() if item else "")
+                        table_data.append(row_data)
+                    
+                    if table_data and len(table_data) > 1:  # Has headers and data
+                        # Create PDF table
+                        pdf_table = Table(table_data)
+                        
+                        # Style the table
+                        table_style = TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, 0), 10),
+                            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                            ('FONTSIZE', (0, 1), (-1, -1), 8),
+                            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                        ])
+                        pdf_table.setStyle(table_style)
+                        story.append(pdf_table)
+                        
+                        # Show overflow message if there are more entries
+                        expected_limit = 8  # Default
+                        if tab_index == 0:
+                            expected_limit = PDF_EXPORT_LIMITS['location']
+                        elif tab_index == 1:
+                            expected_limit = PDF_EXPORT_LIMITS['armer']
+                        elif tab_index == 2:
+                            expected_limit = PDF_EXPORT_LIMITS['skywarn']
+                        
+                        if max_rows == expected_limit and table_widget.rowCount() > expected_limit:
+                            remaining = table_widget.rowCount() - max_rows
+                            story.append(Paragraph(f"<i>... and {remaining} more entries</i>", styles['Italic']))
+                    else:
+                        story.append(Paragraph("No data available", styles['Italic']))
+                else:
+                    if tab_index != 3:  # Don't show "Table not available" for amateur tab since it's handled specially
+                        story.append(Paragraph("Table not available", styles['Italic']))
+                
+                story.append(Spacer(1, 12))
+            
+            # Footer
+            story.append(Spacer(1, 20))
+            footer_text = "Generated by TowerWitch - GPS Amateur Radio Tower Locator"
+            story.append(Paragraph(footer_text, styles['Italic']))
+            
+            # Build PDF
+            doc.build(story)
+            
+            print(f"PDF exported successfully to: {filepath}")
+            
+            # Show success message in status (if available)
+            if hasattr(self, 'gps_status'):
+                original_text = self.gps_status.text()
+                self.gps_status.setText(f"📄 PDF exported to Downloads!")
+                # Reset status after 3 seconds
+                QTimer.singleShot(3000, lambda: self.gps_status.setText(original_text))
+                
+        except Exception as e:
+            print(f"Error exporting PDF: {e}")
+            import traceback
+            traceback.print_exc()
 
     def show_settings(self):
         """Show settings dialog"""
-        # Placeholder for settings dialog
-        print("Settings dialog - could configure GPS host, number of sites, etc.")
+        # Settings dialog not yet implemented
+        pass
 
     def update_datetime(self):
         """Update date and time display"""
@@ -1680,6 +1987,86 @@ Longitude: {lon:.6f}°
         date_str = now.strftime("%b %d, %Y")
         time_str = now.strftime("%H:%M:%S")
         self.datetime_label.setText(f"{day_name} {date_str}  {time_str}")
+
+    def setup_udp(self):
+        """Setup UDP broadcasting for ARMER tower data"""
+        try:
+            # Read UDP configuration
+            self.udp_enabled = self.config.getboolean('UDP', 'enabled', fallback=True)
+            self.udp_port = self.config.getint('UDP', 'port', fallback=UDP_CONFIG['port'])
+            self.udp_broadcast_ip = self.config.get('UDP', 'broadcast_ip', fallback='255.255.255.255')
+            self.udp_send_interval = self.config.getint('UDP', 'send_interval', fallback=25)
+            
+            if self.udp_enabled:
+                # Create UDP socket
+                self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                
+                # Initialize timing
+                self.last_udp_send = 0
+                
+                print(f"✓ UDP broadcasting enabled on {self.udp_broadcast_ip}:{self.udp_port}")
+            else:
+                self.udp_socket = None
+                print("UDP broadcasting disabled in configuration")
+                
+        except Exception as e:
+            print(f"Warning: UDP setup failed: {e}")
+            self.udp_enabled = False
+            self.udp_socket = None
+
+    def send_udp_armer_data(self):
+        """Send closest ARMER towers via UDP broadcast"""
+        if not self.udp_enabled or not self.udp_socket:
+            return
+            
+        try:
+            # Check if enough time has passed
+            current_time = time.time()
+            if current_time - self.last_udp_send < self.udp_send_interval:
+                return
+                
+            # Get closest ARMER towers from the table (configurable count)
+            closest_towers = []
+            if hasattr(self, 'table') and self.table.rowCount() > 0:
+                tower_count = min(UDP_CONFIG['armer_tower_count'], self.table.rowCount())
+                for row in range(tower_count):
+                    # ARMER table columns: ["Site Name", "County", "Distance", "Bearing", "NAC", "Control Channels"]
+                    site_name = self.table.item(row, 0).text() if self.table.item(row, 0) else ""
+                    distance = self.table.item(row, 2).text() if self.table.item(row, 2) else ""
+                    bearing = self.table.item(row, 3).text() if self.table.item(row, 3) else ""
+                    nac = self.table.item(row, 4).text() if self.table.item(row, 4) else ""
+                    control_channels = self.table.item(row, 5).text() if self.table.item(row, 5) else ""
+                    
+                    tower_data = {
+                        'site_name': site_name,
+                        'distance': distance,
+                        'bearing': bearing,
+                        'nac': nac,
+                        'control_channels': control_channels
+                    }
+                    closest_towers.append(tower_data)
+            
+            # Create UDP packet
+            udp_data = {
+                'timestamp': datetime.now().isoformat(),
+                'source': 'TowerWitch',
+                'gps_lat': self.last_lat if hasattr(self, 'last_lat') else None,
+                'gps_lon': self.last_lon if hasattr(self, 'last_lon') else None,
+                'speed_mps': self.last_speed if hasattr(self, 'last_speed') else None,
+                'is_vehicle_speed': self.is_vehicle_speed if hasattr(self, 'is_vehicle_speed') else False,
+                'closest_armer_towers': closest_towers
+            }
+            
+            # Send UDP broadcast
+            message = json.dumps(udp_data, indent=None).encode('utf-8')
+            self.udp_socket.sendto(message, (self.udp_broadcast_ip, self.udp_port))
+            self.last_udp_send = current_time
+            
+            print(f"📡 UDP: Sent {len(closest_towers)} ARMER towers to {self.udp_broadcast_ip}:{self.udp_port}")
+            
+        except Exception as e:
+            print(f"UDP send error: {e}")
 
     def toggle_night_mode_button(self):
         """Toggle night mode when button is clicked"""
@@ -1699,6 +2086,12 @@ Longitude: {lon:.6f}°
     def get_text_color_hex(self):
         """Get text color as hex string for CSS"""
         return "#ff6666" if self.night_mode_active else "#ffffff"
+        
+    def set_table_item_text_with_color(self, item, text):
+        """Set table item text while maintaining proper night mode color"""
+        if item:
+            item.setText(text)
+            item.setForeground(self.get_text_color())
 
     def get_band_color(self, band_name):
         """Get the appropriate color for a specific amateur radio band"""
@@ -1775,6 +2168,8 @@ Longitude: {lon:.6f}°
     def get_table_css(self):
         """Get CSS for tables based on current mode"""
         text_color = "#ff6666" if self.night_mode_active else "#ffffff"
+        # Use dampened colors for headers in night mode
+        header_bg_color = "#4d1a1a" if self.night_mode_active else "#4a90e2"  # Dark red-brown for night
         return f"""
             QTableWidget {{
                 background-color: #3b3b3b;
@@ -1794,11 +2189,11 @@ Longitude: {lon:.6f}°
                 color: {text_color};
             }}
             QTableWidget::item:selected {{
-                background-color: #4a90e2;
+                background-color: {header_bg_color};
                 color: {text_color};
             }}
             QHeaderView::section {{
-                background-color: #4a90e2;
+                background-color: {header_bg_color};
                 color: {text_color};
                 padding: 12px;
                 border: 1px solid #555555;
@@ -2032,16 +2427,16 @@ Longitude: {lon:.6f}°
             text_color = QColor(255, 255, 255)        # White for regular text
         
         # Update GPS status colors if they exist
-        if hasattr(self, 'gps_items'):
-            if 'status_value' in self.gps_items:
-                self.gps_items['status_value'].setForeground(active_color)
-            if 'fix_value' in self.gps_items:
+        if hasattr(self, 'location_items'):
+            if 'status_value' in self.location_items:
+                self.location_items['status_value'].setForeground(active_color)
+            if 'fix_value' in self.location_items:
                 # Check current fix text to determine appropriate color
-                fix_text = self.gps_items['fix_value'].text()
+                fix_text = self.location_items['fix_value'].text()
                 if "Moving" in fix_text:
-                    self.gps_items['fix_value'].setForeground(active_color)
+                    self.location_items['fix_value'].setForeground(active_color)
                 else:
-                    self.gps_items['fix_value'].setForeground(warning_color)
+                    self.location_items['fix_value'].setForeground(warning_color)
         
         # Update tower table colors (but not amateur radio band tables - they get band-specific colors)
         if hasattr(self, 'tower_table'):
@@ -2051,16 +2446,27 @@ Longitude: {lon:.6f}°
                     if item:
                         item.setForeground(text_color)
         
-        # Update GPS and Grid table CSS styles
-        if hasattr(self, 'gps_table'):
-            self.gps_table.setStyleSheet(self.get_table_css())
-        if hasattr(self, 'grid_table'):
-            self.grid_table.setStyleSheet(self.get_table_css())
+        # Update location table (unified GPS and Grid) styles
+        if hasattr(self, 'location_table'):
+            self.location_table.setStyleSheet(self.get_table_css())
+            
+        # Update location table item colors individually
+        if hasattr(self, 'location_items'):
+            for item_key, item in self.location_items.items():
+                if item:
+                    item.setForeground(text_color)
         
         # Update dynamic labels
         if hasattr(self, 'datetime_label'):
             color_hex = "#ff6666" if night_mode_on else "#ffffff"
             self.datetime_label.setStyleSheet(f"color: {color_hex}; padding: 10px;")
+        
+        # Update amateur band description labels
+        if hasattr(self, 'band_description_labels'):
+            color_hex = "#ff6666" if night_mode_on else "#ffffff"
+            for label in self.band_description_labels:
+                if label:
+                    label.setStyleSheet(f"color: {color_hex}; padding: 5px;")
         
         # Force refresh of all band-specific data to update colors
         if hasattr(self, 'amateur_2m_data') and self.amateur_2m_data:
@@ -2094,30 +2500,44 @@ Longitude: {lon:.6f}°
         self.last_lat = latitude
         self.last_lon = longitude
         
-        # Update GPS status in header
-        self.gps_status.setText("GPS: Active")
-        self.gps_status.setStyleSheet("color: #00ff00; padding: 12px; font-size: 14px;")
-        
-        # Update GPS table
-        self.gps_items['lat_value'].setText(f"{latitude:.6f}°")
-        self.gps_items['lon_value'].setText(f"{longitude:.6f}°")
+        # Update GPS table with proper colors
+        self.set_table_item_text_with_color(self.location_items['lat_value'], f"{latitude:.6f}°")
+        self.set_table_item_text_with_color(self.location_items['lon_value'], f"{longitude:.6f}°")
         
         # Update altitude with both metric and imperial
-        self.gps_items['alt_value'].setText(f"{altitude:.1f} m ({altitude * M_TO_FEET:.1f} ft)")
+        self.set_table_item_text_with_color(self.location_items['alt_value'], f"{altitude:.1f} m ({altitude * M_TO_FEET:.1f} ft)")
         
         # Update speed with multiple units (with minimum threshold)
         # GPS noise threshold - ignore speeds below 0.5 m/s (~1.1 mph, walking speed)
         MIN_SPEED_THRESHOLD = 0.5  # meters per second
+        is_moving = False  # Initialize is_moving variable
         
         if speed >= MIN_SPEED_THRESHOLD:
             speed_mph = speed * MPS_TO_MPH
             speed_knots = speed * MPS_TO_KNOTS
-            self.gps_items['speed_value'].setText(f"{speed:.1f} m/s ({speed_mph:.1f} mph, {speed_knots:.1f} kt)")
+            self.set_table_item_text_with_color(self.location_items['speed_value'], f"{speed:.1f} m/s ({speed_mph:.1f} mph, {speed_knots:.1f} kt)")
             is_moving = True
+            
+            # Determine if we're at vehicle speed (above walking speed)
+            self.is_vehicle_speed = speed >= self.WALKING_SPEED_THRESHOLD
         else:
             # Below threshold - consider stationary
-            self.gps_items['speed_value'].setText("0.0 m/s (0.0 mph, 0.0 kt)")
+            self.set_table_item_text_with_color(self.location_items['speed_value'], "0.0 m/s (0.0 mph, 0.0 kt)")
             is_moving = False
+            self.is_vehicle_speed = False
+        
+        # Update GPS status in header with motion mode
+        if self.is_vehicle_speed:
+            mode_text = f"GPS: Active (Vehicle {speed * MPS_TO_MPH:.0f} mph)"
+            self.gps_status.setText(mode_text)
+            self.gps_status.setStyleSheet("color: #ffa500; padding: 12px; font-size: 14px;")  # Orange for vehicle speed
+        elif is_moving:
+            mode_text = f"GPS: Active (Walking {speed * MPS_TO_MPH:.1f} mph)"
+            self.gps_status.setText(mode_text)
+            self.gps_status.setStyleSheet("color: #00ff00; padding: 12px; font-size: 14px;")  # Green for walking
+        else:
+            self.gps_status.setText("GPS: Active (Stationary)")
+            self.gps_status.setStyleSheet("color: #00ff00; padding: 12px; font-size: 14px;")  # Green for stationary
         
         # Update heading with cardinal direction (only when moving)
         if heading is not None and heading >= 0 and is_moving:
@@ -2126,9 +2546,9 @@ Longitude: {lon:.6f}°
                          'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
             index = int((heading + 11.25) / 22.5) % 16
             cardinal = directions[index]
-            self.gps_items['heading_value'].setText(f"{heading:.0f}° ({cardinal})")
+            self.set_table_item_text_with_color(self.location_items['heading_value'], f"{heading:.0f}° ({cardinal})")
         else:
-            self.gps_items['heading_value'].setText("--° (--)")
+            self.set_table_item_text_with_color(self.location_items['heading_value'], "--° (--)")
         
         # Update vector speed (speed + direction combined)
         if is_moving and heading is not None and heading >= 0:
@@ -2138,38 +2558,38 @@ Longitude: {lon:.6f}°
             index = int((heading + 11.25) / 22.5) % 16
             cardinal = directions[index]
             speed_mph = speed * MPS_TO_MPH
-            self.gps_items['vector_value'].setText(f"{speed_mph:.1f} mph {cardinal}")
+            self.set_table_item_text_with_color(self.location_items['vector_value'], f"{speed_mph:.1f} mph {cardinal}")
         else:
-            self.gps_items['vector_value'].setText("Stationary")
+            self.set_table_item_text_with_color(self.location_items['vector_value'], "Stationary")
         
-        # Update GPS status and fix quality
-        self.gps_items['status_value'].setText("ACTIVE")
-        self.gps_items['status_value'].setForeground(QColor(0, 255, 0))  # Green text
+        # Update GPS status and fix quality with appropriate colors
+        self.location_items['status_value'].setText("ACTIVE")
+        # Set status color based on night mode
+        status_color = QColor(255, 102, 102) if self.night_mode_active else QColor(0, 255, 0)
+        self.location_items['status_value'].setForeground(status_color)
         
         # Determine fix quality based on speed accuracy (rough estimate)
         if speed > 0.1:  # Moving
-            self.gps_items['fix_value'].setText("3D FIX (Moving)")
-            self.gps_items['fix_value'].setForeground(QColor(0, 255, 0))
+            self.location_items['fix_value'].setText("3D FIX (Moving)")
+            self.location_items['fix_value'].setForeground(status_color)
         else:  # Stationary
-            self.gps_items['fix_value'].setText("3D FIX (Stationary)")
-            self.gps_items['fix_value'].setForeground(QColor(255, 255, 0))
+            self.location_items['fix_value'].setText("3D FIX (Stationary)")
+            # Set warning color based on night mode
+            warning_color = QColor(255, 153, 102) if self.night_mode_active else QColor(255, 255, 0)
+            self.location_items['fix_value'].setForeground(warning_color)
 
-        # Update Grid Systems in table format
+        # Update Grid Systems in unified location table
         try:
-            # Update coordinates in grid table
-            self.grid_items['lat_value'].setText(f"{latitude:.6f}°")
-            self.grid_items['lon_value'].setText(f"{longitude:.6f}°")
-            
-            # UTM
+            # UTM coordinate system (row 8)
             utm_result = utm.from_latlon(latitude, longitude)
             utm_str = f"Zone {utm_result[2]}{utm_result[3]} E:{utm_result[0]:.0f} N:{utm_result[1]:.0f}"
-            self.grid_items['utm_value'].setText(utm_str)
+            self.set_table_item_text_with_color(self.location_items['utm_value'], utm_str)
             
-            # Maidenhead
+            # Maidenhead (row 9)
             mh_grid = mh.to_maiden(latitude, longitude)
-            self.grid_items['mh_value'].setText(mh_grid)
+            self.set_table_item_text_with_color(self.location_items['mh_value'], mh_grid)
             
-            # MGRS
+            # MGRS (rows 10-11)
             m = mgrs.MGRS()
             mgrs_result = m.toMGRS(latitude, longitude)
             mgrs_zone = mgrs_result[:3]
@@ -2185,41 +2605,89 @@ Longitude: {lon:.6f}°
             else:
                 formatted_coords = mgrs_coords
                 
-            self.grid_items['mgrs_zone_value'].setText(f"{mgrs_zone} {mgrs_grid}")
-            self.grid_items['mgrs_coords_value'].setText(formatted_coords)
+            self.set_table_item_text_with_color(self.location_items['mgrs_zone_value'], f"{mgrs_zone} {mgrs_grid}")
+            self.set_table_item_text_with_color(self.location_items['mgrs_coords_value'], formatted_coords)
+            
+            # DMS (Degrees, Minutes, Seconds) format (rows 12-13)
+            def decimal_to_dms(decimal_degrees, is_latitude=True):
+                """Convert decimal degrees to degrees, minutes, seconds format"""
+                abs_degrees = abs(decimal_degrees)
+                degrees = int(abs_degrees)
+                minutes_float = (abs_degrees - degrees) * 60
+                minutes = int(minutes_float)
+                seconds = (minutes_float - minutes) * 60
+                
+                if is_latitude:
+                    direction = 'N' if decimal_degrees >= 0 else 'S'
+                else:
+                    direction = 'E' if decimal_degrees >= 0 else 'W'
+                
+                return f"{degrees}°{minutes:02d}'{seconds:05.2f}\"{direction}"
+            
+            dms_lat = decimal_to_dms(latitude, True)
+            dms_lon = decimal_to_dms(longitude, False)
+            self.set_table_item_text_with_color(self.location_items['dms_lat_value'], dms_lat)
+            self.set_table_item_text_with_color(self.location_items['dms_lon_value'], dms_lon)
             
         except Exception as e:
             print(f"Error calculating grid systems: {e}")
 
-        # Update map with current location
-        self.update_map_location(latitude, longitude)
+        # Update coordinate display with current location
+        # Coordinate data is already shown in the grid table
 
-        # Update Closest Towers
+        # Update Closest Towers (always update - they're static)
         self.display_closest_sites(latitude, longitude)
         
-        # Only update repeater data if we've moved significantly or it's the first time
-        # Repeaters are on fixed towers - no need to refresh when stationary!
+        # Motion-aware repeater updates
+        current_time = time.time()
         current_location = (latitude, longitude)
+        
         if not hasattr(self, 'last_repeater_update_location'):
             # First time - populate everything
             self.populate_skywarn_data()
             self.populate_all_amateur_data()
             self.last_repeater_update_location = current_location
+            self.last_armer_update = current_time
+            self.last_skywarn_update = current_time
+            self.last_amateur_update = current_time
             print("📍 First GPS lock - fetching all repeater data")
         else:
-            # Check if we've moved significantly (more than ~50 feet)
+            # Check movement and apply motion-aware update logic
             last_lat, last_lon = self.last_repeater_update_location
             distance_moved = haversine(latitude, longitude, last_lat, last_lon)
             
-            if distance_moved > 0.01:  # 0.01 miles = ~50 feet
-                self.populate_skywarn_data()
-                self.populate_all_amateur_data()
-                self.last_repeater_update_location = current_location
-                print(f"📍 Moved {distance_moved:.3f} miles - refreshing repeater data")
+            if self.is_vehicle_speed:
+                # Vehicle speed mode - time-based updates only for emergency services
+                print(f"🚗 Vehicle speed detected ({speed * MPS_TO_MPH:.1f} mph) - using selective updates")
                 
-                # Force refresh of band displays if we're within cached region but moving
-                if hasattr(self, 'force_band_refresh') and self.force_band_refresh:
-                    print("🔄 Forcing band display refresh for new location")
+                # Update ARMER and Skywarn every 25 seconds when moving at vehicle speed
+                if current_time - self.last_skywarn_update >= self.ARMER_SKYWARN_INTERVAL:
+                    print(f"⏰ Vehicle mode: Updating emergency services ({self.ARMER_SKYWARN_INTERVAL}s interval)")
+                    self.populate_skywarn_data()
+                    self.last_skywarn_update = current_time
+                    # Update location for significant movement tracking
+                    if distance_moved > 0.01:
+                        self.last_repeater_update_location = current_location
+                
+                # Update Amateur radio every 35 seconds when moving at vehicle speed
+                if current_time - self.last_amateur_update >= self.AMATEUR_INTERVAL:
+                    print(f"⏰ Vehicle mode: Updating amateur radio ({self.AMATEUR_INTERVAL}s interval)")
+                    self.populate_all_amateur_data()
+                    self.last_amateur_update = current_time
+                    
+            else:
+                # Walking speed or stationary - distance-based updates for all services
+                if distance_moved > self.stationary_threshold:  # 0.01 miles = ~50 feet
+                    print(f"� Walking/stationary mode: Updating all services (moved {distance_moved:.3f} miles)")
+                    self.populate_skywarn_data()
+                    self.populate_all_amateur_data()
+                    self.last_repeater_update_location = current_location
+                    self.last_skywarn_update = current_time
+                    self.last_amateur_update = current_time
+                    
+                    # Force refresh of band displays if we're within cached region but moving
+                    if hasattr(self, 'force_band_refresh') and self.force_band_refresh:
+                        print("🔄 Forcing band display refresh for new location")
                     # Repopulate band data to re-sort by distance from new location
                     self.populate_band_data("10", self.amateur_10m_data)
                     self.populate_band_data("6", self.amateur_6m_data) 
@@ -2270,6 +2738,9 @@ Longitude: {lon:.6f}°
             self.table.setItem(row, 3, bearing_item)
             self.table.setItem(row, 4, nac_item)
             self.table.setItem(row, 5, freq_item)
+        
+        # Send UDP broadcast of closest ARMER towers
+        self.send_udp_armer_data()
 
     def populate_skywarn_data(self):
         """Populate Skywarn weather repeater data with smart caching"""
@@ -3114,6 +3585,39 @@ Longitude: {lon:.6f}°
                     print("User requested quit via keyboard shortcut")
                     self.close()
                     return
+                elif event.key() == Qt.Key_N:
+                    # Toggle night mode
+                    print("Night mode toggled via Ctrl+N")
+                    self.toggle_night_mode_button()
+                    return
+                elif event.key() == Qt.Key_R:
+                    # Refresh all data
+                    self.refresh_all_data()
+                    return
+                elif event.key() == Qt.Key_P:
+                    # Export PDF
+                    self.export_data()
+                    return
+                elif event.key() == Qt.Key_E:
+                    # Export PDF (alternative shortcut)
+                    self.export_data()
+                    return
+                elif event.key() == Qt.Key_1:
+                    # Switch to Location tab
+                    self.tab_widget.setCurrentIndex(0)
+                    return
+                elif event.key() == Qt.Key_2:
+                    # Switch to ARMER tab
+                    self.tab_widget.setCurrentIndex(1)
+                    return
+                elif event.key() == Qt.Key_3:
+                    # Switch to Skywarn tab
+                    self.tab_widget.setCurrentIndex(2)
+                    return
+                elif event.key() == Qt.Key_4:
+                    # Switch to Amateur tab
+                    self.tab_widget.setCurrentIndex(3)
+                    return
         except Exception:
             pass
         # Fallback to default handling
@@ -3143,6 +3647,12 @@ Longitude: {lon:.6f}°
             'Display': {
                 'night_mode': 'false',
                 'refresh_interval': '30'
+            },
+            'UDP': {
+                'enabled': 'true',
+                'port': str(UDP_CONFIG['port']),
+                'broadcast_ip': '255.255.255.255',
+                'send_interval': '25'
             }
         }
         
