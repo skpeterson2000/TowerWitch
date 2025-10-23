@@ -48,7 +48,8 @@ DEBUG_MODE = False
 PDF_EXPORT_LIMITS = {
     'location': 8,      # Location towers to export
     'armer': 10,        # ARMER towers to export  
-    'skywarn': 8,       # Skywarn towers to export
+    'skywarn': 8,       # SKYWARN towers to export
+    'noaa': 8,          # NOAA Weather Radio stations to export
     'amateur_bands': 8  # Amateur radio repeaters per band
 }
 
@@ -114,7 +115,7 @@ BAND_COLORS = {
         '125m': QColor(150, 255, 150),    # Light green for 1.25m (alternate name)
         '1.25m': QColor(150, 255, 150),   # Light green for 1.25m (alternate name)
         'simplex': QColor(255, 255, 100), # Yellow for simplex
-        'skywarn': QColor(255, 100, 255), # Magenta for Skywarn
+        'skywarn': QColor(255, 100, 255), # Magenta for SKYWARN
         'default': QColor(255, 255, 255)  # White default
     },
     'night': {
@@ -125,7 +126,7 @@ BAND_COLORS = {
         '125m': QColor(150, 130, 100),    # Muted red-green for 1.25m (alternate name)
         '1.25m': QColor(150, 130, 100),   # Muted red-green for 1.25m (alternate name)
         'simplex': QColor(200, 150, 120), # Muted red-yellow for simplex
-        'skywarn': QColor(180, 100, 150), # Muted red-magenta for Skywarn
+        'skywarn': QColor(180, 100, 150), # Muted red-magenta for SKYWARN
         'default': QColor(255, 102, 102)  # Night mode red default
     }
 }
@@ -565,7 +566,7 @@ class RadioReferenceAPI:
             return self.load_last_known_good("repeaters", location_key)
     
     def get_skywarn_repeaters(self, lat, lon, radius_miles=100):
-        """Get Skywarn/weather repeaters in area with smart caching"""
+        """Get SKYWARN/weather repeaters in area with smart caching"""
         location_key = f"skywarn_{lat:.3f}_{lon:.3f}_{radius_miles}"
         
         # Check if we should update data based on movement and time
@@ -579,12 +580,12 @@ class RadioReferenceAPI:
             return self.load_last_known_good("skywarn", location_key)
         
         try:
-            print(f"🌐 Fetching Skywarn repeaters from Radio Reference API...")
+            print(f"🌐 Fetching SKYWARN repeaters from Radio Reference API...")
             
             # Get all repeaters first, then filter for weather/emergency
             all_repeaters = self.get_repeaters_by_location(lat, lon, radius_miles)
             
-            # Filter for likely Skywarn/weather repeaters
+            # Filter for likely SKYWARN/weather repeaters
             skywarn_repeaters = []
             weather_keywords = [
                 'skywarn', 'weather', 'storm', 'emergency', 'ares', 'races', 'net',
@@ -617,7 +618,7 @@ class RadioReferenceAPI:
                 # Include if keyword match OR emergency frequency with reasonable description
                 if is_emergency or (is_emergency_freq and len(description) > 5):
                     skywarn_repeaters.append(repeater)
-                    print(f"📡 Added Skywarn: {repeater.get('call_sign', 'N/A')} - {description[:50]}")
+                    print(f"📡 Added SKYWARN: {repeater.get('call_sign', 'N/A')} - {description[:50]}")
             
             # Remove duplicates based on call sign and frequency
             seen = set()
@@ -693,6 +694,87 @@ class RadioReferenceAPI:
                 pass
         
         return repeaters
+
+    def get_noaa_weather_radio(self, lat, lon, radius_miles=200):
+        """Get NOAA Weather Radio stations with Radio Reference API data"""
+        location_key = f"noaa_{lat:.3f}_{lon:.3f}_{radius_miles}"
+        
+        # Check if we should update data based on movement and time
+        if not self.should_update_data(lat, lon):
+            # Try cache first if we don't need fresh data
+            cached_data = self.load_from_cache("noaa", location_key)
+            if cached_data is not None:
+                return cached_data
+        
+        if not self.api_key or not self.is_online():
+            return self.load_last_known_good("noaa", location_key)
+        
+        try:
+            print(f"🌐 Fetching NOAA Weather Radio stations from Radio Reference API...")
+            
+            # Get all repeaters first, then filter for NOAA Weather Radio
+            all_repeaters = self.get_repeaters_by_location(lat, lon, radius_miles)
+            
+            # Filter for NOAA Weather Radio stations
+            noaa_stations = []
+            noaa_keywords = [
+                'noaa', 'weather radio', 'nws', 'national weather service',
+                'weather broadcast', 'weather alert', 'wx radio', 'weather service',
+                'emergency alert system', 'eas', 'weather emergency'
+            ]
+            
+            # Also look for frequencies in the 162.xxx MHz range (NOAA Weather Radio band)
+            for repeater in all_repeaters:
+                # Check multiple fields for NOAA/weather keywords
+                description = repeater.get('description', '').lower()
+                location = repeater.get('location', '').lower()
+                call_sign = repeater.get('call_sign', repeater.get('callsign', '')).lower()
+                frequency = str(repeater.get('frequency', repeater.get('output_freq', '0')))
+                
+                # Combine all text fields for searching
+                searchable_text = f"{description} {location} {call_sign}"
+                
+                # Check for NOAA keywords OR 162.xxx MHz frequency range
+                is_noaa_keyword = any(keyword in searchable_text for keyword in noaa_keywords)
+                is_noaa_frequency = frequency.startswith('162.') and len(frequency) >= 6
+                
+                if is_noaa_keyword or is_noaa_frequency:
+                    # Convert to standard format
+                    converted_station = {
+                        "call": call_sign.upper(),
+                        "location": repeater.get('location', 'Unknown'),
+                        "freq": frequency,
+                        "same_codes": repeater.get('description', 'N/A'),
+                        "lat": float(repeater.get('latitude', repeater.get('lat', 0.0))),
+                        "lon": float(repeater.get('longitude', repeater.get('lon', 0.0)))
+                    }
+                    noaa_stations.append(converted_station)
+            
+            # Remove duplicates by call sign
+            unique_noaa = []
+            seen_calls = set()
+            for station in noaa_stations:
+                call = station.get('call', '')
+                if call and call not in seen_calls:
+                    seen_calls.add(call)
+                    unique_noaa.append(station)
+            noaa_stations = unique_noaa
+            
+            if noaa_stations:
+                print(f"✓ Found {len(noaa_stations)} NOAA Weather Radio stations")
+                self.save_to_cache("noaa", location_key, noaa_stations)
+                return noaa_stations
+            
+        except Exception as e:
+            print(f"❌ Error fetching NOAA Weather Radio data: {e}")
+            
+        # Fall back to last known good data or static data
+        fallback_data = self.load_last_known_good("noaa", location_key)
+        if fallback_data:
+            return fallback_data
+        
+        # If no API data available, return empty list (will trigger static fallback)
+        return []
 
 # GPS Worker Class using gpspipe
 class GPSWorker(QThread):
@@ -1049,7 +1131,7 @@ class EnhancedGPSWindow(QMainWindow):
             QTabWidget#main_tabs QTabBar::tab:nth-child(3) {{ background-color: #F39C12; }}  /* Skywarn - Orange */
             QTabWidget#main_tabs QTabBar::tab:nth-child(4) {{ background-color: #3498DB; }}  /* Amateur - Blue */
             
-            QTabBar::tab:selected {{
+            QTabWidget#main_tabs QTabBar::tab:selected {{
                 border: 2px solid #ffffff;
                 font-weight: bolder;
             }}
@@ -1109,11 +1191,17 @@ class EnhancedGPSWindow(QMainWindow):
             self.tabs.addTab(self.tower_tab, "ARMER")
             debug_print("ARMER tab added", "SUCCESS")
             
-            # Skywarn Weather Tab
-            debug_print("Creating Skywarn tab...", "INFO")
+            # SKYWARN Weather Tab
+            debug_print("Creating SKYWARN tab...", "INFO")
             self.skywarn_tab = self.create_skywarn_tab()
-            self.tabs.addTab(self.skywarn_tab, "Skywarn")
-            debug_print("Skywarn tab added", "SUCCESS")
+            self.tabs.addTab(self.skywarn_tab, "SKYWARN")
+            debug_print("SKYWARN tab added", "SUCCESS")
+            
+            # NOAA Weather Radio Tab
+            debug_print("Creating NOAA tab...", "INFO")
+            self.noaa_tab = self.create_noaa_tab()
+            self.tabs.addTab(self.noaa_tab, "NOAA")
+            debug_print("NOAA tab added", "SUCCESS")
             
             # Amateur Radio Tab
             debug_print("Creating Amateur tab...", "INFO")
@@ -1481,11 +1569,11 @@ class EnhancedGPSWindow(QMainWindow):
         return tab
 
     def create_skywarn_tab(self):
-        """Create Skywarn weather repeater display tab"""
+        """Create SKYWARN weather repeater display tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Skywarn table - maximize space for repeater data
+        # SKYWARN table - maximize space for repeater data
         self.skywarn_table = QTableWidget()
         self.skywarn_table.setColumnCount(6)
         self.skywarn_table.setHorizontalHeaderLabels(["Call Sign", "Location", "Frequency", "Tone", "Distance", "Bearing"])
@@ -1509,6 +1597,40 @@ class EnhancedGPSWindow(QMainWindow):
         self.populate_skywarn_data()
         
         layout.addWidget(self.skywarn_table)
+        
+        return tab
+
+    def create_noaa_tab(self):
+        """Create NOAA Weather Radio frequency reference tab"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # NOAA Weather Radio frequency reference table
+        self.noaa_table = QTableWidget()
+        self.noaa_table.setColumnCount(5)
+        self.noaa_table.setHorizontalHeaderLabels(["Frequency", "Nearest Station", "Location", "Distance", "Status"])
+        
+        # Set column widths for touch interface
+        header = self.noaa_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Frequency
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Station call sign
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Location can expand
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Distance
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Status/recommendation
+        
+        # Make table touch-friendly with more space
+        self.noaa_table.setMinimumHeight(450)
+        self.noaa_table.setAlternatingRowColors(True)
+        self.noaa_table.verticalHeader().setDefaultSectionSize(50)
+        self.noaa_table.setFont(self.table_font)
+        
+        # Set to exactly 7 rows for the 7 NOAA frequencies
+        self.noaa_table.setRowCount(7)
+        
+        # Add NOAA frequency reference data
+        self.populate_noaa_frequency_data()
+        
+        layout.addWidget(self.noaa_table)
         
         return tab
 
@@ -1670,6 +1792,7 @@ class EnhancedGPSWindow(QMainWindow):
         if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
             self.display_closest_sites(self.last_lat, self.last_lon)
             self.populate_skywarn_data()
+            self.populate_noaa_frequency_data()
             self.populate_all_amateur_data()
 
     def export_data(self):
@@ -1717,7 +1840,7 @@ class EnhancedGPSWindow(QMainWindow):
             
             # Export each tab's data
             current_tab = self.tabs.currentIndex()
-            tab_names = ["Location", "ARMER", "Skywarn", "Amateur"]
+            tab_names = ["Location", "ARMER", "SKYWARN", "NOAA", "Amateur"]
             
             # Check if user is currently on simplex tab for special handling
             current_amateur_tab = getattr(self, 'amateur_subtabs', None)
@@ -1748,7 +1871,9 @@ class EnhancedGPSWindow(QMainWindow):
                     table_widget = getattr(self, 'table', None)  # ARMER uses self.table
                 elif tab_index == 2:  # Skywarn tab
                     table_widget = getattr(self, 'skywarn_table', None)
-                elif tab_index == 3:  # Amateur tab
+                elif tab_index == 3:  # NOAA tab
+                    table_widget = getattr(self, 'noaa_table', None)
+                elif tab_index == 4:  # Amateur tab
                     # Special handling: if on simplex tab, show comprehensive simplex reference
                     if is_simplex_active:
                         # Override normal amateur processing for simplex-only export
@@ -1903,6 +2028,8 @@ class EnhancedGPSWindow(QMainWindow):
                         max_rows = min(PDF_EXPORT_LIMITS['armer'], table_widget.rowCount())
                     elif tab_index == 2:  # Skywarn
                         max_rows = min(PDF_EXPORT_LIMITS['skywarn'], table_widget.rowCount())
+                    elif tab_index == 3:  # NOAA
+                        max_rows = min(PDF_EXPORT_LIMITS['noaa'], table_widget.rowCount())
                     else:
                         max_rows = min(8, table_widget.rowCount())  # Default fallback
                     for row in range(max_rows):
@@ -1940,6 +2067,8 @@ class EnhancedGPSWindow(QMainWindow):
                             expected_limit = PDF_EXPORT_LIMITS['armer']
                         elif tab_index == 2:
                             expected_limit = PDF_EXPORT_LIMITS['skywarn']
+                        elif tab_index == 3:
+                            expected_limit = PDF_EXPORT_LIMITS['noaa']
                         
                         if max_rows == expected_limit and table_widget.rowCount() > expected_limit:
                             remaining = table_widget.rowCount() - max_rows
@@ -2478,6 +2607,9 @@ class EnhancedGPSWindow(QMainWindow):
         # Refresh Skywarn data if it exists
         if hasattr(self, 'cached_skywarn_data') and self.cached_skywarn_data:
             self.populate_skywarn_data()
+        # Refresh NOAA data
+        if hasattr(self, 'noaa_table'):
+            self.populate_noaa_frequency_data()
 
     def toggle_night_mode(self, night_mode_on):
         """Toggle between day and night mode for better night vision"""
@@ -2568,8 +2700,8 @@ class EnhancedGPSWindow(QMainWindow):
         status_color = QColor(255, 102, 102) if self.night_mode_active else QColor(0, 255, 0)
         self.location_items['status_value'].setForeground(status_color)
         
-        # Determine fix quality based on speed accuracy (rough estimate)
-        if speed > 0.1:  # Moving
+        # Determine fix quality based on speed accuracy (using same threshold as movement detection)
+        if speed >= MIN_SPEED_THRESHOLD:  # Moving (consistent with is_moving logic)
             self.location_items['fix_value'].setText("3D FIX (Moving)")
             self.location_items['fix_value'].setForeground(status_color)
         else:  # Stationary
@@ -2580,16 +2712,16 @@ class EnhancedGPSWindow(QMainWindow):
 
         # Update Grid Systems in unified location table
         try:
-            # UTM coordinate system (row 8)
+            # UTM coordinate system (right side, row 0)
             utm_result = utm.from_latlon(latitude, longitude)
             utm_str = f"Zone {utm_result[2]}{utm_result[3]} E:{utm_result[0]:.0f} N:{utm_result[1]:.0f}"
             self.set_table_item_text_with_color(self.location_items['utm_value'], utm_str)
             
-            # Maidenhead (row 9)
+            # Maidenhead (right side, row 1)
             mh_grid = mh.to_maiden(latitude, longitude)
             self.set_table_item_text_with_color(self.location_items['mh_value'], mh_grid)
             
-            # MGRS (rows 10-11)
+            # MGRS (right side, rows 2-3)
             m = mgrs.MGRS()
             mgrs_result = m.toMGRS(latitude, longitude)
             mgrs_zone = mgrs_result[:3]
@@ -2608,7 +2740,7 @@ class EnhancedGPSWindow(QMainWindow):
             self.set_table_item_text_with_color(self.location_items['mgrs_zone_value'], f"{mgrs_zone} {mgrs_grid}")
             self.set_table_item_text_with_color(self.location_items['mgrs_coords_value'], formatted_coords)
             
-            # DMS (Degrees, Minutes, Seconds) format (rows 12-13)
+            # DMS (Degrees, Minutes, Seconds) format (right side, rows 4-5)
             def decimal_to_dms(decimal_degrees, is_latitude=True):
                 """Convert decimal degrees to degrees, minutes, seconds format"""
                 abs_degrees = abs(decimal_degrees)
@@ -2645,6 +2777,7 @@ class EnhancedGPSWindow(QMainWindow):
         if not hasattr(self, 'last_repeater_update_location'):
             # First time - populate everything
             self.populate_skywarn_data()
+            self.populate_noaa_frequency_data()
             self.populate_all_amateur_data()
             self.last_repeater_update_location = current_location
             self.last_armer_update = current_time
@@ -2664,6 +2797,7 @@ class EnhancedGPSWindow(QMainWindow):
                 if current_time - self.last_skywarn_update >= self.ARMER_SKYWARN_INTERVAL:
                     print(f"⏰ Vehicle mode: Updating emergency services ({self.ARMER_SKYWARN_INTERVAL}s interval)")
                     self.populate_skywarn_data()
+                    self.populate_noaa_frequency_data()
                     self.last_skywarn_update = current_time
                     # Update location for significant movement tracking
                     if distance_moved > 0.01:
@@ -2678,8 +2812,9 @@ class EnhancedGPSWindow(QMainWindow):
             else:
                 # Walking speed or stationary - distance-based updates for all services
                 if distance_moved > self.stationary_threshold:  # 0.01 miles = ~50 feet
-                    print(f"� Walking/stationary mode: Updating all services (moved {distance_moved:.3f} miles)")
+                    print(f"🚶 Walking/stationary mode: Updating all services (moved {distance_moved:.3f} miles)")
                     self.populate_skywarn_data()
+                    self.populate_noaa_frequency_data()
                     self.populate_all_amateur_data()
                     self.last_repeater_update_location = current_location
                     self.last_skywarn_update = current_time
@@ -2743,7 +2878,7 @@ class EnhancedGPSWindow(QMainWindow):
         self.send_udp_armer_data()
 
     def populate_skywarn_data(self):
-        """Populate Skywarn weather repeater data with smart caching"""
+        """Populate SKYWARN weather repeater data with smart caching"""
         if hasattr(self, 'last_lat') and hasattr(self, 'last_lon'):
             user_lat = self.last_lat
             user_lon = self.last_lon
@@ -2950,6 +3085,189 @@ class EnhancedGPSWindow(QMainWindow):
             print(f"⚠️ Error converting API data: {e}")
             
         return converted_repeaters
+
+    def populate_noaa_frequency_data(self):
+        """Populate NOAA Weather Radio frequency reference table"""
+        
+        print("📻 Populating NOAA Weather Radio frequency reference...")
+        
+        # The 7 standard NOAA Weather Radio frequencies
+        noaa_frequencies = [
+            "162.400",
+            "162.425", 
+            "162.450",
+            "162.475",
+            "162.500",
+            "162.525",
+            "162.550"
+        ]
+        
+        # Our comprehensive station database for distance calculations
+        static_noaa_stations = [
+            # Primary Minnesota NWR stations with official call signs
+            {"call": "KEC65", "location": "Minneapolis/St. Paul", "freq": "162.550", "same_codes": "027003,027019,027037,027053,027123,027139,027163", "lat": 44.8588, "lon": -93.2087},
+            {"call": "KIG64", "location": "Duluth", "freq": "162.550", "same_codes": "027017,027035,027075,027115,027137", "lat": 46.7867, "lon": -92.1005},
+            {"call": "KIF73", "location": "St. Cloud", "freq": "162.525", "same_codes": "027009,027145,027171", "lat": 45.5608, "lon": -94.2041},
+            {"call": "WXM63", "location": "Grand Rapids", "freq": "162.525", "same_codes": "027031,027061,027097", "lat": 47.2378, "lon": -93.5308},
+            {"call": "KJY63", "location": "Aitkin", "freq": "162.525", "same_codes": "027001,027027,027035,027097", "lat": 46.5330, "lon": -93.7108},
+            {"call": "WXM51", "location": "Little Falls", "freq": "162.475", "same_codes": "027097,027153", "lat": 45.9763, "lon": -94.3625},
+            {"call": "WXJ64", "location": "Leader (Omen Lake)", "freq": "162.550", "same_codes": "027027,027035,027097", "lat": 46.6500, "lon": -94.1000},
+            {"call": "KXI44", "location": "Wadena", "freq": "162.450", "same_codes": "027111,027153,027159", "lat": 46.4388, "lon": -95.1364},
+            {"call": "KJY80", "location": "Red Wing", "freq": "162.450", "same_codes": "027049,027131,055011,055063", "lat": 44.5633, "lon": -92.5340},
+            {"call": "KXI31", "location": "Jeffers", "freq": "162.450", "same_codes": "027101,027103,027159,056041", "lat": 44.0733, "lon": -95.1953},
+            {"call": "KXI32", "location": "Sleepy Eye", "freq": "162.475", "same_codes": "027013,027091,027103,027169", "lat": 44.3008, "lon": -94.7219},
+            {"call": "KIH60", "location": "Alexandria", "freq": "162.400", "same_codes": "027041,027051,027111", "lat": 45.8855, "lon": -95.3772},
+            {"call": "KXI48", "location": "Morris", "freq": "162.475", "same_codes": "027129,027151,027167", "lat": 45.5869, "lon": -95.9142},
+            {"call": "KXI51", "location": "Marshall", "freq": "162.425", "same_codes": "027083,027091,027113,027123,027129,027165,027173", "lat": 44.4469, "lon": -95.7881},
+            {"call": "KXI61", "location": "Montevideo", "freq": "162.400", "same_codes": "027023,027067,027111,027167,027173", "lat": 44.9388, "lon": -95.7142},
+            {"call": "KZZ34", "location": "Rochester", "freq": "162.525", "same_codes": "027009,027045,027079,027109,027157,055005,055157", "lat": 44.0121, "lon": -92.4802},
+            {"call": "KZZ56", "location": "Worthington", "freq": "162.400", "same_codes": "027063,027105,027161,046065,046133", "lat": 43.6191, "lon": -95.5956},
+            {"call": "WXK40", "location": "La Crescent", "freq": "162.475", "same_codes": "027055,027109,027157,055063,055081,055123", "lat": 43.8241, "lon": -91.3096},
+            {"call": "WXK95", "location": "Hinckley", "freq": "162.550", "same_codes": "027017,027025,027037,027061,027161,055023", "lat": 46.0047, "lon": -92.9405},
+            {"call": "WXM65", "location": "Mankato", "freq": "162.425", "same_codes": "027013,027015,027079,027103,027143,027161", "lat": 44.1636, "lon": -94.0719},
+            {"call": "WXM86", "location": "International Falls", "freq": "162.475", "same_codes": "027071,027077,055023", "lat": 48.6019, "lon": -93.4016},
+            {"call": "WWG55", "location": "Albert Lea", "freq": "162.475", "same_codes": "027013,027047,027109,056043", "lat": 43.6481, "lon": -93.3687},
+            {"call": "WWG56", "location": "Virginia", "freq": "162.475", "same_codes": "027017,027137", "lat": 47.5235, "lon": -92.5368},
+            {"call": "KEC44", "location": "Thief River Falls", "freq": "162.400", "same_codes": "027069,027087,027135,027155", "lat": 48.1173, "lon": -96.1779},
+            {"call": "KIF68", "location": "Willmar", "freq": "162.500", "same_codes": "027083,027121,027155,027167", "lat": 45.1219, "lon": -95.0433},
+            {"call": "KIH41", "location": "Redwood Falls", "freq": "162.400", "same_codes": "027127,027173", "lat": 44.5408, "lon": -95.1167},
+            {"call": "KIH53", "location": "New Ulm", "freq": "162.550", "same_codes": "027013,027015,027103", "lat": 44.3128, "lon": -94.4608},
+            
+            # Regional coverage (neighboring states)
+            {"call": "KEC85", "location": "Grand Forks, ND", "freq": "162.525", "same_codes": "038035,038067,038097", "lat": 47.9253, "lon": -97.0329},
+            {"call": "KZZ93", "location": "Aberdeen, SD", "freq": "162.475", "same_codes": "046005,046025,046051,046091", "lat": 45.4647, "lon": -98.4865},
+            {"call": "WXK73", "location": "Eau Claire, WI", "freq": "162.550", "same_codes": "055035,055053,055091", "lat": 44.8113, "lon": -91.4985},
+            {"call": "WXL40", "location": "La Crosse, WI", "freq": "162.475", "same_codes": "055063,055081,055123", "lat": 43.8014, "lon": -91.2396},
+            
+            # Additional Minnesota stations
+            {"call": "KWO39", "location": "Park Rapids", "freq": "162.525", "same_codes": "027027,027097,027111", "lat": 46.9233, "lon": -95.0587},
+            {"call": "KXI86", "location": "Fergus Falls", "freq": "162.400", "same_codes": "027111,027167", "lat": 46.2830, "lon": -96.0779},
+            {"call": "WXL35", "location": "Bemidji", "freq": "162.450", "same_codes": "027007,027027,027071,027077", "lat": 47.4737, "lon": -94.8789},
+            {"call": "WXM32", "location": "Walker", "freq": "162.475", "same_codes": "027027,027035,027061", "lat": 47.0942, "lon": -94.5844},
+            {"call": "KIG47", "location": "Two Harbors", "freq": "162.400", "same_codes": "027061,027075", "lat": 47.0066, "lon": -91.6968},
+            {"call": "WXK73", "location": "Winona", "freq": "162.550", "same_codes": "027055,027157,055005,055063", "lat": 44.0498, "lon": -91.6407},
+            {"call": "KZZ81", "location": "Austin", "freq": "162.475", "same_codes": "027045,027109,056043", "lat": 43.6675, "lon": -92.9741}
+        ]
+        
+        # Get current GPS location for distance calculations
+        if hasattr(self, 'last_lat') and hasattr(self, 'last_lon') and self.last_lat and self.last_lon:
+            user_lat = self.last_lat
+            user_lon = self.last_lon
+            print(f"📊 Calculating NOAA frequencies from {user_lat:.4f},{user_lon:.4f}")
+        else:
+            user_lat = 44.9778  # Default to Minneapolis
+            user_lon = -93.2650
+            print("📍 Using default location (Minneapolis) for NOAA frequency calculations")
+        
+        # Set NOAA color (weatherly blue)
+        noaa_color = QColor(70, 130, 180)  # Steel blue for weather services
+        
+        # First, calculate the closest station for each frequency
+        frequency_data = []
+        
+        for frequency in noaa_frequencies:
+            # Find all stations on this frequency
+            stations_on_freq = [s for s in static_noaa_stations if s['freq'] == frequency]
+            
+            if stations_on_freq:
+                # Calculate distance to each station on this frequency
+                closest_station = None
+                closest_distance = float('inf')
+                
+                for station in stations_on_freq:
+                    try:
+                        station_lat = float(station.get('lat', 0))
+                        station_lon = float(station.get('lon', 0))
+                        distance = self.radio_api.calculate_distance_miles(user_lat, user_lon, station_lat, station_lon)
+                        
+                        if distance < closest_distance:
+                            closest_distance = distance
+                            closest_station = station
+                    except (ValueError, TypeError):
+                        continue
+                
+                if closest_station:
+                    # Store frequency data with distance for sorting
+                    frequency_data.append({
+                        'frequency': frequency,
+                        'station': closest_station,
+                        'distance': closest_distance
+                    })
+                else:
+                    # No valid stations found for this frequency
+                    frequency_data.append({
+                        'frequency': frequency,
+                        'station': None,
+                        'distance': float('inf')
+                    })
+            else:
+                # No stations found for this frequency
+                frequency_data.append({
+                    'frequency': frequency,
+                    'station': None,
+                    'distance': float('inf')
+                })
+        
+        # Sort frequencies by distance to nearest transmitter (best first)
+        frequency_data.sort(key=lambda x: x['distance'])
+        print(f"📊 Best NOAA frequency: {frequency_data[0]['frequency']} MHz ({frequency_data[0]['distance']:.1f} mi)")
+        
+        # Now populate table with distance-sorted data
+        for row, freq_info in enumerate(frequency_data):
+            frequency = freq_info['frequency']
+            closest_station = freq_info['station']
+            closest_distance = freq_info['distance']
+            
+            if closest_station and closest_distance != float('inf'):
+                # Create table items
+                freq_item = QTableWidgetItem(f"{frequency} MHz")
+                freq_item.setForeground(noaa_color)
+                
+                station_item = QTableWidgetItem(closest_station['call'])
+                station_item.setForeground(noaa_color)
+                
+                location_item = QTableWidgetItem(closest_station['location'])
+                location_item.setForeground(noaa_color)
+                
+                distance_item = QTableWidgetItem(f"{closest_distance:.1f} mi")
+                distance_item.setForeground(noaa_color)
+                
+                # Status based on distance (reception quality estimate)
+                if closest_distance < 30:
+                    status = "🟢 Excellent"
+                    status_color = QColor(0, 150, 0)  # Green
+                elif closest_distance < 60:
+                    status = "🟡 Good"
+                    status_color = QColor(180, 180, 0)  # Yellow
+                elif closest_distance < 100:
+                    status = "🟠 Fair"
+                    status_color = QColor(255, 140, 0)  # Orange
+                else:
+                    status = "🔴 Poor"
+                    status_color = QColor(200, 0, 0)  # Red
+                
+                status_item = QTableWidgetItem(status)
+                status_item.setForeground(status_color)
+                
+                # Set items in table
+                self.noaa_table.setItem(row, 0, freq_item)
+                self.noaa_table.setItem(row, 1, station_item)
+                self.noaa_table.setItem(row, 2, location_item)
+                self.noaa_table.setItem(row, 3, distance_item)
+                self.noaa_table.setItem(row, 4, status_item)
+                
+            else:
+                # No stations found for this frequency - show as unavailable
+                freq_item = QTableWidgetItem(f"{frequency} MHz")
+                freq_item.setForeground(noaa_color)
+                
+                self.noaa_table.setItem(row, 0, freq_item)
+                self.noaa_table.setItem(row, 1, QTableWidgetItem("N/A"))
+                self.noaa_table.setItem(row, 2, QTableWidgetItem("No stations"))
+                self.noaa_table.setItem(row, 3, QTableWidgetItem("--"))
+                self.noaa_table.setItem(row, 4, QTableWidgetItem("Not available"))
+        
+        print(f"✅ NOAA frequency reference populated with 7 standard frequencies")
 
     def populate_all_amateur_data(self):
         """Populate Amateur Radio repeater data for all bands with smart stationary caching"""
