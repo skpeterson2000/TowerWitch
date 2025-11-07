@@ -132,6 +132,53 @@ sudo systemctl start gpsd
 cgps -s
 ```
 
+### UDP Broadcasting Configuration
+TowerWitch can broadcast nearest tower data via UDP for integration with external systems:
+
+```ini
+[UDP]
+enabled = true
+port = 12345
+broadcast_ip = 255.255.255.255
+send_interval = 25
+```
+
+**Broadcasting Features:**
+- **Real-time Data** - GPS location and closest ARMER towers
+- **JSON Format** - Structured data for easy parsing
+- **Configurable** - Port, IP, interval, and tower count
+- **Smart Timing** - Automatic rate limiting to prevent spam
+
+**Test UDP Reception:**
+```bash
+# Use included test listener
+python3 test_udp_listener.py
+
+# Or with netcat
+nc -ul 12345
+```
+
+**Broadcast Data Format:**
+```json
+{
+  "timestamp": "2025-11-07T12:34:56",
+  "source": "TowerWitch",
+  "gps_lat": 44.9778,
+  "gps_lon": -93.2650,
+  "speed_mps": 15.5,
+  "is_vehicle_speed": true,
+  "closest_armer_towers": [
+    {
+      "site_name": "Tower Name",
+      "distance": "2.3 mi",
+      "bearing": "045°",
+      "nac": "NAC123",
+      "control_channels": "851.0125, 852.5125"
+    }
+  ]
+}
+```
+
 ## Usage
 
 ### Basic Operation
@@ -202,7 +249,30 @@ TowerWitch automatically adjusts update behavior based on your speed:
 - **Emergency Ready** - Works offline with CSV databases when API unavailable
 - **NOAA Weather Radio** - All 7 standard frequencies with distance-based priority
 - **Utilities Dialog** - Separate window for location tools and data management
+- **UDP Broadcasting** - Real-time tower data for external systems integration
 - **Clean UDP Logging** - Minimal console output with comprehensive error handling
+
+### UDP Broadcasting Integration
+TowerWitch can broadcast real-time location and tower data for integration with:
+
+**Use Cases:**
+- **External Mapping Systems** - Display tower locations on custom maps
+- **Network Monitoring** - Track closest towers for RF planning
+- **Logging Applications** - Record tower usage and location history
+- **Emergency Coordination** - Share tower data with command centers
+- **Mobile Applications** - Receive data from TowerWitch on other devices
+
+**Setup:**
+1. Enable UDP in configuration file or leave default (enabled)
+2. Configure firewall if needed: `sudo ufw allow 12345/udp`
+3. Test reception: `python3 test_udp_listener.py`
+4. Integrate JSON data into your applications
+
+**Data Updates:**
+- Broadcasts every 25 seconds (configurable)
+- Includes 2 closest ARMER towers (configurable)
+- Automatic rate limiting to prevent network spam
+- Only sends when tower data is available
 
 ## Screenshots
 
