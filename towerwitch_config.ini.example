@@ -51,6 +51,17 @@ include_skywarn = true
 # Emergency frequency scanning (future feature)
 emergency_scan = false
 
+[UDP]
+# UDP broadcasting settings for external system integration
+# Enable UDP broadcasting of nearest tower data (true/false)
+enabled = true
+# UDP broadcast port (default: 12345)
+port = 12345
+# Broadcast IP address (255.255.255.255 = network broadcast)
+broadcast_ip = 255.255.255.255
+# Send interval in seconds (25 = every 25 seconds)
+send_interval = 25
+
 [ADVANCED]
 # Advanced settings for power users
 # Enable debug logging (generates large log files)
