@@ -112,26 +112,64 @@ NIGHT_MODE_TEXT_COLOR = QColor(255, 102, 102)  # Warm red for night vision compa
 # Band-specific color schemes for amateur radio
 BAND_COLORS = {
     'day': {
+        # HF Bands
+        '160m': QColor(139, 69, 19),      # Saddle brown for 160m
+        '80m': QColor(160, 82, 45),       # Saddle brown for 80m
+        '60m': QColor(255, 140, 0),       # Dark orange for 60m (special federal band)
+        '40m': QColor(205, 133, 63),      # Peru for 40m
+        '30m': QColor(218, 165, 32),      # Golden rod for 30m
+        '20m': QColor(255, 215, 0),       # Gold for 20m
+        '17m': QColor(255, 255, 0),       # Yellow for 17m
+        '15m': QColor(173, 255, 47),      # Green yellow for 15m
+        '12m': QColor(124, 252, 0),       # Lawn green for 12m
+        '10m': QColor(0, 255, 127),       # Spring green for 10m
+        
+        # VHF/UHF Bands
+        '6m': QColor(0, 191, 255),        # Deep sky blue for 6m
         '2m': QColor(100, 150, 255),      # Light blue for 2 meters
         '2': QColor(100, 150, 255),       # Light blue for 2 meters (alternate name)
-        '70cm': QColor(255, 150, 100),    # Orange for 70 centimeters  
-        '125': QColor(150, 255, 150),     # Light green for 1.25m
+        '1.25m': QColor(150, 255, 150),   # Light green for 1.25m
         '125m': QColor(150, 255, 150),    # Light green for 1.25m (alternate name)
-        '1.25m': QColor(150, 255, 150),   # Light green for 1.25m (alternate name)
+        '125': QColor(150, 255, 150),     # Light green for 1.25m
+        '70cm': QColor(255, 150, 100),    # Orange for 70 centimeters
+        '33cm': QColor(255, 105, 180),    # Hot pink for 33cm
+        '23cm': QColor(138, 43, 226),     # Blue violet for 23cm
+        
+        # Special categories
         'simplex': QColor(255, 255, 100), # Yellow for simplex
         'skywarn': QColor(255, 100, 255), # Magenta for SKYWARN
-        'default': QColor(255, 255, 255)  # White default
+        'emergency': QColor(220, 20, 60), # Crimson for emergency
+        'default': QColor(128, 128, 128)  # Gray instead of invisible white
     },
     'night': {
+        # HF Bands - red-tinted for night vision
+        '160m': QColor(139, 69, 69),      # Red-tinted brown for 160m
+        '80m': QColor(160, 82, 82),       # Red-tinted brown for 80m
+        '60m': QColor(200, 100, 50),      # Red-tinted orange for 60m
+        '40m': QColor(180, 120, 80),      # Red-tinted peru for 40m
+        '30m': QColor(180, 130, 70),      # Red-tinted golden rod for 30m
+        '20m': QColor(200, 150, 80),      # Red-tinted gold for 20m
+        '17m': QColor(200, 160, 90),      # Red-tinted yellow for 17m
+        '15m': QColor(160, 180, 100),     # Red-tinted green yellow for 15m
+        '12m': QColor(140, 170, 90),      # Red-tinted lawn green for 12m
+        '10m': QColor(120, 160, 110),     # Red-tinted spring green for 10m
+        
+        # VHF/UHF Bands - red-tinted for night vision
+        '6m': QColor(100, 130, 180),      # Red-tinted deep sky blue for 6m
         '2m': QColor(150, 100, 100),      # Muted red-blue for 2m
         '2': QColor(150, 100, 100),       # Muted red-blue for 2m (alternate name)
-        '70cm': QColor(180, 120, 100),    # Muted red-orange for 70cm
-        '125': QColor(150, 130, 100),     # Muted red-green for 1.25m
+        '1.25m': QColor(150, 130, 100),   # Muted red-green for 1.25m
         '125m': QColor(150, 130, 100),    # Muted red-green for 1.25m (alternate name)
-        '1.25m': QColor(150, 130, 100),   # Muted red-green for 1.25m (alternate name)
+        '125': QColor(150, 130, 100),     # Muted red-green for 1.25m
+        '70cm': QColor(180, 120, 100),    # Muted red-orange for 70cm
+        '33cm': QColor(180, 110, 140),    # Red-tinted hot pink for 33cm
+        '23cm': QColor(140, 80, 160),     # Red-tinted blue violet for 23cm
+        
+        # Special categories
         'simplex': QColor(200, 150, 120), # Muted red-yellow for simplex
         'skywarn': QColor(180, 100, 150), # Muted red-magenta for SKYWARN
-        'default': QColor(255, 102, 102)  # Night mode red default
+        'emergency': QColor(180, 60, 80), # Dimmed crimson for emergency
+        'default': QColor(200, 150, 150)  # Muted red-gray for night mode
     }
 }
 
@@ -1706,6 +1744,7 @@ class EnhancedGPSWindow(QMainWindow):
         
         # Create sub-tabs for different bands - clean professional styling
         self.amateur_subtabs = QTabWidget()
+        self.amateur_subtabs.setObjectName("amateur_subtabs")  # Set ID for CSS targeting
         
         # 10m Tab
         self.amateur_10m_tab = self.create_band_tab("10m", "10 Meters (28-29.7 MHz)")
@@ -1731,13 +1770,23 @@ class EnhancedGPSWindow(QMainWindow):
         self.amateur_simplex_tab = self.create_simplex_tab("simplex", "Simplex & Special Frequencies")
         self.amateur_subtabs.addTab(self.amateur_simplex_tab, "Simplex")
         
+        # Emergency Tab
+        self.amateur_emergency_tab = self.create_emergency_tab("emergency", "Emergency & NIFOG Frequencies")
+        self.amateur_subtabs.addTab(self.amateur_emergency_tab, "Emergency")
+        
         layout.addWidget(self.amateur_subtabs)
+        
+        # Set colors for the amateur band tab titles
+        self.set_amateur_band_tab_colors()
         
         # Populate all band data
         self.populate_all_amateur_data()
         
         # Populate simplex data
         self.populate_simplex_data()
+        
+        # Populate emergency data
+        self.populate_emergency_data()
         
         return tab
 
@@ -1780,13 +1829,16 @@ class EnhancedGPSWindow(QMainWindow):
         table.setFont(self.table_font)
         
         # Store reference to table for population
-        # Create consistent table attribute names
-        if band_name == "70cm":
-            table_name = "amateur_70cm_table"
-        elif band_name == "1.25m":
-            table_name = "amateur_125_table"
-        else:
-            table_name = f'amateur_{band_name.replace(".", "").replace("m", "")}_table'
+        # Create consistent table attribute names - map from new band names to existing table names
+        band_to_table_map = {
+            "10m": "amateur_10_table",
+            "6m": "amateur_6_table", 
+            "2m": "amateur_2_table",
+            "1.25m": "amateur_125_table",
+            "70cm": "amateur_70cm_table"
+        }
+        
+        table_name = band_to_table_map.get(band_name, f'amateur_{band_name.replace(".", "").replace("m", "")}_table')
         setattr(self, table_name, table)
         
         layout.addWidget(table)
@@ -1820,6 +1872,50 @@ class EnhancedGPSWindow(QMainWindow):
         
         # Store reference to table for population
         setattr(self, "amateur_simplex_table", table)
+        
+        layout.addWidget(table)
+        
+        return tab
+
+    def create_emergency_tab(self, band_name, band_description):
+        """Create a tab for amateur radio emergency frequencies from NIFOG"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Band description with dynamic color
+        desc_label = QLabel(band_description)
+        desc_label.setFont(QFont("Arial", 12, QFont.Bold))
+        desc_label.setStyleSheet(f"color: {self.get_text_color_hex()}; padding: 5px;")
+        desc_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(desc_label)
+        
+        # Store reference for night mode updates
+        if not hasattr(self, 'band_description_labels'):
+            self.band_description_labels = []
+        self.band_description_labels.append(desc_label)
+        
+        # Create table for emergency frequencies
+        table = QTableWidget()
+        table.setColumnCount(6)  # Frequency, Band, Mode, Purpose/Network, Notes, Category
+        table.setHorizontalHeaderLabels(["Frequency", "Band", "Mode", "Purpose/Network", "Notes", "Category"])
+        
+        # Set column widths for touch interface
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Frequency
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Band
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Mode
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # Purpose/Network can expand
+        header.setSectionResizeMode(4, QHeaderView.Stretch)  # Notes can expand
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Category
+        
+        # Make table touch-friendly with more space
+        table.setMinimumHeight(450)
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setDefaultSectionSize(45)
+        table.setFont(self.table_font)
+        
+        # Store reference to table for population
+        setattr(self, "amateur_emergency_table", table)
         
         layout.addWidget(table)
         
@@ -2485,6 +2581,14 @@ class EnhancedGPSWindow(QMainWindow):
         """Get the appropriate color for a specific amateur radio band"""
         mode = 'night' if self.night_mode_active else 'day'
         color = BAND_COLORS[mode].get(band_name, BAND_COLORS[mode]['default'])
+        
+        # Comprehensive debugging
+        debug_print(f"🎨 get_band_color called:", "DEBUG")
+        debug_print(f"   Band: '{band_name}'", "DEBUG")
+        debug_print(f"   Mode: '{mode}' (night_mode_active: {self.night_mode_active})", "DEBUG")
+        debug_print(f"   Available bands in {mode}: {list(BAND_COLORS[mode].keys())}", "DEBUG")
+        debug_print(f"   Returned color: RGB({color.red()}, {color.green()}, {color.blue()})", "DEBUG")
+        
         return color
     
     def is_dark_color(self, color):
@@ -2956,6 +3060,107 @@ class EnhancedGPSWindow(QMainWindow):
         final_css = "\n".join(style_parts)
         self.tabs.setStyleSheet(final_css)
     
+    def set_amateur_band_tab_colors(self):
+        """Set colors for amateur band sub-tab titles based on band colors"""
+        if not hasattr(self, 'amateur_subtabs'):
+            print("❌ No amateur_subtabs attribute found")
+            return
+            
+        print("🎨 Setting amateur band tab colors...")
+        print(f"🎨 Night mode active: {self.night_mode_active}")
+        
+        # Map tab indices to band names for color lookup
+        tab_color_map = {
+            0: "10m",      # 10m tab
+            1: "6m",       # 6m tab  
+            2: "2m",       # 2m tab
+            3: "1.25m",    # 1.25m tab
+            4: "70cm",     # 70cm tab
+            5: None,       # Simplex tab (no specific band color)
+            6: None        # Emergency tab (no specific band color)
+        }
+        
+        try:
+            amateur_tab_bar = self.amateur_subtabs.tabBar()
+            if amateur_tab_bar:
+                print(f"🎨 Amateur tab bar found with {amateur_tab_bar.count()} tabs")
+                
+                # Get current mode colors from global BAND_COLORS
+                mode = 'night' if self.night_mode_active else 'day'
+                current_colors = BAND_COLORS[mode]
+                print(f"🎨 Using mode: {mode}")
+                print(f"🎨 Available band colors: {list(current_colors.keys())}")
+                
+                # Use the SAME approach as main tabs - simple CSS with ID selector
+                print("🎨 Using PROVEN main tab CSS approach...")
+                amateur_css_parts = []
+                
+                # Start with base tab styling
+                amateur_css_parts.append("""
+                QTabWidget#amateur_subtabs QTabBar::tab {
+                    color: #ffffff;
+                    padding: 10px 20px;
+                    margin-right: 2px;
+                    border-top-left-radius: 5px;
+                    border-top-right-radius: 5px;
+                    min-width: 80px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                """)
+                
+                # Add individual tab colors using the EXACT same pattern as main tabs
+                for tab_index, band_name in tab_color_map.items():
+                    if tab_index < amateur_tab_bar.count():
+                        if band_name and band_name in current_colors:
+                            color = current_colors[band_name]
+                            color_hex = color.name() if hasattr(color, 'name') else str(color)
+                            print(f"🎨 Adding CSS for tab {tab_index+1} ({band_name}): {color_hex}")
+                            
+                            # Use EXACT same pattern as main tabs
+                            amateur_css_parts.append(f"""
+                            QTabWidget#amateur_subtabs QTabBar::tab:nth-child({tab_index+1}) {{ background-color: {color_hex}; }}
+                            """)
+                        else:
+                            # Neutral color for special tabs
+                            print(f"🎨 Adding neutral CSS for special tab {tab_index+1}")
+                            amateur_css_parts.append(f"""
+                            QTabWidget#amateur_subtabs QTabBar::tab:nth-child({tab_index+1}) {{ background-color: #666666; }}
+                            """)
+                
+                # Add selected tab styling
+                amateur_css_parts.append("""
+                QTabWidget#amateur_subtabs QTabBar::tab:selected {
+                    border: 2px solid #ffffff;
+                    font-weight: bolder;
+                }
+                """)
+                
+                # Apply the CSS - use the SAME method as main tabs
+                amateur_final_css = "\n".join(amateur_css_parts)
+                print(f"🎨 Final CSS length: {len(amateur_final_css)} characters")
+                print("🎨 CSS Preview (using proven main tab approach):")
+                print(amateur_final_css[:300] + "..." if len(amateur_final_css) > 300 else amateur_final_css)
+                
+                # Apply to the MAIN WINDOW stylesheet (same as main tabs)
+                current_main_style = self.styleSheet()
+                self.setStyleSheet(current_main_style + amateur_final_css)
+                print("✅ Amateur band tab CSS added to main window stylesheet (same as main tabs)")
+                
+                # Verification
+                print("🔍 Final verification:")
+                for i in range(amateur_tab_bar.count()):
+                    tab_text = amateur_tab_bar.tabText(i)
+                    print(f"   Tab {i+1}: '{tab_text}'")
+                
+            else:
+                print("❌ No amateur tab bar found")
+                
+        except Exception as e:
+            print(f"❌ Error setting amateur band tab colors: {e}")
+            import traceback
+            print(f"❌ Traceback: {traceback.format_exc()}")
+    
     def get_table_css(self):
         """Get CSS for tables based on current mode"""
         text_color = "#ff6666" if self.night_mode_active else "#ffffff"
@@ -3261,7 +3466,7 @@ class EnhancedGPSWindow(QMainWindow):
         
         # Force refresh of all band-specific data to update colors
         if hasattr(self, 'amateur_2m_data') and self.amateur_2m_data:
-            self.populate_band_data("2", self.amateur_2m_data)
+            self.populate_band_data("2m", self.amateur_2m_data)
         if hasattr(self, 'amateur_70cm_data') and self.amateur_70cm_data:
             self.populate_band_data("70cm", self.amateur_70cm_data)
         if hasattr(self, 'amateur_simplex_data') and self.amateur_simplex_data:
@@ -3288,11 +3493,16 @@ class EnhancedGPSWindow(QMainWindow):
         
         # Update all table item colors to match the new theme
         self.update_table_colors_for_mode(night_mode_on)
+        
+        # Update amateur band tab colors for new mode
+        if hasattr(self, 'amateur_subtabs'):
+            self.set_amateur_band_tab_colors()
 
     def update_gps_data(self, latitude, longitude, altitude, speed, heading):
         """Update all GPS-related displays"""
         self.last_lat = latitude
         self.last_lon = longitude
+        self.last_speed = speed  # Store speed for UDP and other functions
         
         # Store GPS coordinates for return to GPS functionality
         self.last_gps_lat = latitude
@@ -3436,10 +3646,9 @@ class EnhancedGPSWindow(QMainWindow):
         # Update coordinate display with current location
         # Coordinate data is already shown in the grid table
 
-        # Update Closest Towers (always update - they're static)
-        self.display_closest_sites(latitude, longitude)
-        
-        # Motion-aware repeater updates
+        # Update Closest Towers - now handled at the top of motion-aware updates section
+
+        # Update coordinate display with current location
         current_time = time.time()
         current_location = (latitude, longitude)
         
@@ -3458,19 +3667,21 @@ class EnhancedGPSWindow(QMainWindow):
             last_lat, last_lon = self.last_repeater_update_location
             distance_moved = haversine(latitude, longitude, last_lat, last_lon)
             
+            # Always update location tracking when we have any movement
+            if distance_moved > 0.001:  # Update location tracking for any movement > ~5 feet
+                self.last_repeater_update_location = current_location
+            
             if self.is_vehicle_speed:
-                # Vehicle speed mode - time-based updates only for emergency services
-                print(f"🚗 Vehicle speed detected ({speed * MPS_TO_MPH:.1f} mph) - using selective updates")
+                # Vehicle speed mode - time-based updates with debug output
+                print(f"🚗 Vehicle speed detected ({speed * MPS_TO_MPH:.1f} mph, {speed:.1f} m/s) - distance moved: {distance_moved:.4f} miles")
                 
                 # Update ARMER and Skywarn every 25 seconds when moving at vehicle speed
                 if current_time - self.last_skywarn_update >= self.ARMER_SKYWARN_INTERVAL:
                     print(f"⏰ Vehicle mode: Updating emergency services ({self.ARMER_SKYWARN_INTERVAL}s interval)")
+                    self.display_closest_sites(latitude, longitude)
                     self.populate_skywarn_data()
                     self.populate_noaa_frequency_data()
                     self.last_skywarn_update = current_time
-                    # Update location for significant movement tracking
-                    if distance_moved > 0.01:
-                        self.last_repeater_update_location = current_location
                 
                 # Update Amateur radio every 35 seconds when moving at vehicle speed
                 if current_time - self.last_amateur_update >= self.AMATEUR_INTERVAL:
@@ -3478,14 +3689,24 @@ class EnhancedGPSWindow(QMainWindow):
                     self.populate_all_amateur_data()
                     self.last_amateur_update = current_time
                     
+                # Force immediate update if moved significantly (>0.1 miles = ~500 feet)
+                if distance_moved > 0.1:
+                    print(f"🚗 Force update: moved {distance_moved:.3f} miles - refreshing all data immediately")
+                    self.display_closest_sites(latitude, longitude)
+                    self.populate_skywarn_data()
+                    self.populate_noaa_frequency_data() 
+                    self.populate_all_amateur_data()
+                    self.last_skywarn_update = current_time
+                    self.last_amateur_update = current_time
+                    
             else:
                 # Walking speed or stationary - distance-based updates for all services
                 if distance_moved > self.stationary_threshold:  # 0.01 miles = ~50 feet
                     print(f"🚶 Walking/stationary mode: Updating all services (moved {distance_moved:.3f} miles)")
+                    self.display_closest_sites(latitude, longitude)
                     self.populate_skywarn_data()
                     self.populate_noaa_frequency_data()
                     self.populate_all_amateur_data()
-                    self.last_repeater_update_location = current_location
                     self.last_skywarn_update = current_time
                     self.last_amateur_update = current_time
                     
@@ -3493,12 +3714,23 @@ class EnhancedGPSWindow(QMainWindow):
                     if hasattr(self, 'force_band_refresh') and self.force_band_refresh:
                         print("🔄 Forcing band display refresh for new location")
                     # Repopulate band data to re-sort by distance from new location
-                    self.populate_band_data("10", self.amateur_10m_data)
-                    self.populate_band_data("6", self.amateur_6m_data) 
-                    self.populate_band_data("2", self.amateur_2m_data)
-                    self.populate_band_data("125", self.amateur_125m_data)
-                    self.populate_band_data("70cm", self.amateur_70cm_data)
-            # If stationary (moved less than 50 feet), do nothing - repeaters don't move!
+                    if hasattr(self, 'amateur_10m_data'):
+                        self.populate_band_data("10m", self.amateur_10m_data)
+                    if hasattr(self, 'amateur_6m_data'):
+                        self.populate_band_data("6m", self.amateur_6m_data) 
+                    if hasattr(self, 'amateur_2m_data'):
+                        self.populate_band_data("2m", self.amateur_2m_data)
+                    if hasattr(self, 'amateur_125m_data'):
+                        self.populate_band_data("1.25m", self.amateur_125m_data)
+                    if hasattr(self, 'amateur_70cm_data'):
+                        self.populate_band_data("70cm", self.amateur_70cm_data)
+                else:
+                    # Log when we're truly stationary
+                    print(f"🏠 Stationary: moved only {distance_moved:.4f} miles (< {self.stationary_threshold:.3f} threshold)")
+
+            # Debug output for vehicle speed detection
+            if hasattr(self, 'is_vehicle_speed'):
+                print(f"🚗 Vehicle speed check: {speed:.1f} m/s, threshold: {self.WALKING_SPEED_THRESHOLD:.1f} m/s, is_vehicle_speed: {self.is_vehicle_speed}")
 
     def display_closest_sites(self, latitude, longitude):
         """Display closest tower sites in enhanced table"""
@@ -4135,21 +4367,24 @@ class EnhancedGPSWindow(QMainWindow):
         ]
         
         # Populate each band
-        self.populate_band_data("10", self.amateur_10m_data)
-        self.populate_band_data("6", self.amateur_6m_data) 
-        self.populate_band_data("2", self.amateur_2m_data)
-        self.populate_band_data("125", self.amateur_125m_data)
+        self.populate_band_data("10m", self.amateur_10m_data)
+        self.populate_band_data("6m", self.amateur_6m_data) 
+        self.populate_band_data("2m", self.amateur_2m_data)
+        self.populate_band_data("1.25m", self.amateur_125m_data)
         self.populate_band_data("70cm", self.amateur_70cm_data)
 
     def populate_band_data(self, band_name, repeaters):
         """Populate data for a specific amateur radio band using cached API data"""
-        # Create consistent table attribute names
-        if band_name == "70cm":
-            table_attr = "amateur_70cm_table"
-        elif band_name == "125":
-            table_attr = "amateur_125_table"
-        else:
-            table_attr = f'amateur_{band_name}_table'
+        # Map from new band names to existing table attribute names
+        band_to_table_map = {
+            "10m": "amateur_10_table",
+            "6m": "amateur_6_table", 
+            "2m": "amateur_2_table",
+            "1.25m": "amateur_125_table",
+            "70cm": "amateur_70cm_table"
+        }
+        
+        table_attr = band_to_table_map.get(band_name, f'amateur_{band_name}_table')
         
         if not hasattr(self, table_attr):
             print(f"❌ Warning: Table attribute {table_attr} not found for band {band_name}")
@@ -4201,7 +4436,7 @@ class EnhancedGPSWindow(QMainWindow):
         # Populate table
         table.setRowCount(len(repeater_distances))
         
-        # Update header to show data source
+        # Update header to show data source and apply band color to headers
         source_indicator = self.get_data_source_indicator('amateur')
         table.setHorizontalHeaderLabels([
             f"Call Sign {source_indicator}", "Location", "Output", "Input", "Tone", "Distance", "Bearing"
@@ -4210,44 +4445,29 @@ class EnhancedGPSWindow(QMainWindow):
         # Get band-specific color for this amateur radio band
         band_color = self.get_band_color(band_name)
         
+        # Apply band color to the table headers for visual identification
+        debug_print(f"🎨 Applying band color to {band_name} table headers: RGB({band_color.red()}, {band_color.green()}, {band_color.blue()})", "DEBUG")
+        header = table.horizontalHeader()
+        if header:
+            header.setStyleSheet(f"""
+                QHeaderView::section {{
+                    background-color: rgb({band_color.red()}, {band_color.green()}, {band_color.blue()});
+                    color: {'white' if self.is_dark_color(band_color) else 'black'};
+                    font-weight: bold;
+                    border: 1px solid #c0c0c0;
+                    padding: 4px;
+                }}
+            """)
+        
         for row, (repeater, distance, bearing) in enumerate(repeater_distances):
-            # Use band-specific background color with distance-based brightness/saturation
+            # Use standard table appearance with normal text colors
             call_item = QTableWidgetItem(repeater["call"])
-            
-            # Make band color more or less saturated based on distance
-            if distance < 25:
-                # Closer = more saturated band color
-                background_color = band_color
-                text_color = QColor(255, 255, 255) if self.is_dark_color(band_color) else QColor(0, 0, 0)
-            elif distance < 75:
-                # Medium distance = slightly desaturated band color  
-                background_color = self.lighten_color(band_color, 0.7)
-                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
-            else:
-                # Farther = much lighter band color
-                background_color = self.lighten_color(band_color, 0.4)
-                text_color = QColor(255, 255, 255) if self.is_dark_color(background_color) else QColor(0, 0, 0)
-                
-            call_item.setBackground(background_color)
-            call_item.setForeground(text_color)
-            
             location_item = QTableWidgetItem(repeater["location"])
-            location_item.setForeground(band_color)
-            
             output_item = QTableWidgetItem(f"{repeater['output']} MHz")
-            output_item.setForeground(band_color)
-            
             input_item = QTableWidgetItem(f"{repeater['input']} MHz")
-            input_item.setForeground(band_color)
-            
             tone_item = QTableWidgetItem(f"{repeater['tone']}")
-            tone_item.setForeground(band_color)
-            
             distance_item = QTableWidgetItem(f"{distance:.1f} mi")
-            distance_item.setForeground(band_color)
-            
             bearing_item = QTableWidgetItem(f"{bearing:.0f}°")
-            bearing_item.setForeground(band_color)
             
             table.setItem(row, 0, call_item)
             table.setItem(row, 1, location_item)
@@ -4459,6 +4679,220 @@ class EnhancedGPSWindow(QMainWindow):
             return "13cm"
         else:
             return "Other"
+
+    def populate_emergency_data(self):
+        """Populate the emergency frequencies table with NIFOG data"""
+        try:
+            table = getattr(self, 'amateur_emergency_table', None)
+            if not table:
+                print("⚠️ Emergency table not found")
+                return
+            
+            # Clear existing data
+            table.setRowCount(0)
+            
+            if not hasattr(self, 'amateur_emergency_data') or not self.amateur_emergency_data:
+                self.load_emergency_data()
+            
+            # Populate table
+            table.setRowCount(len(self.amateur_emergency_data))
+            
+            for row, entry in enumerate(self.amateur_emergency_data):
+                try:
+                    # Frequency
+                    freq_item = QTableWidgetItem(entry['frequency'])
+                    freq_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 0, freq_item)
+                    
+                    # Band
+                    band_item = QTableWidgetItem(entry['band'])
+                    band_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 1, band_item)
+                    
+                    # Mode
+                    mode_item = QTableWidgetItem(entry['mode'])
+                    mode_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 2, mode_item)
+                    
+                    # Purpose/Network
+                    purpose_item = QTableWidgetItem(entry['purpose'])
+                    table.setItem(row, 3, purpose_item)
+                    
+                    # Notes
+                    notes_item = QTableWidgetItem(entry['notes'])
+                    table.setItem(row, 4, notes_item)
+                    
+                    # Category
+                    category_item = QTableWidgetItem(entry['category'])
+                    category_item.setTextAlignment(Qt.AlignCenter)
+                    table.setItem(row, 5, category_item)
+                    
+                    # Apply band-specific color to the ENTIRE ROW for visual identification
+                    band_color = self.get_band_color(entry['band'])
+                    debug_print(f"🎨 Applying color to Emergency table row {row}:", "DEBUG")
+                    debug_print(f"   Band: '{entry['band']}', Color: RGB({band_color.red()}, {band_color.green()}, {band_color.blue()})", "DEBUG")
+                    
+                    # Apply band color to ALL columns in the row
+                    all_items = [freq_item, band_item, mode_item, purpose_item, notes_item, category_item]
+                    for item in all_items:
+                        if item:
+                            item.setForeground(band_color)
+                    
+                    # Verify the color was applied
+                    applied_color = band_item.foreground().color()
+                    debug_print(f"   Applied color verification: RGB({applied_color.red()}, {applied_color.green()}, {applied_color.blue()})", "DEBUG")
+                
+                except Exception as e:
+                    print(f"⚠️ Error populating emergency row {row}: {e}")
+                    continue
+            
+            print(f"✅ Populated {table.rowCount()} emergency frequencies")
+            
+        except Exception as e:
+            print(f"❌ Error populating emergency data: {e}")
+
+    def load_emergency_data(self):
+        """Load amateur radio emergency frequencies from NIFOG data"""
+        try:
+            self.amateur_emergency_data = []
+            
+            print("📻 Loading emergency frequencies from NIFOG data...")
+            
+            # Emergency Center of Activity Frequencies (HF)
+            emergency_hf = [
+                {"freq": "3750", "mode": "LSB", "purpose": "Emergency Center of Activity", "notes": "80 meters"},
+                {"freq": "3985", "mode": "LSB", "purpose": "Emergency Center of Activity", "notes": "80 meters"},
+                {"freq": "7060", "mode": "LSB", "purpose": "Emergency Center of Activity", "notes": "40 meters"},
+                {"freq": "7240", "mode": "LSB", "purpose": "Emergency Center of Activity", "notes": "40 meters"},
+                {"freq": "7290", "mode": "LSB", "purpose": "Emergency Center of Activity", "notes": "40 meters"},
+                {"freq": "14300", "mode": "USB", "purpose": "Emergency Center of Activity", "notes": "20 meters"},
+                {"freq": "18160", "mode": "USB", "purpose": "Emergency Center of Activity", "notes": "17 meters"},
+                {"freq": "21360", "mode": "USB", "purpose": "Emergency Center of Activity", "notes": "15 meters"},
+            ]
+            
+            # 60-meter Band (5 MHz) - Federal/Amateur Interoperability
+            sixty_meter = [
+                {"freq": "5330.5", "mode": "USB", "purpose": "Federal/Amateur Interoperability", "notes": "Center: 5332.0 kHz"},
+                {"freq": "5346.5", "mode": "USB", "purpose": "Federal/Amateur Interoperability", "notes": "Center: 5348.0 kHz"},
+                {"freq": "5357.0", "mode": "USB", "purpose": "Federal/Amateur Interoperability", "notes": "Center: 5358.5 kHz"},
+                {"freq": "5371.5", "mode": "USB", "purpose": "Federal/Amateur Interoperability", "notes": "Center: 5373.0 kHz"},
+                {"freq": "5403.5", "mode": "USB", "purpose": "Federal/Amateur Interoperability", "notes": "Center: 5405.0 kHz"},
+            ]
+            
+            # VHF/UHF Emergency and Calling Frequencies
+            vhf_uhf_emergency = [
+                {"freq": "146.520", "mode": "FM", "purpose": "National Simplex Calling", "notes": "2 meters - Emergency standard"},
+                {"freq": "446.000", "mode": "FM", "purpose": "National Simplex Calling", "notes": "70 cm - Emergency standard"},
+                {"freq": "52.525", "mode": "FM", "purpose": "Simplex Calling", "notes": "6 meters"},
+                {"freq": "52.540", "mode": "FM", "purpose": "Simplex Calling", "notes": "6 meters"},
+                {"freq": "144.200", "mode": "SSB", "purpose": "Calling Frequency", "notes": "2 meters SSB"},
+                {"freq": "222.100", "mode": "CW/SSB", "purpose": "Calling Frequency", "notes": "1.25 meters"},
+                {"freq": "432.100", "mode": "CW/SSB", "purpose": "Calling Frequency", "notes": "70 cm"},
+                {"freq": "902.100", "mode": "CW/SSB", "purpose": "Calling Frequency", "notes": "33 cm"},
+                {"freq": "927.500", "mode": "FM", "purpose": "Simplex Calling", "notes": "33 cm"},
+                {"freq": "1294.500", "mode": "FM", "purpose": "Simplex Calling", "notes": "23 cm"},
+                {"freq": "1296.100", "mode": "CW/SSB", "purpose": "Calling Frequency", "notes": "23 cm"},
+            ]
+            
+            # Hurricane Watch Net and Maritime Mobile
+            hurricane_maritime = [
+                {"freq": "14325", "mode": "USB", "purpose": "Hurricane Watch Net", "notes": "Day operations"},
+                {"freq": "7268", "mode": "LSB", "purpose": "Hurricane Watch Net", "notes": "Night operations"},
+                {"freq": "3815", "mode": "LSB", "purpose": "Hurricane Watch Net", "notes": "Caribbean"},
+                {"freq": "3950", "mode": "LSB", "purpose": "Hurricane Watch Net", "notes": "North Florida"},
+                {"freq": "3940", "mode": "LSB", "purpose": "Hurricane Watch Net", "notes": "South Florida"},
+                {"freq": "14300", "mode": "USB", "purpose": "Maritime Mobile Service Net", "notes": "MMSN and others"},
+            ]
+            
+            # HF Emergency/Disaster Relief Voice Channels
+            hf_disaster = [
+                {"freq": "1996.0", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "3996.0", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "7296.0", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "14346.0", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "18117.5", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "21432.5", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+                {"freq": "28312.5", "mode": "USB", "purpose": "Emergency/Disaster Relief Voice", "notes": "Netcall: HFL"},
+            ]
+            
+            # Process all frequency sets
+            freq_sets = [
+                (emergency_hf, "HF Emergency"),
+                (sixty_meter, "60m Federal"),
+                (vhf_uhf_emergency, "VHF/UHF"),
+                (hurricane_maritime, "Hurricane/Maritime"),
+                (hf_disaster, "HF Disaster Relief")
+            ]
+            
+            for freq_set, category in freq_sets:
+                for entry in freq_set:
+                    freq_khz = float(entry["freq"])
+                    
+                    # Determine band
+                    if freq_khz < 30:  # HF bands
+                        if 1.8 <= freq_khz <= 2.0:
+                            band = "160m"
+                        elif 3.5 <= freq_khz <= 4.0:
+                            band = "80m"
+                        elif 7.0 <= freq_khz <= 7.3:
+                            band = "40m"
+                        elif 10.1 <= freq_khz <= 10.15:
+                            band = "30m"
+                        elif 14.0 <= freq_khz <= 14.35:
+                            band = "20m"
+                        elif 18.068 <= freq_khz <= 18.168:
+                            band = "17m"
+                        elif 21.0 <= freq_khz <= 21.45:
+                            band = "15m"
+                        elif 24.89 <= freq_khz <= 24.99:
+                            band = "12m"
+                        elif 28.0 <= freq_khz <= 29.7:
+                            band = "10m"
+                        elif 5.3 <= freq_khz <= 5.41:
+                            band = "60m"
+                        else:
+                            band = "HF"
+                    else:  # VHF/UHF bands
+                        if 50 <= freq_khz <= 54:
+                            band = "6m"
+                        elif 144 <= freq_khz <= 148:
+                            band = "2m"
+                        elif 220 <= freq_khz <= 225:
+                            band = "1.25m"
+                        elif 420 <= freq_khz <= 450:
+                            band = "70cm"
+                        elif 902 <= freq_khz <= 928:
+                            band = "33cm"
+                        elif 1240 <= freq_khz <= 1300:
+                            band = "23cm"
+                        else:
+                            band = "VHF/UHF"
+                    
+                    # Format frequency for display
+                    if freq_khz < 30:  # HF - show in kHz
+                        freq_display = f"{freq_khz} kHz"
+                    else:  # VHF/UHF - show in MHz
+                        freq_display = f"{freq_khz} MHz"
+                    
+                    emergency_entry = {
+                        'frequency': freq_display,
+                        'band': band,
+                        'mode': entry['mode'],
+                        'purpose': entry['purpose'],
+                        'notes': entry['notes'],
+                        'category': category
+                    }
+                    
+                    # Debug what band was determined
+                    debug_print(f"📻 Emergency frequency processed: {freq_display} → Band: '{band}' (Category: {category})", "DEBUG")
+                    
+                    self.amateur_emergency_data.append(emergency_entry)
+            
+            print(f"✅ Loaded {len(self.amateur_emergency_data)} emergency frequencies")
+                
+        except Exception as e:
+            print(f"❌ Error loading emergency data: {e}")
+            self.amateur_emergency_data = []
 
     def get_cache_status(self):
         """Get information about the current cache status"""
