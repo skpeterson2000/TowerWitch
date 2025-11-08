@@ -43,8 +43,8 @@ except ImportError:
 __version__ = "1.0"
 __title__ = "TowerWitch"
 
-# Debug Control - Set to False for production
-DEBUG_MODE = False
+# Check command line arguments for debug mode
+DEBUG_MODE = '--debug' in sys.argv or '-d' in sys.argv
 
 # PDF Export Configuration - Easy to adjust
 PDF_EXPORT_LIMITS = {
@@ -87,15 +87,15 @@ def debug_print(message, level="INFO"):
         return  # Suppress INFO and DEBUG messages when not in debug mode
         
     if level == "ERROR":
-        print(f"❌ {message}")
+        print(f"[ERROR] {message}")
     elif level == "WARNING":
-        print(f"⚠️ {message}")
+        print(f"[WARNING] {message}")
     elif level == "SUCCESS":
-        print(f"✓ {message}")
+        print(f"[SUCCESS] {message}")
     elif level == "DEBUG":
-        print(f"🔍 {message}")  # Only show when DEBUG_MODE is True
+        print(f"[DEBUG] {message}")  # Only show when DEBUG_MODE is True
     else:  # INFO
-        print(f"ℹ️ {message}")
+        print(f"[INFO] {message}")
 
 # Essential startup info
 print("TowerWitch starting...")
@@ -841,19 +841,34 @@ class GPSWorker(QThread):
             else:
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             
-            print("✓ GPS Worker started - reading from gpspipe")
+            print("[SUCCESS] GPS Worker started - reading from gpspipe")
+            logger.info("GPS Worker: Started gpspipe process")
+            
+            message_count = 0
+            last_speed_log = 0
             
             # Read gpspipe output continuously
             for line in process.stdout:
                 if not self.running:
                     break
                     
+                print(f"DEBUG: GPS Worker received line: {line.strip()[:100]}...")  # Show first 100 chars
+                    
                 try:
                     data = json.loads(line.strip())
                     msg_class = data.get('class', 'UNKNOWN')
+                    message_count += 1
+                    
+                    print(f"DEBUG: Parsed message #{message_count}, class={msg_class}")
+                    
+                    # Log message frequency every 50 messages
+                    if message_count % 50 == 0:
+                        logger.debug(f"GPS Worker: Processed {message_count} messages")
                     
                     # Look for TPV (Time-Position-Velocity) messages
                     if msg_class == 'TPV':
+                        logger.debug(f"GPS Worker: TPV message received: {data}")
+                        
                         if 'lat' in data and 'lon' in data and 'mode' in data:
                             lat = data['lat']
                             lon = data['lon']
@@ -864,21 +879,41 @@ class GPSWorker(QThread):
                             speed = data.get('speed', 0.0)
                             track = data.get('track', 0.0)  # Course over ground in degrees
                             
+                            # Enhanced speed logging
+                            speed_mph = speed * 2.23694 if speed else 0.0
+                            current_time = time.time()
+                            
+                            # Log speed changes or every 10 seconds
+                            if abs(speed - last_speed_log) > 0.5 or (current_time - getattr(self, 'last_log_time', 0)) > 10:
+                                logger.info(f"GPS: Speed={speed:.2f}m/s ({speed_mph:.1f}mph), Mode={mode}, Track={track:.1f}°")
+                                self.last_log_time = current_time
+                                last_speed_log = speed
+                            
                             # mode: 0=no fix, 1=no fix, 2=2D, 3=3D
                             if mode >= 2:
+                                logger.debug(f"GPS Worker: Emitting GPS data - Lat:{lat:.6f}, Lon:{lon:.6f}, Speed:{speed:.2f}m/s")
                                 # Emit GPS data to main thread (lat, lon, alt, speed, heading)
                                 self.gps_data_signal.emit(lat, lon, alt, speed, track)
+                            else:
+                                logger.warning(f"GPS Worker: No fix available (mode={mode})")
+                        else:
+                            logger.debug("GPS Worker: TPV message missing required fields")
+                    else:
+                        # Log other message types occasionally for debugging
+                        if message_count % 100 == 0:
+                            logger.debug(f"GPS Worker: Other message type: {msg_class}")
                                 
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
+                    logger.debug(f"GPS Worker: JSON decode error: {e}")
                     continue
                 except Exception as e:
-                    print(f"Error parsing GPS message: {e}")
+                    logger.error(f"GPS Worker: Error parsing GPS message: {e}")
                     continue
             
             process.terminate()
             
         except FileNotFoundError:
-            print("❌ Error: gpspipe not found. Install gpsd-clients package:")
+            print("[ERROR] Error: gpspipe not found. Install gpsd-clients package:")
             print("  sudo apt-get install gpsd-clients")
         except Exception as e:
             print(f"❌ Error in GPSWorker: {e}")
@@ -1037,9 +1072,13 @@ class EnhancedGPSWindow(QMainWindow):
             
             # Start GPS worker
             debug_print("Starting GPS worker...", "INFO")
+            print("DEBUG: About to create GPS worker")
             self.gps_worker = GPSWorker()
+            print("DEBUG: GPS worker created, connecting signal")
             self.gps_worker.gps_data_signal.connect(self.update_gps_data)
+            print("DEBUG: Signal connected, starting GPS worker thread")
             self.gps_worker.start()
+            print("DEBUG: GPS worker thread started")
             debug_print("GPS worker started", "SUCCESS")
             
             # Initialize with demo data if no GPS
@@ -3500,6 +3539,10 @@ class EnhancedGPSWindow(QMainWindow):
 
     def update_gps_data(self, latitude, longitude, altitude, speed, heading):
         """Update all GPS-related displays"""
+        # Log GPS speed and direction data
+        speed_mph = speed * 2.23694  # Convert m/s to mph
+        logger.info(f"GPS Update: Speed={speed:.2f}m/s ({speed_mph:.1f}mph), Heading={heading:.1f}°, Location={latitude:.6f},{longitude:.6f}")
+        
         self.last_lat = latitude
         self.last_lon = longitude
         self.last_speed = speed  # Store speed for UDP and other functions
@@ -3523,6 +3566,9 @@ class EnhancedGPSWindow(QMainWindow):
         MIN_SPEED_THRESHOLD = 0.5  # meters per second
         is_moving = False  # Initialize is_moving variable
         
+        # Debug logging for speed processing
+        debug_print(f"Processing GPS speed: {speed:.2f} m/s ({speed * MPS_TO_MPH:.1f} mph)", "DEBUG")
+        
         if speed >= MIN_SPEED_THRESHOLD:
             speed_mph = speed * MPS_TO_MPH
             speed_knots = speed * MPS_TO_KNOTS
@@ -3531,11 +3577,15 @@ class EnhancedGPSWindow(QMainWindow):
             
             # Determine if we're at vehicle speed (above walking speed)
             self.is_vehicle_speed = speed >= self.WALKING_SPEED_THRESHOLD
+            
+            debug_print(f"Speed above threshold - Moving: {is_moving}, Vehicle speed: {self.is_vehicle_speed}", "DEBUG")
         else:
             # Below threshold - consider stationary
             self.set_table_item_text_with_color(self.location_items['speed_value'], "0.0 m/s (0.0 mph, 0.0 kt)")
             is_moving = False
             self.is_vehicle_speed = False
+            
+            debug_print(f"Speed below threshold ({MIN_SPEED_THRESHOLD} m/s) - Considered stationary", "DEBUG")
         
         # Update GPS status in header with motion mode
         if self.is_vehicle_speed:
