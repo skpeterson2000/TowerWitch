@@ -1,0 +1,77 @@
+Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha Tag,PL Output Tone,PL Input Tone,Mode,Class Station Code,Tag,Airport,Service
+118.7,0,,,Minneapolis-St. Paul Intl - Tower,MSP Tower,CSQ,,AM,BM,Airport,KMSP,Tower
+121.9,0,,,Minneapolis-St. Paul Intl - Ground,MSP Ground,CSQ,,AM,BM,Airport,KMSP,Ground
+133.4,0,,,Minneapolis Approach (East),MSP Approach E,CSQ,,AM,BM,Airport,KMSP,Approach
+126.7,0,,,Minneapolis Approach (West),MSP Approach W,CSQ,,AM,BM,Airport,KMSP,Approach
+119.1,0,,,Minneapolis Departure (East),MSP Departure E,CSQ,,AM,BM,Airport,KMSP,Departure
+120.7,0,,,Minneapolis Departure (West),MSP Departure W,CSQ,,AM,BM,Airport,KMSP,Departure
+135.4,0,,,Minneapolis Clearance Delivery,MSP Clearance,CSQ,,AM,BM,Airport,KMSP,Clearance
+128.15,0,,,Minneapolis ATIS,MSP ATIS,CSQ,,AM,BM,Airport,KMSP,ATIS
+121.0,0,,,Minneapolis Ground Metering,MSP Ground Met,CSQ,,AM,BM,Airport,KMSP,Ground
+119.65,0,,,St. Cloud Regional - Tower,STC Tower,CSQ,,AM,BM,Airport,KSTC,Tower
+121.7,0,,,St. Cloud Regional - Ground,STC Ground,CSQ,,AM,BM,Airport,KSTC,Ground
+118.45,0,,,St. Cloud Regional - ATIS,STC ATIS,CSQ,,AM,BM,Airport,KSTC,ATIS
+121.35,0,,,Duluth International - Tower,DLH Tower,CSQ,,AM,BM,Airport,KDLH,Tower
+121.9,0,,,Duluth International - Ground,DLH Ground,CSQ,,AM,BM,Airport,KDLH,Ground
+119.3,0,,,Duluth Approach,DLH Approach,CSQ,,AM,BM,Airport,KDLH,Approach
+125.35,0,,,Duluth Departure,DLH Departure,CSQ,,AM,BM,Airport,KDLH,Departure
+126.85,0,,,Duluth ATIS,DLH ATIS,CSQ,,AM,BM,Airport,KDLH,ATIS
+118.3,0,,,Rochester International - Tower,RST Tower,CSQ,,AM,BM,Airport,KRST,Tower
+121.7,0,,,Rochester International - Ground,RST Ground,CSQ,,AM,BM,Airport,KRST,Ground
+124.6,0,,,Rochester ATIS,RST ATIS,CSQ,,AM,BM,Airport,KRST,ATIS
+122.8,0,,,Flying Cloud - Tower,FCM Tower,CSQ,,AM,BM,Airport,KFCM,Tower
+121.75,0,,,Flying Cloud - Ground,FCM Ground,CSQ,,AM,BM,Airport,KFCM,Ground
+118.85,0,,,Flying Cloud - ATIS,FCM ATIS,CSQ,,AM,BM,Airport,KFCM,ATIS
+120.3,0,,,Crystal - Tower,MIC Tower,CSQ,,AM,BM,Airport,KMIC,Tower
+121.7,0,,,Crystal - Ground,MIC Ground,CSQ,,AM,BM,Airport,KMIC,Ground
+124.65,0,,,Anoka County (Blaine) - Tower,ANE Tower,CSQ,,AM,BM,Airport,KANE,Tower
+121.8,0,,,Anoka County - Ground,ANE Ground,CSQ,,AM,BM,Airport,KANE,Ground
+125.05,0,,,Anoka County - ATIS,ANE ATIS,CSQ,,AM,BM,Airport,KANE,ATIS
+122.95,0,,,South St. Paul - CTAF/UNICOM,SGS UNICOM,CSQ,,AM,BM,Airport,KSGS,UNICOM
+122.8,0,,,Brainerd Lakes Regional - CTAF,BRD CTAF,CSQ,,AM,BM,Airport,KBRD,CTAF
+123.0,0,,,Brainerd Lakes - UNICOM,BRD UNICOM,CSQ,,AM,BM,Airport,KBRD,UNICOM
+118.425,0,,,Brainerd Lakes - ATIS,BRD ATIS,CSQ,,AM,BM,Airport,KBRD,ATIS
+123.075,0,,,Grand Rapids/Itasca - CTAF,GPZ CTAF,CSQ,,AM,BM,Airport,KGPZ,CTAF
+122.8,0,,,Grand Rapids - UNICOM,GPZ UNICOM,CSQ,,AM,BM,Airport,KGPZ,UNICOM
+118.325,0,,,Bemidji Regional - Tower,BJI Tower,CSQ,,AM,BM,Airport,KBJI,Tower
+121.7,0,,,Bemidji Regional - Ground,BJI Ground,CSQ,,AM,BM,Airport,KBJI,Ground
+118.025,0,,,Bemidji Regional - ATIS,BJI ATIS,CSQ,,AM,BM,Airport,KBJI,ATIS
+123.0,0,,,International Falls - CTAF,INL CTAF,CSQ,,AM,BM,Airport,KINL,CTAF
+122.8,0,,,International Falls - UNICOM,INL UNICOM,CSQ,,AM,BM,Airport,KINL,UNICOM
+118.175,0,,,International Falls - ATIS,INL ATIS,CSQ,,AM,BM,Airport,KINL,ATIS
+123.0,0,,,Mankato Regional - CTAF,MKT CTAF,CSQ,,AM,BM,Airport,KMKT,CTAF
+122.8,0,,,Mankato Regional - UNICOM,MKT UNICOM,CSQ,,AM,BM,Airport,KMKT,UNICOM
+118.6,0,,,Albert Lea - CTAF,AEL CTAF,CSQ,,AM,BM,Airport,KAEL,CTAF
+122.7,0,,,Albert Lea - UNICOM,AEL UNICOM,CSQ,,AM,BM,Airport,KAEL,UNICOM
+122.8,0,,,Winona Municipal - CTAF,ONA CTAF,CSQ,,AM,BM,Airport,KONA,CTAF
+122.7,0,,,Winona - UNICOM,ONA UNICOM,CSQ,,AM,BM,Airport,KONA,UNICOM
+123.05,0,,,Redwood Falls - CTAF,RWF CTAF,CSQ,,AM,BM,Airport,KRWF,CTAF
+122.8,0,,,Redwood Falls - UNICOM,RWF UNICOM,CSQ,,AM,BM,Airport,KRWF,UNICOM
+122.7,0,,,Thief River Falls - CTAF,TVF CTAF,CSQ,,AM,BM,Airport,KTVF,CTAF
+122.8,0,,,Thief River Falls - UNICOM,TVF UNICOM,CSQ,,AM,BM,Airport,KTVF,UNICOM
+122.9,0,,,Pine River Regional - CTAF,PWC CTAF,CSQ,,AM,BM,Airport,KPWC,CTAF
+122.8,0,,,Pine River Regional - UNICOM,PWC UNICOM,CSQ,,AM,BM,Airport,KPWC,UNICOM
+118.325,0,,,Pine River Regional - AWOS,PWC AWOS,CSQ,,AM,BM,Airport,KPWC,AWOS
+122.9,0,,,Aitkin Municipal (Steve Kurtz Field) - CTAF,AIT CTAF,CSQ,,AM,BM,Airport,KAIT,CTAF
+122.8,0,,,Aitkin Municipal - UNICOM,AIT UNICOM,CSQ,,AM,BM,Airport,KAIT,UNICOM
+118.375,0,,,Aitkin Municipal - AWOS,AIT AWOS,CSQ,,AM,BM,Airport,KAIT,AWOS
+122.9,0,,,Walker Municipal - CTAF,Y49 CTAF,CSQ,,AM,BM,Airport,Y49,CTAF
+119.0,0,,,Walker Municipal - AWOS,Y49 AWOS,CSQ,,AM,BM,Airport,Y49,AWOS
+122.8,0,,,Owatonna Degner Regional - CTAF,OWA CTAF,CSQ,,AM,BM,Airport,KOWA,CTAF
+122.8,0,,,Owatonna Degner Regional - UNICOM,OWA UNICOM,CSQ,,AM,BM,Airport,KOWA,UNICOM
+118.625,0,,,Owatonna Degner Regional - AWOS,OWA AWOS,CSQ,,AM,BM,Airport,KOWA,AWOS
+122.8,0,,,Austin Municipal - CTAF,AUM CTAF,CSQ,,AM,BM,Airport,KAUM,CTAF
+122.8,0,,,Austin Municipal - UNICOM,AUM UNICOM,CSQ,,AM,BM,Airport,KAUM,UNICOM
+118.325,0,,,Austin Municipal - AWOS,AUM AWOS,CSQ,,AM,BM,Airport,KAUM,AWOS
+122.9,0,,,Little Falls/Morrison County - CTAF,LXL CTAF,CSQ,,AM,BM,Airport,KLXL,CTAF
+122.8,0,,,Little Falls/Morrison County - UNICOM,LXL UNICOM,CSQ,,AM,BM,Airport,KLXL,UNICOM
+118.525,0,,,Little Falls/Morrison County - AWOS,LXL AWOS,CSQ,,AM,BM,Airport,KLXL,AWOS
+122.9,0,,,Isedor Iverson/McGregor - CTAF,HZX CTAF,CSQ,,AM,BM,Airport,KHZX,CTAF
+119.575,0,,,Isedor Iverson/McGregor - AWOS,HZX AWOS,CSQ,,AM,BM,Airport,KHZX,AWOS
+123.6,0,,,Minneapolis Center,MSP Center,CSQ,,AM,BM,Airport,ZMP,Center
+127.85,0,,,Minneapolis Center (High),MSP Center HI,CSQ,,AM,BM,Airport,ZMP,Center
+132.4,0,,,Minneapolis Center (Low),MSP Center LO,CSQ,,AM,BM,Airport,ZMP,Center
+121.5,0,,,Ground/Multicom,Ground,CSQ,,AM,BM,Airport,COMMON,Ground
+122.75,0,,,Air-to-Air (Fixed Wing),Air-to-Air,CSQ,,AM,BM,Airport,COMMON,Air-to-Air
+123.45,0,,,Air-to-Air (Helicopter),Helo Air-Air,CSQ,,AM,BM,Airport,COMMON,Air-to-Air
+122.9,0,,,Multicom (CTAF),Multicom,CSQ,,AM,BM,Airport,COMMON,CTAF

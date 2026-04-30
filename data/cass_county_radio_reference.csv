@@ -1,0 +1,95 @@
+Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha Tag,PL Output Tone,PL Input Tone,Mode,Class Station Code,Tag
+122.9,0,,Cass County,Pine River Regional Airport,Pine River Airpo,,,AM,BM,Aircraft
+151.805,0,WPLK215,Businesses Schools,Pillager Public School,Pillager School,,,FMN,M,Schools
+152.885,159.765,WQRA618,Cass Business,"Hengel Ready Mix Construction, Pillager",Hengel Ready Mix,432 DPL,,FMN,RM,Business
+152.975,159.51,WQOV402,Cass County,Cass Lake Schools Bus,Cass Lake Bus,CC 1|TG 1|SL 1,,DMR,RM,Transportation
+152.99,0,WPMS336,Businesses Businesses,"Maddens Resort, E Gull Lake",Maddens Resort,343 DPL,,FMN,RM,Business
+153.005,159.78,WQBG365,Businesses Schools,Pine River Schools,PINE RVR EDU,,,FMN,RM,Schools
+153.005,159.78,WQBG365,Cass County,Pine River Schools,PINE RVR EDU,,,FMN,RM,Schools
+153.155,0,WNFY603,Cass Business,"Crow Wing Power, Outing Tower",CW Power Outing,,,DMR,RM,Utilities
+153.995,0,WPUE488,Cass County,Walker Public Works,WALKER WORKS,,,FMN,M,Public Works
+154.16,0,KNCY974,Cass County,Fire/EMS Paging / Operations,CASS PAGE,118.8 PL,,FMN,BM,Fire Dispatch
+155.16,157.45,WQAJ381,Cass County,North Memorial EMS - Pine River,N MEM EMS,123.0 PL,,FMN,RM,EMS Dispatch
+155.265,159.3975,WNRF374,Businesses Schools,Pillager Public School Transportation,Pillager Bus ,,,FMN,RM,Schools
+155.385,0,WPYJ325,Cass County,Leech Lake EMS,LEECH EMS,,,FMN,BM,EMS-Tac
+155.386,0,WPYJ325,Cass County,Cass Lake Indian Hospital,CASS LK  EMS,131.8 PL,,FMN,BM,Hospital
+158.8125,0,WQGA665,Cass County,County Fireground,CASS FIREGNG,,,FMN,M,Fire-Tac
+168.05,0,,Chippewa National Forest,Natl. Tactical 1,NAT FOR TL1,CSQ,,FMN,BM,Federal
+168.2,0,,Chippewa National Forest,Natl. Tactical 2,NAT FOR TL2,CSQ,,FMN,BM,Federal
+168.6,0,,Chippewa National Forest,Natl. Tactical 3,NAT FOR TL3,CSQ,,FMN,BM,Federal
+168.625,0,,Chippewa National Forest,Natl. Air Guard,NAT FOR AIR,110.9 PL,,FMN,BM,Federal
+168.65,0,,Chippewa National Forest,Natl. Flight Following,NAT FOR FOLL,110.9 PL,,FMN,BM,Federal
+169.15,0,,Chippewa National Forest,Chip Air to Ground,CHIP FOR AG,CSQ,,FMN,BM,Federal
+171.55,0,,Chippewa National Forest,Chip Tactical 1,CHIP FOR TL1,CSQ,,FMN,BM,Federal
+173.775,164.125,,Chippewa National Forest,Forest Net - North - South Repeaters,CHIP FOR NET,CSQ,,FMN,RM,Federal
+451.0875,0, ,ALLETE Minnesota Power,Site 006 Walker,,,,DMR,,TRS
+451.425,0, ,ALLETE Minnesota Power,Site 003 Pillager,,,,DMR,,TRS
+451.65,0, ,ALLETE Minnesota Power,Site 006 Walker,,,,DMR,,TRS
+451.9125,0, ,Great River Energy,Site 112 Longville,,,,Project 25,,TRS
+452.825,0, ,ALLETE Minnesota Power,Site 006 Walker,,,,DMR,,TRS
+453.325,458.325,WPDE469,Cass County,Minn Dept Human Serv. - Ah Gwah Ching,MINN HUMAN,411 DPL,,FMN,RM,Public Works
+461,466,WQSV416,Businesses Businesses,Leech Lake - Bena,LEECH BENA,,,FMN,RM,Business
+461.4,0, ,Northern Lights Casino,Site 001 Walker,,,,DMR,,TRS
+461.725,466.725,WPTJ434,Businesses Businesses,Leech Lake Gaming Shuttle,LEECH SHUTLE,723 DPL,,FMN,RM,Business
+461.875,0, ,Northern Lights Casino,Site 001 Walker,,,,DMR,,TRS
+462.125,0, ,Northern Lights Casino,Site 001 Walker,,,,DMR,,TRS
+464.0625,0, ,Cedar Lakes Casino,Site 001 Cass Lake,,,,DMR,,TRS
+464.7125,0, ,Cedar Lakes Casino,Site 001 Cass Lake,,,,DMR,,TRS
+851.1375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+851.1625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+851.3,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+851.35,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+851.3625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+851.3875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+851.4375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 011 Pike Bay,,,,Project 25,,TRS
+851.475,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS
+851.5625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+851.575,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+851.6375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+851.875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+851.9,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 011 Pike Bay,,,,Project 25,,TRS
+851.9125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+851.925,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+851.9375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS
+851.95,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+852.075,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+852.1125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+852.4125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+852.4625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+852.6875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+852.825,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+852.9125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+853.1875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+853.2375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+853.4,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+853.4125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+853.475,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+853.55,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+853.7,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+853.8,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 035 Walker,,,,Project 25,,TRS
+853.875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+853.9125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+854.9875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+855.2125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+855.2375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS
+856.4375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+856.4625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 001 Backus,,,,Project 25,,TRS
+856.4875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+856.6875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+856.7375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 003 Hackensack,,,,Project 25,,TRS
+856.9875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+857.2125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 011 Pike Bay,,,,Project 25,,TRS
+857.6875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+857.7125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS
+857.7375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+857.9625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+858.2125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+858.4375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 004 Cass Lake,,,,Project 25,,TRS
+858.6875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+858.7125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 011 Pike Bay,,,,Project 25,,TRS
+858.7375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 005 Remer,,,,Project 25,,TRS
+858.9625,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 011 Pike Bay,,,,Project 25,,TRS
+859.2125,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 002 Leader,,,,Project 25,,TRS
+859.4375,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS
+859.6875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 034 Pillager,,,,Project 25,,TRS
+859.9875,0, ,Allied Radio Matrix for Emergency Response (ARMER),Site 012 Bena,,,,Project 25,,TRS

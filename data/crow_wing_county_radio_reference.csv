@@ -1,0 +1,91 @@
+"Frequency Output","Frequency Input","FCC Callsign",Agency/Category,Description,"Alpha Tag","PL Output Tone","PL Input Tone",Mode,"Class Station Code",Tag
+53.110000,52.11000,W0UJ,"Amateur Radio","Brainerd ARC - 6M","W0UJ 6M BRD",CSQ,"123.0 PL",FM,RM,Ham
+118.675000,0.00000,,"Brainerd Lakes Regional Airport","Automatic Weather Observation System","KBRD AWOS",CSQ,,AM,B,Aircraft
+122.200000,0.00000,,"Brainerd Lakes Regional Airport","Flight Service Station Princeton","KBRD FSS",CSQ,,AM,BM,Aircraft
+122.700000,0.00000,,"Brainerd Lakes Regional Airport",CTAF/Unicom,"KBRD CTAF",CSQ,,AM,BM,Aircraft
+126.775000,0.00000,,"Brainerd Lakes Regional Airport","Automatic Surface Observation System","KBRD ASOS",CSQ,,AM,B,Aircraft
+129.800000,0.00000,WQNY801,"Brainerd Lakes Regional Airport","Delta/SkyWest Airlines",Delta/SkyWest,CSQ,,AM,BM,Aircraft
+145.130000,144.53000,W0UJ,"Amateur Radio","Brainerd ARC - VHF","W0UJ VHF BRD",CSQ,CSQ,FM,RM,Ham
+146.985000,146.38500,,"Amateur Radio",Brainerd,"146.985 BRD",CSQ,CSQ,FM,RM,Ham
+147.030000,147.63000,W0UJ,"Amateur Radio",Crosslake,"W0UJ CRS LK",CSQ,CSQ,FM,RM,Ham
+147.090000,147.69000,W0REA,"Amateur Radio","Pequot Lakes","W0REA PQ LKS",CSQ,"123.0 PL",FM,RM,Ham
+147.225000,147.82500,W0UJ,"Amateur Radio","Brainerd ARC - VHF","W0UJ VHF BRD",CSQ,CSQ,FM,RM,Ham
+151.490000,159.99000,WPPD813,Schools,"ISD 182 Crosby","ISD 182 Crosby",,,FMN,RM,Schools
+152.307500,158.26500,WNFY603,"Crow Wing Power","Crow Wing Power Longville Tower","CW Power Longvil","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+152.315000,154.57500,WPUC263,Schools,"ISD 181 Baxter","ISD 181 Baxter",,,FMN,RM,Schools
+152.330000,158.26500,WNFY603,"Crow Wing Power","Crow Wing Power Pierz Tower","CW Power Pierz","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+152.352500,157.61250,WRQU781,"Crow Wing Business","Crosby-Ironton Transportation school bus",Crosby-Ironton,,,DMR,RM,Transportation
+152.375000,157.63500,WNFY603,"Crow Wing Power","Crow Wing Power Swanburg Tower 1","CW Power Swanb 1","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+152.375000,157.63500,WNFY603,"Crow Wing Power","Crow Wing Power Swanburg Tower 7","CW Power Swanb 7","CC 1|TG 1007|SL 2",,DMR,RM,Utilities
+152.382500,157.64250,WPUC263,Schools,"ISD 181 Brainerd","ISD 181 Brainerd",,,FMN,RM,Schools
+152.390000,157.65000,WQRL598,"Crow Wing Business","Breezy Point Resort","Breezy Pt Resort","043 DPL",,FMN,RM,Business
+152.405000,157.66500,WQBB647,Schools,"ISD 186 Pequot Lakes Bus","ISD 186 Pequot L","CC 8|TG 329401|SL 1",,DMR,RM,Transportation
+152.405000,157.66500,WQBB647,Schools,"ISD 186 Pequot Lakes","ISD 186 Pequot L","CC 8|TG 329406|SL 1",,DMR,RM,Schools
+152.442500,157.70250,WQBB647,Schools,"ISD 186 Pequot Lakes","ISD 186 Pequot L","CC 8|TG 329406|SL 1",,DMR,RM,Schools
+153.020000,158.34000,WQBB647,Schools,"ISD 186 Pequot Lakes","ISD 186 Pequot L","CC 8|TG 329406|SL 1",,DMR,RM,Schools
+153.155000,159.54000,WNFY603,"Crow Wing Power","Crow Wing Power Longville Tower","CW Power Longvil","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+153.425000,158.26500,WNFY603,"Crow Wing Power","Crow Wing Power Brainerd Tower","CW Power Brainer","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+153.500000,158.22000,KAA872,"Crow Wing Business","Xcel Energy","Xcel Energy","004 NAC",,P25,RM,Utilities
+154.190000,153.77000,WSGP929,"Crow Wing County","County Paging",CWPAGE,CSQ,,FMN,RM,"Fire Dispatch"
+154.337500,150.77500,WPWK223,Brainerd,"Brainerd Handi-Wheels","BRD WHEELS","134 DPL",,FMN,RM,Transportation
+154.490000,159.52500,WPWT259,Schools,"Central Lakes College Brainerd","Central Lakes Co","431 DPL",,FMN,RM,Schools
+155.160000,157.45000,WQAJ381,"Crow Wing County","EMS Dispatch",CWEMS,"123.0 PL",,FMN,RM,"EMS Dispatch"
+155.385000,0.00000,WQAJ381,"Crow Wing County","North Memorial Health to EMS","North Mem Hosp","186.2 PL",,FMN,BM,Hospital
+443.925000,448.92500,W0UJ,"Amateur Radio",Nisswa,"W0UJ NISSWA",CSQ,"123.0 PL",FM,RM,Ham
+444.925000,449.92500,W0UJ,"Amateur Radio","Brainerd ARC - UHF","W0UJ UHF BRD",CSQ,CSQ,FM,RM,Ham
+451.450000,0.00000," ","ALLETE Minnesota Power","Site 004 Pequot Lakes",,,,DMR,,TRS
+451.512500,0.00000," ","Great River Energy","Site 069 Brainerd",,,,"Project 25",,TRS
+451.862500,0.00000," ","Great River Energy","Site 069 Brainerd",,,,"Project 25",,TRS
+452.425000,0.00000," ","ALLETE Minnesota Power","Site 004 Pequot Lakes",,,,DMR,,TRS
+452.787500,0.00000," ","Great River Energy","Site 069 Brainerd",,,,"Project 25",,TRS
+452.850000,0.00000," ","Granite Electronics","Site 006 Baxter",,,,DMR,,TRS
+453.000000,0.00000," ","ALLETE Minnesota Power","Site 004 Pequot Lakes",,,,DMR,,TRS
+460.925000,465.92500,WSU882,Brainerd,"Reichert Bus Service","Reichert Bus","94.8 PL",,FMN,RM,Transportation
+461.150000,466.15000,WSU882,Brainerd,"Reichert Bus Service","Reichert Bus","94.8 PL",,FMN,RM,Transportation
+461.425000,0.00000," ","ALLETE Minnesota Power","Site 002 Riverton",,,,DMR,,TRS
+461.437500,0.00000," ","Granite Electronics","Site 006 Baxter",,,,DMR,,TRS
+461.625000,0.00000," ","ALLETE Minnesota Power","Site 002 Riverton",,,,DMR,,TRS
+462.062500,467.06250,WQBB617,"Brainerd International Raceway","Maint, Starting Line, Race Tower Control, Track Fire/Rescue","BIR Ops","114 DPL",,FMN,RM,Business
+462.137500,467.13750,WQBB617,"Brainerd International Raceway","Brainerd International Raceway EMS","BIR 4 EMS","CC 3|TG 4|SL 1",,DMR,RM,Business
+462.137500,467.13750,WQBB617,"Brainerd International Raceway","Roadcourse, Track Ops, Overnight Track EMS Paging","BIR 3 Ops","CC 3|TG 3|SL 1",,DMR,RM,Business
+463.662500,0.00000," ","ALLETE Minnesota Power","Site 002 Riverton",,,,DMR,,TRS
+463.887500,468.88750,WQBB617,"Brainerd International Raceway","Brainerd International Raceway","BIR 1 Ops","CC 3|TG 1|SL 1",,DMR,RM,Business
+463.887500,468.88750,WQBB617,"Brainerd International Raceway","Brainerd International Raceway","BIR 2 Ops","CC 3|TG 2|SL 2",,DMR,RM,Business
+464.050000,469.05000,WNMF904,"Crow Wing Business","Garrison Disposal Co","Garrison Disposa","732 DPL",,FMN,RM,Business
+464.325000,469.32500,WQBB617,"Brainerd International Raceway","Public Safety - Enforcement/Security, Track EMS","BIR Safety","023 DPL",,FMN,RM,Business
+851.325000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+851.375000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+851.487500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+851.612500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+851.662500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+851.687500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+851.700000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+851.762500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+851.987500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+852.262500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+852.337500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+852.362500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+852.387500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+852.487500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+852.675000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+852.900000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
+852.925000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+852.950000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+852.975000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+853.150000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+853.687500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+853.850000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+855.712500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+856.262500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+857.212500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+857.262500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+857.712500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+857.987500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+858.262500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 018 Jenkins",,,,"Project 25",,TRS
+858.487500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+858.675000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+858.712500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+858.987500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+859.462500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 014 Emily",,,,"Project 25",,TRS
+859.762500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 016 Baxter",,,,"Project 25",,TRS
+859.987500,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 017 Garrison",,,,"Project 25",,TRS
