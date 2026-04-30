@@ -7,6 +7,11 @@
 radio_reference_username = your_username_here
 radio_reference_password = your_password_here
 
+# What3Words API key (optional - for ///three.word.address location format)
+# Sign up for free at https://what3words.com/select-plan (25,000 calls/month free)
+# Uncomment and add your key to enable What3Words in the Grids tab:
+# what3words_key = YOUR_KEY_HERE
+
 [GPS]
 # GPS daemon settings
 gpsd_host = 127.0.0.1

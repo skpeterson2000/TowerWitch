@@ -1,0 +1,25 @@
+# Airport Frequencies Template
+# 
+# Use this template to add your own airports and frequencies.
+# Copy lines below and fill in your airport details.
+# Save as airport_frequencies_custom.csv (program will auto-load it)
+#
+# IMPORTANT: 
+# - CTAF (Common Traffic Advisory Frequency) is the main frequency for uncontrolled airports
+# - UNICOM is typically 122.8 MHz for most airports
+# - AWOS/ASOS/ATIS provides automated weather
+# - Common CTAF frequencies: 122.7, 122.8, 122.9, 123.0, 123.05, 123.075
+#
+# Format:
+# Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha Tag,PL Output Tone,PL Input Tone,Mode,Class Station Code,Tag,Airport,Service
+#
+# Example entries:
+
+Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha Tag,PL Output Tone,PL Input Tone,Mode,Class Station Code,Tag,Airport,Service
+122.9,0,,,Your Airport Name - CTAF,YOUR CTAF,CSQ,,AM,BM,Airport,KYOUR,CTAF
+122.8,0,,,Your Airport Name - UNICOM,YOUR UNICOM,CSQ,,AM,BM,Airport,KYOUR,UNICOM
+118.325,0,,,Your Airport Name - AWOS,YOUR AWOS,CSQ,,AM,BM,Airport,KYOUR,AWOS
+
+# Add more airports below:
+# 122.9,0,,,Another Airport - CTAF,CTAF,CSQ,,AM,BM,Airport,KANOTHER,CTAF
+# 122.8,0,,,Another Airport - UNICOM,UNICOM,CSQ,,AM,BM,Airport,KANOTHER,UNICOM

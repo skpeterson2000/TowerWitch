@@ -294,7 +294,7 @@ def get_gps_position_gpsd(host='127.0.0.1', port=2947, timeout=10, debug=False):
                         
                         # mode: 0=no fix, 1=no fix, 2=2D, 3=3D
                         if mode >= 2:
-                            logger.info(f"✓ Valid GPS fix obtained (mode {mode})")
+                            logger.info(f"[OK] Valid GPS fix obtained (mode {mode})")
                             process.terminate()
                             return (lat, lon, alt, mode)
                         else:
@@ -323,13 +323,13 @@ def get_gps_position_gpsd(host='127.0.0.1', port=2947, timeout=10, debug=False):
         
     except FileNotFoundError:
         logger.error("gpspipe not found!")
-        print("\n❌ Error: gpspipe not found. Install gpsd-clients package:")
+        print("\n[ERROR] gpspipe not found. Install gpsd-clients package:")
         print("  sudo apt-get install gpsd-clients  # Debian/Ubuntu")
         print("  sudo yum install gpsd-clients      # RHEL/CentOS")
         return None
     except Exception as e:
         logger.error(f"Exception reading from gpsd: {e}", exc_info=True)
-        print(f"\n❌ Error reading from gpsd: {e}")
+        print(f"\n[ERROR] Error reading from gpsd: {e}")
         return None
 
 def get_gps_position_nmea(device='/dev/ttyUSB0', baudrate=9600, timeout=10):
@@ -583,14 +583,14 @@ if __name__ == "__main__":
     # Load towers
     try:
         towers = load_towers_from_csv(args.csv)
-        print(f"✓ Loaded {len(towers)} towers from {args.csv}")
+        print(f"[OK] Loaded {len(towers)} towers from {args.csv}")
         logger.info(f"Successfully loaded {len(towers)} towers from {args.csv}")
     except FileNotFoundError:
-        print(f"❌ Error: Tower CSV file not found: {args.csv}")
+        print(f"[ERROR] Tower CSV file not found: {args.csv}")
         logger.error(f"Tower CSV file not found: {args.csv}")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error loading tower data: {e}")
+        print(f"[ERROR] Error loading tower data: {e}")
         logger.error(f"Error loading tower data: {e}", exc_info=True)
         sys.exit(1)
     
@@ -601,26 +601,26 @@ if __name__ == "__main__":
     gps_result = None
     if args.lat and args.lon:
         # Manual override for testing
-        print("📍 Using manual coordinates (testing mode)")
+        print("[GPS] Using manual coordinates (testing mode)")
         logger.info(f"Using manual coordinates: {args.lat}, {args.lon}")
         gps_result = (args.lat, args.lon, None, None)
     else:
         # Try to get from gpsd (the normal operating mode)
-        print("🛰️  Reading from GPS device via gpsd...")
+        print("[GPS] Reading from GPS device via gpsd...")
         logger.info("Attempting to read from gpsd")
         
         # Check if gpsd is running first
         if not check_gpsd_running():
-            print("\n⚠️  Warning: Cannot connect to gpsd")
+            print("\n[WARNING] Cannot connect to gpsd")
             logger.warning("gpsd does not appear to be running")
         
         gps_result = get_gps_position_gpsd(timeout=args.timeout, debug=args.debug)
     
     if not gps_result:
-        print("\n❌ No GPS position available!")
+        print("\n[ERROR] No GPS position available!")
         logger.error("Failed to obtain GPS position")
         
-        print("\n📋 Troubleshooting steps:")
+        print("\n[INFO] Troubleshooting steps:")
         print("\n1. Check if your GPS device is connected:")
         print("   lsusb | grep -i gps")
         print("   ls -la /dev/tty{USB,ACM}*")
@@ -649,7 +649,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     user_lat, user_lon, altitude, fix_quality = gps_result
-    print(f"✓ GPS Position: {user_lat:.6f}, {user_lon:.6f}")
+    print(f"[OK] GPS Position: {user_lat:.6f}, {user_lon:.6f}")
     logger.info(f"GPS position obtained: {user_lat:.6f}, {user_lon:.6f}")
     
     if altitude:
