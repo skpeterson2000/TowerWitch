@@ -506,7 +506,10 @@ class TowerWitchTkinter:
         self.setup_colored_tabs()
         self.setup_keyboard_shortcuts()
         self.load_static_data()
+        print("[DEBUG] Static data loaded")
+        print("[DEBUG] About to start GPS...")
         self.start_gps()
+        print("[DEBUG] GPS started")
         
         # Get initial nearest town (in background thread)
         threading.Thread(target=lambda: self.get_nearest_town(self.last_lat, self.last_lon), 
@@ -610,6 +613,11 @@ class TowerWitchTkinter:
                                 command=self.refresh_all_data)
         refresh_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
 
+        # Fullscreen toggle button - for touch screen access
+        fullscreen_btn = ttk.Button(controls_frame, text="⛶ Fullscreen",
+                                   command=self.toggle_fullscreen)
+        fullscreen_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
+
         # Create main notebook (tabbed interface)
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True)
@@ -621,8 +629,10 @@ class TowerWitchTkinter:
         self.create_interop_tab()
         self.create_aviation_tab()
         self.create_skywarn_tab()
+        self.create_noaa_weather_tab()
         self.create_amateur_tab()
         self.create_fusion_tab()
+        self.create_dmr_dstar_tab()
 
     def setup_colored_tabs(self):
         """Setup colored tabs using ttk.Style"""
@@ -692,6 +702,7 @@ class TowerWitchTkinter:
                 ("InterOp", "Interoperability"),
                 ("Aviation", "Aviation Frequencies"),
                 ("Skywarn", "Weather Emergency"),
+                ("NOAA", "NOAA Weather Radio"),
                 ("Amateur", "Amateur Radio")
             ]
 
@@ -708,7 +719,9 @@ class TowerWitchTkinter:
                 "2m Band",
                 "1.25m Band",
                 "70cm Band",
-                "Simplex"
+                "Simplex",
+                "Fusion",
+                "DMR/D-Star"
             ]
 
             for i, tab_text in enumerate(amateur_tabs):
@@ -733,10 +746,17 @@ class TowerWitchTkinter:
         columns = ('Property', 'Value', 'Unit')
         self.gps_tree = ttk.Treeview(gps_frame, columns=columns, show='headings', height=10)
 
-        # Define column headings and widths
+        # Define column headings and widths (percentage-based)
+        available_width = 980
         for col in columns:
             self.gps_tree.heading(col, text=col)
-            self.gps_tree.column(col, width=200)
+            if col == 'Property':
+                width = int(available_width * 0.35)
+            elif col == 'Value':
+                width = int(available_width * 0.40)
+            else:  # Unit
+                width = int(available_width * 0.25)
+            self.gps_tree.column(col, width=width, stretch=True)
 
         # Add scrollbar
         gps_scroll = ttk.Scrollbar(gps_frame, orient=tk.VERTICAL, command=self.gps_tree.yview)
@@ -762,9 +782,17 @@ class TowerWitchTkinter:
         columns = ('Grid System', 'Value', 'Info')
         self.grid_tree = ttk.Treeview(grid_frame, columns=columns, show='headings', height=8)
 
+        # Define column widths (percentage-based)
+        available_width = 980
         for col in columns:
             self.grid_tree.heading(col, text=col)
-            self.grid_tree.column(col, width=250)
+            if col == 'Grid System':
+                width = int(available_width * 0.35)
+            elif col == 'Value':
+                width = int(available_width * 0.40)
+            else:  # Info
+                width = int(available_width * 0.25)
+            self.grid_tree.column(col, width=width, stretch=True)
 
         self.grid_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
@@ -784,10 +812,25 @@ class TowerWitchTkinter:
         columns = ('Site', 'Description', 'County', 'Distance', 'Bearing', 'Range', 'Frequencies')
         self.armer_tree = ttk.Treeview(armer_frame, columns=columns, show='headings', height=15)
 
+        # Define column widths (percentage-based)
+        available_width = 980
         for col in columns:
             self.armer_tree.heading(col, text=col)
-            width = 100 if col in ['Site', 'Distance', 'Bearing', 'Range'] else 180
-            self.armer_tree.column(col, width=width)
+            if col == 'Site':
+                width = int(available_width * 0.10)
+            elif col == 'Description':
+                width = int(available_width * 0.25)
+            elif col == 'County':
+                width = int(available_width * 0.15)
+            elif col == 'Distance':
+                width = int(available_width * 0.10)
+            elif col == 'Bearing':
+                width = int(available_width * 0.10)
+            elif col == 'Range':
+                width = int(available_width * 0.10)
+            else:  # Frequencies
+                width = int(available_width * 0.20)
+            self.armer_tree.column(col, width=width, stretch=True)
 
         self.armer_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -804,15 +847,21 @@ class TowerWitchTkinter:
         columns = ('Frequency', 'Description', 'Alpha Tag', 'Mode', 'Category')
         self.interop_tree = ttk.Treeview(interop_frame, columns=columns, show='headings', height=15)
 
+        # Define column widths (percentage-based)
+        available_width = 980
         for col in columns:
             self.interop_tree.heading(col, text=col)
-            if col == 'Description':
-                width = 350
-            elif col == 'Frequency':
-                width = 120
-            else:
-                width = 150
-            self.interop_tree.column(col, width=width)
+            if col == 'Frequency':
+                width = int(available_width * 0.12)
+            elif col == 'Description':
+                width = int(available_width * 0.40)
+            elif col == 'Alpha Tag':
+                width = int(available_width * 0.16)
+            elif col == 'Mode':
+                width = int(available_width * 0.16)
+            else:  # Category
+                width = int(available_width * 0.16)
+            self.interop_tree.column(col, width=width, stretch=True)
 
         self.interop_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -844,24 +893,41 @@ class TowerWitchTkinter:
         # Columns for aviation data
         columns = ('Frequency', 'Description', 'Alpha Tag', 'Mode', 'Category')
         
+        # Calculate column widths based on window width (proportional sizing)
+        # Get available width (accounting for padding/margins)
+        available_width = 980  # ~1024 window width minus padding
+        
         # Use tree mode for Nearby tab to enable collapsible airports
         if tab_name == "Nearby":
             aviation_tree = ttk.Treeview(subtab_frame, columns=columns, show='tree headings', height=12)
-            # Adjust tree column for airport names
-            aviation_tree.column('#0', width=250, stretch=False)
-            aviation_tree.heading('#0', text='Airport / Frequency')
+            # Airport column: 17% of available width
+            aviation_tree.column('#0', width=int(available_width * 0.17), stretch=False)
+            aviation_tree.heading('#0', text='Airport')
         else:
             aviation_tree = ttk.Treeview(subtab_frame, columns=columns, show='headings', height=12)
 
         for col in columns:
             aviation_tree.heading(col, text=col)
             if col == 'Description':
-                width = 300 if tab_name == "Nearby" else 350
+                # Description: 42% with stretch enabled
+                width = int(available_width * 0.42)
+                aviation_tree.column(col, width=width, stretch=True)
             elif col == 'Frequency':
-                width = 100 if tab_name == "Nearby" else 120
-            else:
-                width = 120 if tab_name == "Nearby" else 150
-            aviation_tree.column(col, width=width)
+                # Frequency: 10% fixed
+                width = int(available_width * 0.10)
+                aviation_tree.column(col, width=width, stretch=False)
+            elif col == 'Mode':
+                # Mode: 7% fixed
+                width = int(available_width * 0.07)
+                aviation_tree.column(col, width=width, stretch=False)
+            elif col == 'Alpha Tag':
+                # Alpha Tag: 12% fixed
+                width = int(available_width * 0.12)
+                aviation_tree.column(col, width=width, stretch=False)
+            elif col == 'Category':
+                # Category: 12% fixed
+                width = int(available_width * 0.12)
+                aviation_tree.column(col, width=width, stretch=False)
 
         aviation_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -894,37 +960,156 @@ class TowerWitchTkinter:
         columns = ('Call Sign', 'Location', 'Frequency', 'Tone', 'Distance', 'Bearing')
         self.skywarn_tree = ttk.Treeview(skywarn_frame, columns=columns, show='headings', height=15)
 
+        # Define column widths (percentage-based)
+        available_width = 980
         for col in columns:
             self.skywarn_tree.heading(col, text=col)
-            width = 150 if col in ['Call Sign', 'Frequency'] else 200
-            self.skywarn_tree.column(col, width=width)
+            if col == 'Call Sign':
+                width = int(available_width * 0.15)
+            elif col == 'Location':
+                width = int(available_width * 0.25)
+            elif col == 'Frequency':
+                width = int(available_width * 0.15)
+            elif col == 'Tone':
+                width = int(available_width * 0.15)
+            elif col == 'Distance':
+                width = int(available_width * 0.12)
+            else:  # Bearing
+                width = int(available_width * 0.18)
+            self.skywarn_tree.column(col, width=width, stretch=True)
 
         self.skywarn_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def create_fusion_tab(self):
         """Create Fusion repeater tab"""
-        fusion_frame = ttk.Frame(self.notebook)
-        self.notebook.add(fusion_frame, text="Fusion")
+        fusion_frame = ttk.Frame(self.amateur_notebook)
+        self.amateur_notebook.add(fusion_frame, text="Fusion")
 
         info_label = ttk.Label(fusion_frame, text="Yaesu System Fusion Digital Repeaters",
                               font=('Arial', 16, 'bold'))
         info_label.pack(pady=15)
 
-        # Fusion data tree
-        columns = ('Call', 'Location', 'Output', 'Input', 'Tone', 'Modes', 'Distance', 'Bearing')
+        # Fusion data tree - optimized for touch screen with responsive columns
+        columns = ('Call', 'Location', 'Output', 'Input', 'Tone', 'Modes', 'Dist', 'Bear')
         self.fusion_tree = ttk.Treeview(fusion_frame, columns=columns, show='headings', height=15)
 
+        # Configure columns with percentage-based widths
+        available_width = 980
         for col in columns:
-            self.fusion_tree.heading(col, text=col)
-            if col == 'Location':
-                width = 250
+            # Use short header names for compact display
+            header_text = col
+            if col == 'Dist':
+                header_text = 'Miles'
+            elif col == 'Bear':
+                header_text = 'Bearing'
+            
+            self.fusion_tree.heading(col, text=header_text)
+            
+            if col == 'Call':
+                width = int(available_width * 0.10)
+            elif col == 'Location':
+                width = int(available_width * 0.25)
+            elif col == 'Output':
+                width = int(available_width * 0.12)
+            elif col == 'Input':
+                width = int(available_width * 0.12)
+            elif col == 'Tone':
+                width = int(available_width * 0.10)
             elif col == 'Modes':
-                width = 200
-            else:
-                width = 120
-            self.fusion_tree.column(col, width=width)
+                width = int(available_width * 0.12)
+            elif col == 'Dist':
+                width = int(available_width * 0.10)
+            else:  # Bear
+                width = int(available_width * 0.09)
+            
+            self.fusion_tree.column(col, width=width, stretch=True)
 
         self.fusion_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    def create_dmr_dstar_tab(self):
+        """Create DMR and D-Star digital repeater tab"""
+        dmr_dstar_frame = ttk.Frame(self.amateur_notebook)
+        self.amateur_notebook.add(dmr_dstar_frame, text="DMR/D-Star")
+
+        info_label = ttk.Label(dmr_dstar_frame, text="DMR and D-Star Digital Repeaters",
+                              font=('Arial', 16, 'bold'))
+        info_label.pack(pady=15)
+
+        # DMR/D-Star data tree - optimized for touch screen
+        columns = ('Call', 'Location', 'Output', 'Input', 'Mode', 'CC/ID', 'Dist', 'Bear')
+        self.dmr_dstar_tree = ttk.Treeview(dmr_dstar_frame, columns=columns, show='headings', height=15)
+
+        # Configure columns with percentage-based widths
+        available_width = 980
+        for col in columns:
+            # Use short header names for compact display
+            header_text = col
+            if col == 'Dist':
+                header_text = 'Miles'
+            elif col == 'Bear':
+                header_text = 'Bearing'
+            elif col == 'CC/ID':
+                header_text = 'CC/ID'
+            
+            self.dmr_dstar_tree.heading(col, text=header_text)
+            
+            if col == 'Call':
+                width = int(available_width * 0.10)
+            elif col == 'Location':
+                width = int(available_width * 0.25)
+            elif col == 'Output':
+                width = int(available_width * 0.12)
+            elif col == 'Input':
+                width = int(available_width * 0.12)
+            elif col == 'Mode':
+                width = int(available_width * 0.10)
+            elif col == 'CC/ID':
+                width = int(available_width * 0.10)
+            elif col == 'Dist':
+                width = int(available_width * 0.11)
+            else:  # Bear
+                width = int(available_width * 0.10)
+            
+            self.dmr_dstar_tree.column(col, width=width, stretch=True)
+
+        self.dmr_dstar_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    def create_noaa_weather_tab(self):
+        """Create NOAA Weather Radio tab"""
+        noaa_frame = ttk.Frame(self.notebook)
+        self.notebook.add(noaa_frame, text="NOAA")
+
+        info_label = ttk.Label(noaa_frame, text="NOAA Weather Radio (NWR) Frequencies",
+                              font=('Arial', 16, 'bold'))
+        info_label.pack(pady=15)
+
+        # Instructions
+        instructions = ttk.Label(noaa_frame, 
+                                text="These are the 7 NOAA Weather Radio frequencies used nationwide.\n"
+                                     "Check which station(s) cover your area at weather.gov/nwr",
+                                font=('Arial', 11),
+                                justify=tk.CENTER)
+        instructions.pack(pady=10)
+
+        # NOAA data tree
+        columns = ('Channel', 'Frequency', 'Coverage Area', 'Signal')
+        self.noaa_tree = ttk.Treeview(noaa_frame, columns=columns, show='headings', height=10)
+
+        # Define column widths (percentage-based)
+        available_width = 980
+        for col in columns:
+            self.noaa_tree.heading(col, text=col)
+            if col == 'Channel':
+                width = int(available_width * 0.12)
+            elif col == 'Frequency':
+                width = int(available_width * 0.18)
+            elif col == 'Coverage Area':
+                width = int(available_width * 0.55)
+            else:  # Signal
+                width = int(available_width * 0.15)
+            self.noaa_tree.column(col, width=width, stretch=True)
+
+        self.noaa_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def create_amateur_tab(self):
         """Create amateur radio tab with sub-tabs for different bands"""
@@ -961,18 +1146,37 @@ class TowerWitchTkinter:
         
         band_tree = ttk.Treeview(band_frame, columns=columns, show='headings', height=12)
 
+        # Define column widths (percentage-based)
+        available_width = 980
         for col in columns:
             band_tree.heading(col, text=col)
             if tab_name == "Simplex":
-                if col == 'Description':
-                    width = 350
-                elif col == 'Frequency':
-                    width = 120
-                else:
-                    width = 150
+                if col == 'Frequency':
+                    width = int(available_width * 0.12)
+                elif col == 'Description':
+                    width = int(available_width * 0.40)
+                elif col == 'Alpha Tag':
+                    width = int(available_width * 0.18)
+                elif col == 'Mode':
+                    width = int(available_width * 0.15)
+                else:  # Tone
+                    width = int(available_width * 0.15)
             else:
-                width = 120 if col in ['Call Sign', 'Output', 'Input', 'Tone'] else 150
-            band_tree.column(col, width=width)
+                if col == 'Call Sign':
+                    width = int(available_width * 0.13)
+                elif col == 'Location':
+                    width = int(available_width * 0.25)
+                elif col == 'Output':
+                    width = int(available_width * 0.13)
+                elif col == 'Input':
+                    width = int(available_width * 0.13)
+                elif col == 'Tone':
+                    width = int(available_width * 0.12)
+                elif col == 'Distance':
+                    width = int(available_width * 0.12)
+                else:  # Bearing
+                    width = int(available_width * 0.12)
+            band_tree.column(col, width=width, stretch=True)
 
         band_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -1014,8 +1218,15 @@ class TowerWitchTkinter:
         # Load simplex data
         self.load_simplex_data()
         
-        # Load fusion data
-        self.load_fusion_data()
+        # Load fusion data (in background thread to avoid blocking on geocoding)
+        print("[INFO] Starting Fusion data load in background...")
+        threading.Thread(target=self.load_fusion_data, daemon=True).start()
+
+        # Load DMR/D-Star data
+        self.load_dmr_dstar_data()
+
+        # Load NOAA Weather Radio data
+        self.load_noaa_weather_data()
 
     def load_interop_data(self):
         """Load interoperability channel data"""
@@ -1431,23 +1642,30 @@ class TowerWitchTkinter:
 
     def load_amateur_data(self):
         """Load amateur radio repeater data"""
-        # Try to load from local CSV first (Crow Wing County data)
+        # Try to load from local CSV first
         local_repeaters = self.load_local_repeater_csv()
         
         if local_repeaters:
             print(f"[OK] Using {len(local_repeaters)} local amateur repeaters from CSV")
             # Separate by band
-            repeaters_2m = [r for r in local_repeaters if 144 <= float(r.get('output', '0')) <= 148]
-            repeaters_70cm = [r for r in local_repeaters if 420 <= float(r.get('output', '0')) <= 450]
+            repeaters_10m = [r for r in local_repeaters if 28 <= float(r.get('output', '0')) <= 30]
             repeaters_6m = [r for r in local_repeaters if 50 <= float(r.get('output', '0')) <= 54]
+            repeaters_2m = [r for r in local_repeaters if 144 <= float(r.get('output', '0')) <= 148]
+            repeaters_125m = [r for r in local_repeaters if 220 <= float(r.get('output', '0')) <= 225]
+            repeaters_70cm = [r for r in local_repeaters if 420 <= float(r.get('output', '0')) <= 450]
+            repeaters_23cm = [r for r in local_repeaters if 1240 <= float(r.get('output', '0')) <= 1300]
             
             # Populate band trees
-            if repeaters_2m:
-                self.populate_band_tree(repeaters_2m, '2m')
-            if repeaters_70cm:
-                self.populate_band_tree(repeaters_70cm, '70cm')
+            if repeaters_10m:
+                self.populate_band_tree(repeaters_10m, '10m')
             if repeaters_6m:
                 self.populate_band_tree(repeaters_6m, '6m')
+            if repeaters_2m:
+                self.populate_band_tree(repeaters_2m, '2m')
+            if repeaters_125m:
+                self.populate_band_tree(repeaters_125m, '1.25m')
+            if repeaters_70cm:
+                self.populate_band_tree(repeaters_70cm, '70cm')
         else:
             # Fall back to sample 2m repeaters
             repeaters_2m = [
@@ -1468,10 +1686,116 @@ class TowerWitchTkinter:
 
     def load_local_repeater_csv(self):
         """Load local repeater data from CSV files"""
+        # Known Minnesota city/town coordinates (expanded statewide coverage)
+        known_locations = {
+            # Metro Area
+            'minneapolis': (44.9778, -93.2650), 'saint paul': (44.9537, -93.0900),
+            'st paul': (44.9537, -93.0900), 'bloomington': (44.8408, -93.2985),
+            'plymouth': (45.0105, -93.4555), 'maple grove': (45.0725, -93.4557),
+            'edina': (44.8897, -93.3500), 'coon rapids': (45.1200, -93.2878),
+            'burnsville': (44.7677, -93.2778), 'eden prairie': (44.8547, -93.4708),
+            'blaine': (45.1608, -93.2350), 'lakeville': (44.6497, -93.2428),
+            'maple plain': (45.0033, -93.6588), 'ham lake': (45.2503, -93.2044),
+            'maplewood': (44.9531, -92.9952), 'ramsey': (45.2611, -93.4500),
+            'white bear lake': (45.0847, -93.0098),
+            
+            # Crow Wing & Cass Counties
+            'brainerd': (46.358, -94.201), 'baxter': (46.345, -94.263),
+            'crosslake': (46.660, -94.107), 'pequot': (46.603, -94.312),
+            'crosby': (46.484, -93.957), 'nisswa': (46.521, -94.289),
+            'aitkin': (46.533, -93.717), 'pine river': (46.718, -94.397),
+            'pillager': (46.344, -94.482), 'walker': (47.101, -94.587),
+            
+            # Northern Minnesota
+            'duluth': (46.7867, -92.1005), 'superior': (46.7208, -92.1042),
+            'hibbing': (47.4271, -92.9377), 'virginia': (47.5232, -92.5366),
+            'grand rapids': (47.2368, -93.5302), 'bemidji': (47.4736, -94.8803),
+            'international falls': (48.6011, -93.4105), 'thief river falls': (48.1169, -96.1812),
+            'cloquet': (46.7216, -92.4594), 'two harbors': (47.0227, -91.6707),
+            'ely': (47.9032, -91.8671), 'grand marais': (47.7505, -90.3343),
+            'grand portage': (47.9650, -89.6824), 'tofte': (47.5810, -90.8496),
+            'cook': (47.8191, -92.6885), 'aurora': (47.5299, -92.2374),
+            'silver bay': (47.2955, -91.2526), 'proctor': (46.7477, -92.2224),
+            'coleraine': (47.2888, -93.4269), 'isabella': (47.6158, -91.4932),
+            'big falls': (48.2000, -93.8000), 'kelliher': (47.9375, -94.4533),
+            'lengby': (47.5219, -95.6906), 'wannaska': (48.6572, -95.7253),
+            'warroad': (48.9053, -95.3133), 'roosevelt': (48.7942, -95.2036),
+            'angle inlet': (49.3489, -95.0708),
+            
+            # Central Minnesota  
+            'saint cloud': (45.5579, -94.1632), 'st cloud': (45.5579, -94.1632),
+            'sartell': (45.6219, -94.2069), 'sauk rapids': (45.5953, -94.1617),
+            'little falls': (45.9764, -94.3628), 'avon': (45.6080, -94.4508),
+            'collegeville': (45.5944, -94.3633), 'paynesville': (45.3794, -94.7122),
+            'willmar': (45.1219, -95.0433), 'litchfield': (45.1275, -94.5281),
+            'hutchinson': (44.8883, -94.3708), 'silver lake': (44.9044, -94.1933),
+            'darwin': (45.0939, -94.4094), 'foley': (45.6647, -93.9097),
+            
+            # Southeast Minnesota
+            'rochester': (44.0219, -92.4635), 'owatonna': (44.0838, -93.2261),
+            'austin': (43.6666, -92.9746), 'albert lea': (43.6480, -93.3683),
+            'red wing': (44.5625, -92.5338), 'winona': (44.0499, -91.6393),
+            'la crescent': (43.8233, -91.3004), 'waseca': (44.0783, -93.5061),
+            'faribault': (44.2950, -93.2688), 'northfield': (44.4583, -93.1616),
+            'kasson': (44.0297, -92.7502), 'byron': (44.0333, -92.6474),
+            'stewartville': (43.8558, -92.4877), 'chatfield': (43.8452, -92.1888),
+            'wykoff': (43.7086, -92.2713), 'dennison': (44.4100, -93.0200),
+            'glenville': (43.5669, -93.2780), 'racine': (43.8100, -92.5200),
+            'lemond': (43.8000, -93.3000), 'medford': (44.1658, -93.2438),
+            
+            # Southwest Minnesota
+            'mankato': (44.1636, -94.0033), 'new ulm': (44.3125, -94.4608),
+            'marshall': (44.4469, -95.7883), 'worthington': (43.6200, -95.5956),
+            'fairmont': (43.6519, -94.4608), 'jackson': (43.6200, -95.0100),
+            'pipestone': (44.0000, -96.3169), 'luverne': (43.6539, -96.2125),
+            'tracy': (44.2297, -95.6189), 'slayton': (43.9875, -95.7581),
+            'windom': (43.8658, -95.1153), 'fulda': (43.8711, -95.6025),
+            'blue earth': (43.6386, -94.1016), 'saint peter': (44.3236, -93.9575),
+            'st peter': (44.3236, -93.9575), 'le sueur': (44.4600, -93.9122),
+            'le center': (44.3886, -93.7302), 'ellendale': (43.8614, -93.2983),
+            'gaylord': (44.5539, -94.2208), 'arlington': (44.6089, -94.0806),
+            'green isle': (44.6708, -94.0069), 'wabasso': (44.4072, -95.2508),
+            'tyler': (44.2786, -96.1342),
+            
+            # West Central Minnesota
+            'moorhead': (46.8738, -96.7678), 'fergus falls': (46.2830, -96.0776),
+            'detroit lakes': (46.8172, -95.8453), 'alexandria': (45.8852, -95.3775),
+            'morris': (45.5861, -95.9142), 'breckenridge': (46.2636, -96.5892),
+            'wheaton': (45.8064, -96.5000), 'ortonville': (45.3050, -96.4431),
+            'montevideo': (44.9458, -95.7231), 'granite falls': (44.8097, -95.5453),
+            'clara city': (44.9539, -95.3653), 'dawson': (44.9322, -96.0539),
+            'madison': (45.0089, -96.1953), 'perham': (46.5944, -95.5728),
+            'dalton': (46.1700, -95.9100), 'bertha': (46.2694, -95.0683),
+            'sebeka': (46.6264, -95.0864), 'deer creek': (46.3897, -95.2967),
+            'twin valley': (47.2683, -96.2542), 'east grand forks': (47.9297, -97.0242),
+            'crookston': (47.7741, -96.6081), 'warren': (48.1958, -96.7731),
+            'karlstad': (48.5733, -96.5181),
+            
+            # South Central Minnesota
+            'mankato': (44.1636, -94.0033), 'north mankato': (44.1775, -94.0336),
+            'saint james': (43.9869, -94.6275), 'madelia': (44.0525, -94.4200),
+            'mountain lake': (43.9369, -94.9297),
+            
+            # Counties & Towns
+            'isanti': (45.4900, -93.2478), 'cambridge': (45.5728, -93.2244),
+            'north branch': (45.5111, -92.9808), 'mora': (45.8747, -93.2908),
+            'milaca': (45.7553, -93.6539), 'princeton': (45.5697, -93.5819),
+            'elk river': (45.3038, -93.5672), 'big lake': (45.3319, -93.7458),
+            'monticello': (45.3055, -93.7927), 'buffalo': (45.1719, -93.8744),
+            'delano': (45.0411, -93.7886), 'howard lake': (45.0600, -94.0733),
+            'annandale': (45.2608, -94.1244), 'clearwater': (45.4169, -94.0486),
+            'cold spring': (45.4558, -94.4269), 'richmond': (45.4575, -94.5133),
+            'melrose': (45.6747, -94.8133), 'sauk centre': (45.7375, -94.9511),
+            'long prairie': (45.9758, -94.8633), 'staples': (46.3558, -94.7947),
+            'wadena': (46.4425, -95.1361), 'park rapids': (46.9253, -95.0586),
+            'menahga': (46.7536, -95.0975), 'nevis': (46.9678, -94.8400),
+            'akeley': (47.0000, -94.7333),
+        }
+        
         repeater_files = [
+            'data/Repeater_Book_Minnesota.csv',  # Primary statewide source
             'data/crow_wing_county_radio_reference.csv',
             'data/cass_county_radio_reference.csv',
-            # Add more county CSV files here as you get them
         ]
         
         all_repeaters = []
@@ -1485,40 +1809,95 @@ class TowerWitchTkinter:
                 with open(file_path, 'r') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
-                        # Only include amateur radio entries
-                        category = row.get('Agency/Category', '').lower()
-                        tag = row.get('Tag', '').lower()
-                        
-                        if 'amateur' in category or 'ham' in tag:
+                        # Detect file format and extract data accordingly
+                        if 'Output Freq' in row:
+                            # Repeater Book format
                             try:
-                                output_freq = float(row.get('Frequency Output', '0'))
-                                input_freq = float(row.get('Frequency Input', '0'))
+                                output_freq = float(row.get('Output Freq', '0'))
+                                input_freq = float(row.get('Input Freq', '0'))
                                 
-                                # Skip non-repeater frequencies
-                                if output_freq == 0 or input_freq == 0:
+                                if output_freq == 0:
                                     continue
                                 
-                                # Extract tone (handle various formats)
-                                tone_str = row.get('PL Input Tone', row.get('PL Output Tone', 'CSQ'))
-                                tone = tone_str.replace(' PL', '').replace('CSQ', '0.0')
+                                callsign = row.get('Call', 'N0CALL').strip()
+                                location_name = row.get('Location', 'Unknown').strip()
+                                county = row.get('County', '').strip().lower()
                                 
-                                # Use approximate location for Crow Wing County
-                                # Different areas within the county
-                                location_name = row.get('Description', 'Unknown')
-                                if 'brainerd' in location_name.lower():
-                                    lat, lon = 46.358, -94.201  # Brainerd
-                                elif 'crosslake' in location_name.lower():
-                                    lat, lon = 46.660, -94.107  # Crosslake
-                                elif 'pequot' in location_name.lower():
-                                    lat, lon = 46.603, -94.312  # Pequot Lakes
-                                else:
-                                    lat, lon = 46.450, -94.150  # Central Crow Wing County
+                                # Extract tone
+                                uplink_tone = row.get('Uplink Tone', '').strip()
+                                downlink_tone = row.get('Downlink Tone', '').strip()
+                                tone = uplink_tone or downlink_tone or 'CSQ'
+                                if tone and tone != 'CSQ':
+                                    tone = tone.replace('D', '').replace('d', '')  # Remove D-code prefix
+                                
+                                # Find coordinates using location matching
+                                lat, lon = None, None
+                                location_lower = location_name.lower()
+                                
+                                # Try exact city match
+                                for city_key, coords in known_locations.items():
+                                    if city_key in location_lower:
+                                        lat, lon = coords
+                                        break
+                                
+                                # Fallback to county center
+                                if lat is None and county:
+                                    county_centers = {
+                                        'crow wing': (46.450, -94.150), 'cass': (46.900, -94.350),
+                                        'aitkin': (46.533, -93.717), 'hennepin': (44.977, -93.265),
+                                        'ramsey': (45.015, -93.100), 'dakota': (44.668, -93.065),
+                                        'anoka': (45.270, -93.242), 'washington': (45.050, -92.910),
+                                        'st louis': (47.350, -92.450), 'stearns': (45.558, -94.612),
+                                        'olmsted': (44.022, -92.468), 'winona': (44.050, -91.639),
+                                        'goodhue': (44.500, -92.750), 'rice': (44.350, -93.300),
+                                        'steele': (44.000, -93.230), 'dodge': (44.020, -92.850),
+                                        'mower': (43.667, -92.750), 'fillmore': (43.667, -92.083),
+                                        'houston': (43.617, -91.400), 'blue earth': (44.000, -94.100),
+                                        'nicollet': (44.333, -94.250), 'le sueur': (44.450, -93.650),
+                                        'waseca': (44.083, -93.500), 'faribault': (43.667, -93.950),
+                                        'martin': (43.667, -94.583), 'jackson': (43.650, -95.167),
+                                        'nobles': (43.650, -95.750), 'rock': (43.650, -96.333),
+                                        'pipestone': (44.000, -96.317), 'murray': (44.000, -95.750),
+                                        'cottonwood': (44.000, -95.150), 'watonwan': (43.983, -94.600),
+                                        'brown': (44.250, -94.717), 'redwood': (44.550, -95.150),
+                                        'lyon': (44.417, -95.900), 'lincoln': (44.450, -96.267),
+                                        'chippewa': (45.000, -95.533), 'yellow medicine': (44.717, -95.917),
+                                        'lac qui parle': (45.000, -96.167), 'swift': (45.283, -95.650),
+                                        'kandiyohi': (45.167, -94.983), 'meeker': (45.083, -94.533),
+                                        'mcleod': (44.833, -94.267), 'sibley': (44.583, -94.217),
+                                        'scott': (44.660, -93.470), 'carver': (44.807, -93.798),
+                                        'wright': (45.168, -93.965), 'sherburne': (45.440, -93.767),
+                                        'isanti': (45.487, -93.247), 'chisago': (45.458, -92.891),
+                                        'pine': (46.083, -92.783), 'kanabec': (45.950, -93.300),
+                                        'mille lacs': (46.017, -93.650), 'benton': (45.700, -94.000),
+                                        'morrison': (46.017, -94.317), 'todd': (46.167, -94.933),
+                                        'wadena': (46.433, -95.000), 'otter tail': (46.417, -95.700),
+                                        'douglas': (45.933, -95.433), 'stevens': (45.567, -96.000),
+                                        'traverse': (45.767, -96.517), 'big stone': (45.467, -96.433),
+                                        'wilkin': (46.350, -96.500), 'clay': (46.900, -96.450),
+                                        'norman': (47.317, -96.367), 'mahnomen': (47.317, -95.867),
+                                        'polk': (47.783, -96.183), 'red lake': (47.867, -96.050),
+                                        'pennington': (48.117, -96.050), 'marshall': (48.400, -96.200),
+                                        'kittson': (48.767, -96.833), 'roseau': (48.833, -95.767),
+                                        'lake of the woods': (48.633, -94.867), 'koochiching': (48.267, -93.683),
+                                        'beltrami': (47.717, -94.917), 'clearwater': (47.583, -95.367),
+                                        'hubbard': (47.017, -94.917), 'itasca': (47.500, -93.500),
+                                        'carlton': (46.583, -92.633), 'lake': (47.517, -91.183),
+                                        'cook': (47.800, -90.667), 'wabasha': (44.383, -92.033),
+                                        'freeborn': (43.650, -93.350), 'becker': (46.850, -95.717),
+                                    }
+                                    if county in county_centers:
+                                        lat, lon = county_centers[county]
+                                
+                                # Skip if still no coordinates
+                                if lat is None:
+                                    lat, lon = 46.450, -94.150  # Default to central MN
                                 
                                 repeater = {
-                                    'call': row.get('FCC Callsign', 'N0CALL'),
+                                    'call': callsign,
                                     'location': location_name,
                                     'output': f"{output_freq:.4f}",
-                                    'input': f"{input_freq:.4f}",
+                                    'input': f"{input_freq:.4f}" if input_freq > 0 else f"{output_freq:.4f}",
                                     'tone': tone,
                                     'lat': lat,
                                     'lon': lon
@@ -1527,6 +1906,53 @@ class TowerWitchTkinter:
                                 
                             except (ValueError, KeyError) as e:
                                 continue
+                        
+                        else:
+                            # Radio Reference county format
+                            category = row.get('Agency/Category', '').lower()
+                            tag = row.get('Tag', '').lower()
+                            
+                            if 'amateur' in category or 'ham' in tag:
+                                try:
+                                    output_freq = float(row.get('Frequency Output', '0'))
+                                    input_freq = float(row.get('Frequency Input', '0'))
+                                    
+                                    # Skip non-repeater frequencies
+                                    if output_freq == 0 or input_freq == 0:
+                                        continue
+                                    
+                                    # Extract tone (handle various formats)
+                                    tone_str = row.get('PL Input Tone', row.get('PL Output Tone', 'CSQ'))
+                                    tone = tone_str.replace(' PL', '').replace('CSQ', '0.0')
+                                    
+                                    # Find location coordinates
+                                    location_name = row.get('Description', 'Unknown')
+                                    lat, lon = None, None
+                                    location_lower = location_name.lower()
+                                    
+                                    # Try known locations match
+                                    for city_key, coords in known_locations.items():
+                                        if city_key in location_lower:
+                                            lat, lon = coords
+                                            break
+                                    
+                                    # Fallback to Crow Wing County if no match
+                                    if lat is None:
+                                        lat, lon = 46.450, -94.150
+                                    
+                                    repeater = {
+                                        'call': row.get('FCC Callsign', 'N0CALL'),
+                                        'location': location_name,
+                                        'output': f"{output_freq:.4f}",
+                                        'input': f"{input_freq:.4f}",
+                                        'tone': tone,
+                                        'lat': lat,
+                                        'lon': lon
+                                    }
+                                    all_repeaters.append(repeater)
+                                    
+                                except (ValueError, KeyError) as e:
+                                    continue
                 
                 if all_repeaters:
                     print(f"[OK] Loaded {len(all_repeaters)} amateur repeaters from {csv_file}")
@@ -1696,6 +2122,140 @@ class TowerWitchTkinter:
             else:
                 self.skywarn_tree.set(item, 'Call Sign', f"[FAR] {repeater['call']}")
 
+    def build_repeater_coordinate_cache(self):
+        """Build a cache of repeater coordinates from existing amateur data
+        
+        Handles club callsigns with multiple towers at different locations by:
+        - Primary key: frequency (most specific, unique per repeater)
+        - Secondary key: callsign + location (for cross-mode matching)
+        - Location name cache for geocoding assistance
+        """
+        cache = {}
+        location_cache = {}  # Track known location coordinates
+        
+        # Known locations with coordinates
+        known_locations = {
+            'brainerd': (46.358, -94.201),
+            'crosslake': (46.660, -94.107),
+            'pequot': (46.603, -94.312),
+            'crosby': (46.484, -93.957),
+            'nisswa': (46.521, -94.289),
+            'baxter': (46.345, -94.263),
+            'aitkin': (46.533, -93.717),
+            'pine river': (46.718, -94.397),
+            'pillager': (46.344, -94.482),
+        }
+        
+        # Load from local repeater CSV files
+        repeater_files = [
+            'data/crow_wing_county_radio_reference.csv',
+            'data/cass_county_radio_reference.csv',
+        ]
+        
+        for csv_file in repeater_files:
+            file_path = os.path.join(os.path.dirname(__file__), csv_file)
+            if not os.path.exists(file_path):
+                continue
+                
+            try:
+                with open(file_path, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        category = row.get('Agency/Category', '').lower()
+                        tag = row.get('Tag', '').lower()
+                        
+                        if 'amateur' in category or 'ham' in tag:
+                            try:
+                                call = row.get('FCC Callsign', '').strip()
+                                output_freq = row.get('Frequency Output', '0')
+                                location_name = row.get('Description', 'Unknown').lower()
+                                
+                                # Match location to known coordinates
+                                lat, lon = None, None
+                                for loc_key, coords in known_locations.items():
+                                    if loc_key in location_name:
+                                        lat, lon = coords
+                                        break
+                                
+                                # Fallback to central Crow Wing County
+                                if lat is None:
+                                    lat, lon = 46.450, -94.150
+                                
+                                # Cache by frequency (PRIMARY - most specific)
+                                if output_freq and float(output_freq) > 0:
+                                    freq_key = f"{float(output_freq):.3f}"
+                                    cache[freq_key] = (lat, lon)
+                                
+                                # Cache by callsign + location for multi-site clubs
+                                if call and location_name:
+                                    # Extract key location word
+                                    for loc_key in known_locations.keys():
+                                        if loc_key in location_name:
+                                            composite_key = f"{call}:{loc_key}"
+                                            cache[composite_key] = (lat, lon)
+                                            break
+                                
+                                # Build location name cache for geocoding assistance
+                                for loc_key in known_locations.keys():
+                                    if loc_key in location_name:
+                                        location_cache[loc_key] = (lat, lon)
+                                        break
+                                    
+                            except (ValueError, KeyError):
+                                continue
+            except Exception as e:
+                print(f"[WARN] Error building coordinate cache from {csv_file}: {e}")
+        
+        # Store location cache for geocoding assistance
+        self.location_cache = location_cache
+        return cache
+
+    def geocode_location(self, city, county, state='Minnesota'):
+        """Geocode a city/county location using Nominatim (OpenStreetMap)"""
+        try:
+            # First check if we have this location in our local cache
+            if hasattr(self, 'location_cache') and city:
+                city_lower = city.lower()
+                for loc_key, coords in self.location_cache.items():
+                    if loc_key in city_lower:
+                        return coords
+            
+            # Build query - try city first, fallback to county
+            queries = []
+            if city and city.strip():
+                queries.append(f"{city}, {county} County, {state}")
+                queries.append(f"{city}, {state}")
+            if county and county.strip():
+                queries.append(f"{county} County, {state}")
+            
+            headers = {
+                'User-Agent': 'TowerWitch-Amateur-Radio-App/1.0'
+            }
+            
+            for query in queries:
+                try:
+                    url = f"https://nominatim.openstreetmap.org/search?format=json&q={parse.quote(query)}&limit=1"
+                    req = request.Request(url, headers=headers)
+                    
+                    with request.urlopen(req, timeout=3) as response:
+                        data = json.loads(response.read().decode())
+                        
+                        if data and len(data) > 0:
+                            lat = float(data[0]['lat'])
+                            lon = float(data[0]['lon'])
+                            # Small delay to respect rate limiting
+                            time.sleep(0.1)
+                            return lat, lon
+                except:
+                    continue
+            
+            # Fallback to approximate Minnesota center
+            return 46.0, -94.0
+            
+        except Exception as e:
+            print(f"[WARN] Geocoding failed for {city}, {county}: {e}")
+            return 46.0, -94.0
+
     def load_fusion_data(self):
         """Load Yaesu System Fusion repeater data from CSV"""
         fusion_file = os.path.join(os.path.dirname(__file__), "data/fusion_repeater_boook.csv")
@@ -1709,9 +2269,17 @@ class TowerWitchTkinter:
             return
         
         try:
+            print("[INFO] Loading Fusion repeater data...")
+            
+            # Build coordinate cache from existing amateur repeater data
+            coord_cache = self.build_repeater_coordinate_cache()
+            print(f"[OK] Built coordinate cache with {len(coord_cache)} entries")
+            
             with open(fusion_file, 'r') as f:
                 reader = csv.DictReader(f)
                 fusion_repeaters = []
+                geocode_count = 0
+                cache_hit_count = 0
                 
                 for row in reader:
                     try:
@@ -1733,26 +2301,76 @@ class TowerWitchTkinter:
                         
                         # Build location string with city and county
                         location_parts = []
-                        if row.get('Location'):
-                            location_parts.append(row['Location'])
-                        if row.get('County'):
-                            location_parts.append(row['County'])
+                        city = row.get('Location', '').strip()
+                        county = row.get('County', '').strip()
+                        call = row.get('Call', '').strip()
+                        
+                        if city:
+                            location_parts.append(city)
+                        if county:
+                            location_parts.append(county)
                         location = ', '.join(location_parts) if location_parts else 'Unknown'
                         
                         # Get modes
                         modes = row.get('Modes', 'FM Fusion')
                         
+                        # Try to get coordinates using multi-tier lookup
+                        lat, lon = None, None
+                        
+                        # TIER 1: Match by frequency (most specific - same repeater)
+                        if output_freq:
+                            freq_key = f"{float(output_freq):.3f}"
+                            if freq_key in coord_cache:
+                                lat, lon = coord_cache[freq_key]
+                                cache_hit_count += 1
+                        
+                        # TIER 2: Match by callsign + location (for multi-site clubs like W0UJ)
+                        if lat is None and call and city:
+                            city_lower = city.lower()
+                            # Try each known location
+                            for loc_key in ['brainerd', 'crosslake', 'crosby', 'nisswa', 'pequot', 
+                                          'baxter', 'aitkin', 'pine river', 'pillager']:
+                                if loc_key in city_lower:
+                                    composite_key = f"{call}:{loc_key}"
+                                    if composite_key in coord_cache:
+                                        lat, lon = coord_cache[composite_key]
+                                        cache_hit_count += 1
+                                        break
+                        
+                        # TIER 3: Check location cache for known location names
+                        if lat is None and hasattr(self, 'location_cache') and city:
+                            city_lower = city.lower()
+                            for loc_key, coords in self.location_cache.items():
+                                if loc_key in city_lower:
+                                    lat, lon = coords
+                                    cache_hit_count += 1
+                                    break
+                        
+                        # TIER 4: Use county center as fallback (NO geocoding API calls)
+                        if lat is None:
+                            # Use county or state center as fallback
+                            county_centers = {
+                                'crow wing': (46.450, -94.150),
+                                'cass': (47.000, -94.300),
+                                'hennepin': (44.977, -93.265),
+                                'ramsey': (44.953, -93.090),
+                                'anoka': (45.261, -93.450),
+                                'dakota': (44.767, -93.277),
+                                'olmsted': (43.967, -92.458),
+                            }
+                            county_lower = county.lower() if county else ''
+                            lat, lon = county_centers.get(county_lower, (46.0, -94.0))  # Minnesota center
+                            # Not counted as geocode since it's static fallback
+                        
                         repeater = {
-                            'call': row.get('Call', 'N0CALL'),
+                            'call': call if call else 'N0CALL',
                             'location': location,
                             'output': output_freq,
                             'input': input_freq,
                             'tone': tone,
                             'modes': modes,
-                            # Use approximate Minnesota center coordinates for now
-                            # In a real implementation, you'd geocode the locations
-                            'lat': 46.0,  # Approximate center of MN
-                            'lon': -94.0
+                            'lat': lat,
+                            'lon': lon
                         }
                         fusion_repeaters.append(repeater)
                         
@@ -1760,6 +2378,7 @@ class TowerWitchTkinter:
                         continue
                 
                 print(f"[OK] Loaded {len(fusion_repeaters)} Fusion repeaters from CSV")
+                print(f"[OK] Coordinate cache hits: {cache_hit_count}/{len(fusion_repeaters)} (no API calls)")
                 
                 # Calculate distances and sort by proximity
                 repeater_distances = []
@@ -1789,6 +2408,210 @@ class TowerWitchTkinter:
                 
         except Exception as e:
             print(f"[ERROR] Error loading Fusion data: {e}")
+    
+    def load_dmr_dstar_data(self):
+        """Load DMR and D-Star repeater data from CSV or Radio Reference"""
+        # Clear existing data
+        for item in self.dmr_dstar_tree.get_children():
+            self.dmr_dstar_tree.delete(item)
+        
+        # Try loading from Radio Reference CSV files
+        repeater_files = [
+            'data/crow_wing_county_radio_reference.csv',
+            'data/cass_county_radio_reference.csv',
+        ]
+        
+        # Build coordinate cache for lookups
+        coord_cache = self.build_repeater_coordinate_cache()
+        
+        dmr_dstar_repeaters = []
+        
+        for csv_file in repeater_files:
+            file_path = os.path.join(os.path.dirname(__file__), csv_file)
+            if not os.path.exists(file_path):
+                continue
+                
+            try:
+                with open(file_path, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        category = row.get('Agency/Category', '').lower()
+                        tag = row.get('Tag', '').lower()
+                        mode = row.get('Mode', '').upper()
+                        
+                        # Look for DMR or D-Star repeaters
+                        if ('amateur' in category or 'ham' in tag) and (mode == 'DMR' or 'dstar' in mode.lower() or 'd-star' in mode.lower()):
+                            try:
+                                output_freq = row.get('Frequency Output', '0')
+                                input_freq = row.get('Frequency Input', '0')
+                                
+                                if not output_freq or float(output_freq) == 0:
+                                    continue
+                                
+                                call = row.get('FCC Callsign', '').strip()
+                                location_name = row.get('Description', 'Unknown')
+                                
+                                # Get CC/ID info from tone fields for DMR
+                                cc_id = ''
+                                if mode == 'DMR':
+                                    tone_info = row.get('PL Output Tone', row.get('PL Input Tone', ''))
+                                    if 'CC' in tone_info or 'TG' in tone_info:
+                                        cc_id = tone_info
+                                
+                                # Get coordinates from cache or location lookup
+                                lat, lon = None, None
+                                freq_key = f"{float(output_freq):.3f}"
+                                if freq_key in coord_cache:
+                                    lat, lon = coord_cache[freq_key]
+                                elif call and call in coord_cache:
+                                    lat, lon = coord_cache[call]
+                                else:
+                                    # Use location-based lookup
+                                    if 'brainerd' in location_name.lower():
+                                        lat, lon = 46.358, -94.201
+                                    elif 'crosslake' in location_name.lower():
+                                        lat, lon = 46.660, -94.107
+                                    elif 'pequot' in location_name.lower():
+                                        lat, lon = 46.603, -94.312
+                                    elif 'crosby' in location_name.lower():
+                                        lat, lon = 46.484, -93.957
+                                    else:
+                                        lat, lon = 46.450, -94.150
+                                
+                                repeater = {
+                                    'call': call if call else 'N0CALL',
+                                    'location': location_name,
+                                    'output': output_freq,
+                                    'input': input_freq if input_freq else output_freq,
+                                    'mode': mode,
+                                    'cc_id': cc_id if cc_id else 'N/A',
+                                    'lat': lat,
+                                    'lon': lon
+                                }
+                                dmr_dstar_repeaters.append(repeater)
+                                
+                            except (ValueError, KeyError) as e:
+                                continue
+            except Exception as e:
+                print(f"[WARN] Error loading DMR/D-Star from {csv_file}: {e}")
+        
+        if dmr_dstar_repeaters:
+            print(f"[OK] Loaded {len(dmr_dstar_repeaters)} DMR/D-Star repeaters")
+            
+            # Calculate distances and sort by proximity
+            repeater_distances = []
+            for repeater in dmr_dstar_repeaters:
+                distance = self.calculate_distance(self.last_lat, self.last_lon,
+                                                 repeater['lat'], repeater['lon'])
+                bearing = self.calculate_bearing(self.last_lat, self.last_lon,
+                                               repeater['lat'], repeater['lon'])
+                repeater_distances.append((distance, bearing, repeater))
+            
+            # Sort by distance
+            repeater_distances.sort(key=lambda x: x[0])
+            
+            # Populate tree
+            for distance, bearing, repeater in repeater_distances:
+                values = (
+                    repeater['call'],
+                    repeater['location'],
+                    f"{repeater['output']} MHz",
+                    f"{repeater['input']} MHz",
+                    repeater['mode'],
+                    repeater['cc_id'],
+                    f"{distance:.1f} mi",
+                    f"{bearing:.0f}°"
+                )
+                self.dmr_dstar_tree.insert('', 'end', values=values)
+        else:
+            print("[INFO] No DMR/D-Star repeaters found in local data")
+            # Add info message
+            self.dmr_dstar_tree.insert('', 'end', values=(
+                '', 'No DMR/D-Star repeaters in loaded data', '', '', '', '', '', ''
+            ))
+
+    def load_noaa_weather_data(self):
+        """Load NOAA Weather Radio station data for Minnesota"""
+        # Clear existing data
+        for item in self.noaa_tree.get_children():
+            self.noaa_tree.delete(item)
+        
+        # Minnesota NOAA Weather Radio Stations
+        # Data from https://www.weather.gov/nwr/stations?State=MN
+        mn_noaa_stations = [
+            # Format: (city, frequency, coverage_area, lat, lon)
+            ('Alexandria', '162.475', 'Douglas, Pope, Todd, Grant, Stevens counties', 45.8852, -95.3772),
+            ('Baudette', '162.550', 'Lake of the Woods, Koochiching, Beltrami counties', 48.7128, -94.6103),
+            ('Bemidji', '162.400', 'Beltrami, Clearwater, Hubbard counties', 47.4736, -94.8803),
+            ('Brainerd', '162.550', 'Crow Wing, Cass, Aitkin, Morrison counties', 46.3580, -94.2008),
+            ('Crookston', '162.550', 'Polk, Norman, Clay, Red Lake counties', 47.7741, -96.6078),
+            ('Detroit Lakes', '162.400', 'Becker, Otter Tail, Wadena counties', 46.8172, -95.8453),
+            ('Duluth', '162.550', 'St. Louis, Carlton, Lake, Cook counties', 46.7867, -92.1005),
+            ('Ely', '162.425', 'Lake, Cook, northern St. Louis counties', 47.9032, -91.8671),
+            ('Fairmont', '162.500', 'Martin, Faribault, Jackson, Watonwan counties', 43.6524, -94.4608),
+            ('Fergus Falls', '162.475', 'Otter Tail, Wilkin, Grant counties', 46.2830, -96.0776),
+            ('Grand Marais', '162.450', 'Cook, Lake counties', 47.7505, -90.3343),
+            ('Grand Rapids', '162.525', 'Itasca, Aitkin, Cass counties', 47.2369, -93.5302),
+            ('Hibbing', '162.475', 'Northern St. Louis, Itasca counties', 47.4271, -92.9377),
+            ('International Falls', '162.400', 'Koochiching, northern St. Louis counties', 48.6019, -93.4105),
+            ('Jackson', '162.425', 'Jackson, Nobles, Cottonwood, Martin counties', 43.6205, -94.9869),
+            ('Mankato', '162.475', 'Blue Earth, Nicollet, Le Sueur, Waseca counties', 44.1636, -94.0000),
+            ('Marshall', '162.425', 'Lyon, Lincoln, Murray, Yellow Medicine counties', 44.4469, -95.7883),
+            ('Minneapolis', '162.550', 'Hennepin, Ramsey, Anoka, Washington counties', 44.9778, -93.2650),
+            ('Montevideo', '162.450', 'Chippewa, Swift, Lac qui Parle, Yellow Medicine counties', 44.9458, -95.7231),
+            ('New Ulm', '162.400', 'Brown, Nicollet, Sibley, Renville counties', 44.3124, -94.4608),
+            ('Owatonna', '162.400', 'Steele, Dodge, Waseca, Freeborn counties', 44.0958, -93.2260),
+            ('Park Rapids', '162.475', 'Hubbard, Wadena, Becker counties', 46.9219, -95.0586),
+            ('Pipestone', '162.500', 'Pipestone, Rock, Murray, Lincoln counties', 44.0066, -96.3178),
+            ('Red Wing', '162.500', 'Goodhue, Dakota, Wabasha, Pierce (WI) counties', 44.5624, -92.5338),
+            ('Redwood Falls', '162.475', 'Redwood, Brown, Renville, Lyon counties', 44.5391, -95.1169),
+            ('Rochester', '162.400', 'Olmsted, Dodge, Mower, Fillmore counties', 43.9667, -92.4580),
+            ('St. Cloud', '162.475', 'Stearns, Benton, Sherburne counties', 45.5579, -94.1632),
+            ('St. James', '162.550', 'Watonwan, Martin, Jackson, Blue Earth counties', 43.9880, -94.6272),
+            ('St. Peter', '162.525', 'Nicollet, Le Sueur, Sibley counties', 44.3236, -93.9578),
+            ('Thief River Falls', '162.475', 'Pennington, Marshall, Red Lake counties', 48.1191, -96.1811),
+            ('Two Harbors', '162.500', 'Lake, St. Louis (northeast) counties', 47.0227, -91.6707),
+            ('Virginia', '162.400', 'St. Louis (north-central), Itasca counties', 47.5233, -92.5366),
+            ('Willmar', '162.550', 'Kandiyohi, Meeker, Renville counties', 45.1219, -95.0433),
+            ('Winona', '162.475', 'Winona, Wabasha, Fillmore, Houston counties', 44.0499, -91.6393),
+            ('Worthington', '162.450', 'Nobles, Jackson, Rock, Murray counties', 43.6199, -95.5969),
+        ]
+        
+        # Calculate distances and sort by proximity (nearest first for SDR reception)
+        station_distances = []
+        for city, freq, coverage, lat, lon in mn_noaa_stations:
+            distance = self.calculate_distance(self.last_lat, self.last_lon, lat, lon)
+            station_distances.append((distance, city, freq, coverage, lat, lon))
+        
+        # Sort by distance (nearest stations are most likely receivable)
+        station_distances.sort(key=lambda x: x[0])
+        
+        # Populate tree with distance info
+        for distance, city, freq, coverage, lat, lon in station_distances:
+            # More granular signal strength indicator for SDR reception
+            # NOAA transmitters are typically 300-1000 watts
+            if distance < 15:
+                signal = "Very Strong"
+            elif distance < 30:
+                signal = "Strong"
+            elif distance < 50:
+                signal = "Good"
+            elif distance < 75:
+                signal = "Moderate"
+            elif distance < 100:
+                signal = "Weak"
+            else:
+                signal = "Very Weak"
+            
+            values = (
+                city,
+                f"{freq} MHz",
+                f"{coverage} ({distance:.1f} mi)",
+                signal
+            )
+            self.noaa_tree.insert('', 'end', values=values)
+        
+        print(f"[OK] Loaded {len(mn_noaa_stations)} NOAA Weather Radio stations for Minnesota")
     
     def load_simplex_data(self):
         """Load simplex frequency data"""
@@ -2711,4 +3534,5 @@ def main():
             app.gps_worker.stop()
 
 if __name__ == "__main__":
+    main()
     main()

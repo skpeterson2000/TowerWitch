@@ -1,0 +1,19 @@
+{
+  "brainerd|crow wing|minnesota": {"lat": 46.358, "lon": -94.2008},
+  "crosslake|crow wing|minnesota": {"lat": 46.6619, "lon": -94.1069},
+  "nisswa|crow wing|minnesota": {"lat": 46.5216, "lon": -94.2883},
+  "pequot lakes|crow wing|minnesota": {"lat": 46.6038, "lon": -94.3105},
+  "baxter|crow wing|minnesota": {"lat": 46.3441, "lon": -94.2675},
+  "pillager|cass|minnesota": {"lat": 46.3519, "lon": -94.4766},
+  "pine river|cass|minnesota": {"lat": 46.7280, "lon": -94.3947},
+  "walker|cass|minnesota": {"lat": 47.1013, "lon": -94.5886},
+  "crow wing|crow wing|minnesota": {"lat": 46.5, "lon": -94.0},
+  "cass|cass|minnesota": {"lat": 47.0, "lon": -94.3},
+  "minneapolis|hennepin|minnesota": {"lat": 44.9778, "lon": -93.265},
+  "st paul|ramsey|minnesota": {"lat": 44.9537, "lon": -93.09},
+  "duluth|st. louis|minnesota": {"lat": 46.7867, "lon": -92.1005},
+  "rochester|olmsted|minnesota": {"lat": 43.9667, "lon": -92.458},
+  "crown|isanti|minnesota": {"lat": 45.63, "lon": -93.33},
+  "cloquet|carlton|minnesota": {"lat": 46.7213, "lon": -92.4593},
+  "ramsey|anoka|minnesota": {"lat": 45.2611, "lon": -93.4499}
+}
