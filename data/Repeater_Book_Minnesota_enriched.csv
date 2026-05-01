@@ -1,0 +1,388 @@
+Output Freq,Input Freq,Offset,Uplink Tone,Downlink Tone,Call,Location,County,State,Modes,Digital Access,Latitude,Longitude,Match Method
+1287.1,1267.1,-,,,KE0MVE,Ramsey,Anoka,Minnesota,DSTAR ,,45.27,-93.242,county_fallback
+1287,1267,-,,,W0ANA,Ham Lake,Anoka,Minnesota,DSTAR ,,45.27,-93.242,county_fallback
+1285.5,1265.5,-,,,KA0JSW,White Bear Lake,Ramsey,Minnesota,DSTAR ,,45.015,-93.1,county_fallback
+1285,1265,-,,,W0MR,Maplewood,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+1283.5,1263.5,-,,,KD0JOS,Chaska,Carver,Minnesota,DSTAR ,,44.807,-93.798,county_fallback
+1283.3,1271.3,-,,,KD0JOU,Maple Plain,Hennepin,Minnesota,DSTAR ,,44.977,-93.265,county_fallback
+1282.5,1262.5,-,,,KD0JOT,Chaska,Carver,Minnesota,DSTAR ,,44.807,-93.798,county_fallback
+1253.25,1233.25,-,,,N0MNB,New Brighton,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+1250,427.25,s,,,N0MNB,New Brighton,Ramsey,Minnesota,ATV ,,45.015,-93.1,county_fallback
+927.925,902.925,-,162.2,162.2,NH7CY,Saint Paul - Como Park,Ramsey,Minnesota,FM AllStar DMR P-25 ,11700,45.015,-93.1,county_fallback
+927.9,902.9,-,162.2,162.2,NH7CY,Saint Paul,Ramsey,Minnesota,FM DMR P-25 ,11700,45.015,-93.1,county_fallback
+927.6,902.6,-,114.8,,KB0QYC,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+927.4875,902.4875,-,103.5,,KB0QYC,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+926.975,914.975,-,123,123,KB0FAE,Wolf Lake,Becker,Minnesota,FM ,,46.85,-95.717,county_fallback
+919.1,444.95,s,CSQ,,K0LAV,Gem Lake,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+910.25,885.25,-,,,N0MNB,New Brighton,Ramsey,Minnesota,ATV ,,45.015,-93.1,county_fallback
+444.975,449.975,+,114.8,114.8,K0MSP,Ramsey,Anoka,Minnesota,FM EchoLink Fusion ,,45.27,-93.242,county_fallback
+444.975,449.975,+,123,123,KB0ISW,Karlstad,Kittson,Minnesota,FM AllStar EchoLink ,,,,none
+444.975,449.975,+,100,,WA0YCT,Glenville,Freeborn,Minnesota,FM ,,,,none
+444.95,449.95,+,114.8,,AB0BW,Rochester,Olmsted,Minnesota,FM Fusion WIRES-X ,,44.022,-92.468,county_fallback
+444.95,449.95,+,114.8,,K0LAV,Gem Lake,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+444.95,449.95,+,123,123,NI0K,Bemidji,Beltrami,Minnesota,FM AllStar EchoLink ,,47.717,-94.917,county_fallback
+444.925,449.925,+,141.3,141.3,W0UJ,Crosby - Cuyuna Recreation Area,Crow Wing,Minnesota,Fusion WIRES-X ,,46.45,-94.15,county_fallback
+444.925,449.925,+,,,N0BVE,Bloomington,Hennepin,Minnesota,DMR ,11,44.977,-93.265,county_fallback
+444.875,449.875,+,123,,W0ILO,Moorhead,Clay,Minnesota,FM ,,46.9,-96.45,county_fallback
+444.85,449.85,+,141.3,141.3,W0DRK,Worthington,Nobles,Minnesota,FM Fusion ,,,,none
+444.85,449.85,+,114.8,,KG0BP,Edina,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.85,449.85,+,,,KD0YLG,Cold Spring,Stearns,Minnesota,DSTAR ,,45.558,-94.612,county_fallback
+444.85,449.85,+,141.3,141.3,AA0AC,Cloquet,Carlton,Minnesota,AllStar ,,46.583,-92.633,county_fallback
+444.825,449.825,+,,,W0MR,Maplewood,Ramsey,Minnesota,Fusion WIRES-X ,,45.015,-93.1,county_fallback
+444.8,449.8,+,146.2,,KB0MNU,Willmar,Kandiyohi,Minnesota,FM ,,,,none
+444.8,449.8,+,,,WB0WTI,Thief River Falls,Pennington,Minnesota,DMR ,6,,,none
+444.8,449.8,+,114.8,114.8,WD0HWT,Saint Paul,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+444.775,449.775,+,114.8,114.8,K0YTH,Robbinsdale,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.75,449.75,+,114.8,,K0FCC,Columbia Heights,Anoka,Minnesota,FM ,,45.27,-93.242,county_fallback
+444.75,449.75,+,CSQ,CSQ,N0WN,Bertha - Water Tower,Todd,Minnesota,FM EchoLink ,,46.167,-94.933,county_fallback
+444.725,449.725,+,100,,K5DCC,Minneapolis,Hennepin,Minnesota,FM AllStar ,,44.977,-93.265,county_fallback
+444.725,449.725,+,100,,N0KEW,Little Canada,Ramsey,Minnesota,FM AllStar ,,45.015,-93.1,county_fallback
+444.7,449.7,+,146.2,,K0SCA,Princeton,Mille Lacs,Minnesota,FM ,,46.017,-93.65,county_fallback
+444.7,449.7,+,100,100,KB0IOA,Faribault,Rice,Minnesota,Fusion WIRES-X ,,,,none
+444.675,449.675,+,136.5,,KB0NLY,Tyler,Lincoln,Minnesota,FM EchoLink Fusion ,,,,none
+444.675,449.675,+,123,123,KB0UGF,Twin Valley - Frenchmans Bluff,Norman,Minnesota,FM NXDN ,,,,none
+444.675,449.675,+,100,,W0WCL,Mankato,Blue Earth,Minnesota,FM ,,,,none
+444.65,449.65,+,114.8,114.8,N0BVE,Minneapolis,Hennepin,Minnesota,FM AllStar EchoLink P-25 ,331,44.977,-93.265,county_fallback
+444.625,449.625,+,D172,D172,N0ANC,Paynesville,Stearns,Minnesota,FM Fusion WIRES-X ,,45.558,-94.612,county_fallback
+444.625,449.625,+,,,KD0ZSA,Faribault,Rice,Minnesota,DSTAR ,,,,none
+444.6,449.6,+,131.8,131.8,N9ETD,Reno,Houston,Minnesota,FM ,,,,none
+444.6,449.6,+,,,N0KP,Cologne,Carver,Minnesota,FM ,,44.807,-93.798,county_fallback
+444.575,449.575,+,146.2,,KB0QYC,Hinckley,Pine,Minnesota,FM ,,46.083,-92.783,county_fallback
+444.575,449.575,+,136.5,,N0PQK,Faribault - Downtown,Rice,Minnesota,FM ,,,,none
+444.55,449.55,+,123,,K0GPZ,Grand Rapids,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+444.525,449.525,+,141.3,,KB0CGJ,Wabasso,Redwood,Minnesota,FM DMR EchoLink ,10,,,none
+444.525,449.525,+,D025,D025,W0MDT,Mounds View - Medtronic,Ramsey,Minnesota,FM Fusion WIRES-X ,,45.015,-93.1,county_fallback
+444.525,449.525,+,D172,D172,W0VGW,Chatfield,Fillmore,Minnesota,FM AllStar ,,,,none
+444.5,449.5,+,127.3,127.3,W0PZT,Plymouth,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.5,449.5,+,146.2,,NY0I,Ortonville,Big Stone,Minnesota,FM Fusion ,,,,none
+444.475,449.475,+,103.5,103.5,W0RRC,Richfield,Hennepin,Minnesota,FM Fusion ,,44.977,-93.265,county_fallback
+444.45,449.45,+,100,,WB0VAK,Owatonna,Steele,Minnesota,FM Fusion WIRES-X ,,,,none
+444.425,449.425,+,D025,D025,KA0KMJ,Minneapolis - UMN,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.4,449.4,+,103.5,,NG0W,Morris,Stevens,Minnesota,FM IRLP ,,,,none
+444.4,449.4,+,77,77,KD0ORH,Coon Rapids,Anoka,Minnesota,FM P-25 ,293,45.27,-93.242,county_fallback
+444.375,449.375,+,114.8,,N0FWG,Maple Plain,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.375,449.375,+,156.7,114.8,N0FWG,Buffalo,Wright,Minnesota,FM ,,45.168,-93.965,county_fallback
+444.35,449.35,+,D172,,KC0CAP,Litchfield,Meeker,Minnesota,FM AllStar ,,,,none
+444.35,449.35,+,136.5,,N0PBA,Fairmont,Martin,Minnesota,FM ,,,,none
+444.35,449.35,+,114.8,114.8,KE6WA,Eden Prairie,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.325,449.325,+,131.8,,N0BVE,Bloomington,Hennepin,Minnesota,FM AllStar EchoLink ,,44.977,-93.265,county_fallback
+444.3,449.3,+,103.5,,N0EO,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+444.3,449.3,+,114.8,114.8,W0BU,Burnsville,Dakota,Minnesota,FM Fusion WIRES-X ,,44.668,-93.065,county_fallback
+444.275,449.275,+,,,W0KXZ,Litchfield,Meeker,Minnesota,DSTAR ,,,,none
+444.25,449.25,+,136.5,136.5,KD0ORR,Racine,Olmsted,Minnesota,FM EchoLink ,,44.022,-92.468,county_fallback
+444.25,449.25,+,151.4,,W0BBN,Grand Marais,Cook,Minnesota,FM ,,,,none
+444.23125,449.23125,+,,,KF0CQX,Little Falls - Lindbergh Park,Morrison,Minnesota,DMR ,1,46.017,-94.317,county_fallback
+444.23125,449.23125,+,,,N0DZQ,Hugo,Washington,Minnesota,DMR ,3,45.05,-92.91,county_fallback
+444.225,449.225,+,100,100,W0NE,Winona,Winona,Minnesota,FM Fusion ,,,,none
+444.225,449.225,+,136.5,136.5,KC0LSR,Le Center - Courthouse,Le Sueur,Minnesota,FM Fusion WIRES-X ,,,,none
+444.2,449.2,+,,,NH7CY,Minneapolis - UMN,Hennepin,Minnesota,DMR ,11,44.977,-93.265,county_fallback
+444.2,449.2,+,151.4,151.4,K0QIK,Fergus Falls,Otter Tail,Minnesota,FM AllStar ,,,,none
+444.2,449.2,+,127.3,,WC0HC,Edina,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.2,449.2,+,103.5,,KC0RTX,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+444.175,449.175,+,127.3,,WC0HC,Golden Valley,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.15,449.15,+,D025,D025,N0ANE,Saint Peter - Water Tower,Nicollet,Minnesota,FM Fusion WIRES-X ,,,,none
+444.15,449.15,+,114.8,,KB0CIM,Cohasset,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+444.125,449.125,+,114.8,,W0EF,Edina,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+444.1,449.1,+,114.8,114.8,W0EF,Saint Louis Park,Hennepin,Minnesota,FM EchoLink Fusion ,,44.977,-93.265,county_fallback
+444.1,449.1,+,,,W0GKP,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+444.075,449.075,+,D023,D023,K9EQ,Mounds View - Medtronic,Ramsey,Minnesota,FM Fusion WIRES-X ,,45.015,-93.1,county_fallback
+444.05,449.05,+,,114.8,N0GOI,Saint Paul,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+444.025,449.025,+,141.3,141.3,KD0IAI,Wanda,Redwood,Minnesota,FM AllStar ,,,,none
+444.025,449.025,+,71.9,71.9,W0BJI,Bemidji,Beltrami,Minnesota,FM ,,47.717,-94.917,county_fallback
+444,449,+,,,KA0JSW,White Bear Lake,Ramsey,Minnesota,DSTAR ,,45.015,-93.1,county_fallback
+444,449,+,,,W0REA,Little Falls,Morrison,Minnesota,DSTAR ,,46.017,-94.317,county_fallback
+443.975,448.975,+,,,KB0ISW,Karlstad,Kittson,Minnesota,DMR ,6,,,none
+443.975,448.975,+,114.8,114.8,W0ICR,Isanti,Isanti,Minnesota,FM Fusion ,,45.487,-93.247,county_fallback
+443.95,448.95,+,,,N0NKI,White Bear Lake - Benson Airport,Ramsey,Minnesota,DMR ,1,45.015,-93.1,county_fallback
+443.925,448.925,+,110.9,110.9,W0UJ,Nisswa - WJJY Tower,Crow Wing,Minnesota,FM WIRES-X ,,46.45,-94.15,county_fallback
+443.925,448.925,+,,,K6ZC,Fairmont,Martin,Minnesota,DSTAR ,,,,none
+443.925,448.925,+,,114.8,KB0FXK,Carver,Carver,Minnesota,FM EchoLink Fusion ,,44.807,-93.798,county_fallback
+443.875,448.875,+,136.5,136.5,KE0YJJ,Roscoe Center,Goodhue,Minnesota,FM AllStar EchoLink ,,,,none
+443.86875,448.86875,+,,,KF0KYZ,Isanti,Isanti,Minnesota,DMR ,3,45.487,-93.247,county_fallback
+443.85,448.85,+,D172,D172,KD0YLG,Saint Cloud,Stearns,Minnesota,FM AllStar EchoLink Fusion ,,45.558,-94.612,county_fallback
+443.85,448.85,+,,,W0MXW,Rochester,Olmsted,Minnesota,DSTAR ,,44.022,-92.468,county_fallback
+443.825,448.825,+,141.3,141.3,KC0QNA,Green Isle - Water Tower,Sibley,Minnesota,FM P-25 ,293,,,none
+443.8,448.8,+,,,,Warren,Polk,Minnesota,FM ,,,,none
+443.8,448.8,+,114.8,114.8,KB0FJB,Minneapolis,Hennepin,Minnesota,FM AllStar EchoLink ,,44.977,-93.265,county_fallback
+443.8,448.8,+,146.2,146.2,KC0CAP,Litchfield,Meeker,Minnesota,FM P-25 ,293,,,none
+443.775,448.775,+,,,W0ANA,Ham Lake,Anoka,Minnesota,DSTAR ,,45.27,-93.242,county_fallback
+443.775,448.775,+,123,,KB0BSJ,Crookston,Polk,Minnesota,FM ,,,,none
+443.75,448.75,+,,,WA0CJU,Waseca - EOC,Waseca,Minnesota,FM ,,,,none
+443.725,448.725,+,,,KD0TGF,Medford,Steele,Minnesota,DMR ,2,,,none
+443.7,448.7,+,,,K1LEO,Rockford,Wright,Minnesota,DMR ,1,45.168,-93.965,county_fallback
+443.7,448.7,+,,,W0WX,Marshall - Avera Marshall Reg Med Ctr,Lyon,Minnesota,DMR ,1,,,none
+443.675,448.675,+,114.8,,N0GOI,Foreston,Mille Lacs,Minnesota,FM ,,46.017,-93.65,county_fallback
+443.65,448.65,+,114.8,,K2KLN,Mankato,Blue Earth,Minnesota,FM P-25 ,555,,,none
+443.65,448.65,+,85.4,85.4,KG0CV,Avon,Stearns,Minnesota,FM Fusion WIRES-X ,,45.558,-94.612,county_fallback
+443.625,448.625,+,,,K0GOI,Centerville,Anoka,Minnesota,DMR ,11,45.27,-93.242,county_fallback
+443.6,448.6,+,114.8,,N0JDH,Big Lake,Sherburne,Minnesota,FM ,,45.44,-93.767,county_fallback
+443.55,448.55,+,192.8,,KE0UAV,Silica - Beauty Mtn,Aitkin,Minnesota,FM DSTAR ,,46.533,-93.717,county_fallback
+443.55,448.55,+,114.8,,K0LTC,Maple Grove,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+443.5,448.5,+,141.3,,KB0QYC,Gilbert,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+443.5,448.5,+,,,N0RZO,Austin,Mower,Minnesota,FM ,,,,none
+443.475,448.475,+,D172,D172,KD0YLG,Becker - Excel Energy Power Plant,Sherburne,Minnesota,FM Fusion WIRES-X ,,45.44,-93.767,county_fallback
+443.45,448.45,+,123,123,K0VSC,Saint Cloud,Stearns,Minnesota,FM ,,45.558,-94.612,county_fallback
+443.425,448.425,+,,,N0YNT,Oakdale,Washington,Minnesota,FM DMR ,1,45.05,-92.91,county_fallback
+443.4,448.4,+,146.2,,KB0WJP,Silver Lake,McLeod,Minnesota,FM P-25 ,293,,,none
+443.35,448.35,+,114.8,,W8WRR,Saint Paul,Ramsey,Minnesota,FM DSTAR ,,45.015,-93.1,county_fallback
+443.35,448.35,+,,,K0WPD,Clara City,Chippewa,Minnesota,DMR ,3,,,none
+443.325,448.325,+,146.2,,KB0QYC,Isanti,Isanti,Minnesota,FM ,,45.487,-93.247,county_fallback
+443.25,448.25,+,D023,D023,W0MDT,Dayton,Hennepin,Minnesota,FM Fusion WIRES-X ,,44.977,-93.265,county_fallback
+443.225,448.225,+,,,KC0FTV,Bemidji,Beltrami,Minnesota,DMR ,6,47.717,-94.917,county_fallback
+443.2,448.2,+,,,N0AGI,Medina,Hennepin,Minnesota,DMR ,11,44.977,-93.265,county_fallback
+443.175,448.175,+,D165,D165,KD0CL,Bloomington - City Hall,Hennepin,Minnesota,FM Fusion ,,44.977,-93.265,county_fallback
+443.15,448.15,+,,,K0LTZ,White Bear Lake,Ramsey,Minnesota,DMR ,11,45.015,-93.1,county_fallback
+443.125,448.125,+,,,N0BVE,Burnsville - Buck Hill,Dakota,Minnesota,DMR ,1,44.668,-93.065,county_fallback
+443.1,448.1,+,103.5,,KB0YHX,Cloquet,Carlton,Minnesota,FM Fusion ,,46.583,-92.633,county_fallback
+443.1,448.1,+,,,N0NKI,Bloomington,Hennepin,Minnesota,DMR ,1,44.977,-93.265,county_fallback
+443.075,448.075,+,141.3,141.3,KC0QNA,Arlington - Fire Station,Sibley,Minnesota,FM DSTAR ,,,,none
+443.05,448.05,+,118.8,,N0SBU,Hugo,Washington,Minnesota,FM ,,45.05,-92.91,county_fallback
+443.025,448.025,+,114.8,114.8,KE0RTF,Blue Earth,Faribault,Minnesota,FM Fusion ,,,,none
+443,448,+,,,N0MHO,Warroad,Roseau,Minnesota,DMR ,1,,,none
+443,448,+,100,100,KA0KMJ,Minnetonka,Hennepin,Minnesota,FM EchoLink ,,44.977,-93.265,county_fallback
+443,448,+,118.8,118.8,N0YNT,Minneapolis - UMN,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+442.975,447.975,+,D612,D612,KD9RFH,Stillwater - Allen S King Plant,Washington,Minnesota,FM P-25 ,145,45.05,-92.91,county_fallback
+442.95,447.95,+,114.8,,W1AFV,Minneapolis,Hennepin,Minnesota,FM DSTAR ,,44.977,-93.265,county_fallback
+442.9,447.9,+,,,KD0JOV,Bloomington,Hennepin,Minnesota,DSTAR ,,44.977,-93.265,county_fallback
+442.875,447.875,+,,,KB0UPW,Little Canada,Ramsey,Minnesota,DMR ,11,45.015,-93.1,county_fallback
+442.85,447.85,+,,,KA0KMJ,Brooklyn Park - Fleet Farm,Hennepin,Minnesota,DMR ,1,44.977,-93.265,county_fallback
+442.825,447.825,+,,,N0GOI,Woodbury - Woodwinds Hospital,Washington,Minnesota,DMR ,11,45.05,-92.91,county_fallback
+442.825,447.825,+,136.5,,WA2OFZ,Mankato,Blue Earth,Minnesota,FM Fusion ,,,,none
+442.8,447.8,+,,,KB0QYC,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+442.725,447.725,+,110.9,110.9,W0TRJ,Aitkin,Aitkin,Minnesota,P-25 WIRES-X ,293,46.533,-93.717,county_fallback
+442.65,447.65,+,,,N0BVE,Minneapolis - Riverview Apts,Hennepin,Minnesota,DMR ,2,44.977,-93.265,county_fallback
+442.625,447.625,+,146.2,146.2,N0WT,Foley,Benton,Minnesota,FM Fusion ,,,,none
+442.6,447.6,+,156.7,156.7,AA0SA,Maplewood - 3M,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+442.575,447.575,+,,,NH7CY,Saint Paul,Dakota,Minnesota,DMR ,1,44.668,-93.065,county_fallback
+442.55,447.55,+,114.8,,KC0NPA,Saint Paul - Dakota Co Northern Service Ctr,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+442.525,447.525,+,,,KE0MVE,Ramsey,Anoka,Minnesota,DSTAR ,,45.27,-93.242,county_fallback
+442.525,447.525,+,136.5,136.5,K0JCR,Mankato  - Good Counsel Hill,Blue Earth,Minnesota,FM WIRES-X ,,,,none
+442.5,447.5,+,D351,D351,K9MLS,Saint Paul,Ramsey,Minnesota,FM AllStar EchoLink P-25 ,455,45.015,-93.1,county_fallback
+442.5,447.5,+,,,W9YZI,Princeton,Mille Lacs,Minnesota,DMR ,3,46.017,-93.65,county_fallback
+442.5,447.5,+,146.2,146.2,W9YZI,Princeton,Mille Lacs,Minnesota,FM Fusion ,,46.017,-93.65,county_fallback
+442.5,447.5,+,D065,D065,W0JPJ,Moorhead,Clay,Minnesota,FM Fusion WIRES-X ,,46.9,-96.45,county_fallback
+442.475,447.475,+,,,N0BVE,Red Wing,Goodhue,Minnesota,DMR ,2,,,none
+442.45,447.45,+,114.8,,K0AGF,Maplewood,Ramsey,Minnesota,FM Fusion ,,45.015,-93.1,county_fallback
+442.425,447.425,+,114.8,114.8,W0YC,Saint Paul - UMN,Hennepin,Minnesota,FM AllStar ,,44.977,-93.265,county_fallback
+442.4,447.4,+,100,100,KE0SKN,Kasson,Dodge,Minnesota,FM ,,,,none
+442.35,447.35,+,,,KD0WSF,Eden Prairie,Hennepin,Minnesota,DSTAR ,,44.977,-93.265,county_fallback
+442.325,447.325,+,,,KC0ARX,Saint Cloud,Stearns,Minnesota,DMR ,3,45.558,-94.612,county_fallback
+442.3,447.3,+,141.3,,KB0UJL,Waseca,Waseca,Minnesota,FM ,,,,none
+442.3,447.3,+,,,WJ0U,Cold Spring,Stearns,Minnesota,DMR ,3,45.558,-94.612,county_fallback
+442.275,447.275,+,D125,D125,W0ICR,Isanti,Isanti,Minnesota,FM DSTAR ,,45.487,-93.247,county_fallback
+442.25,447.25,+,136.5,136.5,AA0RW,Red Wing,Goodhue,Minnesota,FM Fusion WIRES-X ,,,,none
+442.225,447.225,+,118.8,,KC0FTV,Pinewood,Beltrami,Minnesota,FM EchoLink ,,47.717,-94.917,county_fallback
+442.225,447.225,+,D172,D172,W0SV,Collegeville,Stearns,Minnesota,FM Fusion ,,45.558,-94.612,county_fallback
+442.2,447.2,+,,,N0EO,Duluth,St Louis,Minnesota,DSTAR ,,47.35,-92.45,county_fallback
+442.2,447.2,+,114.8,,N0WSP,Burnsville,Dakota,Minnesota,FM Fusion ,,44.668,-93.065,county_fallback
+442.175,447.175,+,,,N0AGI,Faribault,Rice,Minnesota,DMR ,1,,,none
+442.15,447.15,+,100,100,W0NE,Winona,Winona,Minnesota,FM Fusion ,,,,none
+442.15,447.15,+,D172,D172,N0ANC,Saint Cloud - St Cloud Hospital,Stearns,Minnesota,FM AllStar Fusion WIRES-X ,,45.558,-94.612,county_fallback
+442.125,447.125,+,,,KD0JOS,Chaska,Carver,Minnesota,DSTAR ,,44.807,-93.798,county_fallback
+442.075,447.075,+,,,KD0TGF,Lemond,Steele,Minnesota,DMR ,10,,,none
+442.075,447.075,+,,,N0NAS,Arden Hills,Ramsey,Minnesota,DSTAR ,,45.015,-93.1,county_fallback
+442.025,447.025,+,,,KD0TGF,Waseca,Waseca,Minnesota,DMR ,10,,,none
+442.025,447.025,+,,,K0GOI,Saint Paul,Ramsey,Minnesota,DMR ,11,45.015,-93.1,county_fallback
+442.025,447.025,+,146.2,146.2,W0ALX,Alexandria,Douglas,Minnesota,FM Fusion ,,,,none
+421.25,439.25,s,,,WA0UNB,Wabasha,Wabasha,Minnesota,ATV ,,,,none
+224.94,223.34,-,100,CSQ,W0YC,Saint Paul - UMN,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+224.94,223.34,-,CSQ,CSQ,W0EIB,Rosemount,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+224.82,223.22,-,100,,W0YC,Ham Lake,Anoka,Minnesota,FM ,,45.27,-93.242,county_fallback
+224.8,223.2,-,D172,D172,KD0YLG,Paynesville,Stearns,Minnesota,FM AllStar EchoLink ,,45.558,-94.612,county_fallback
+224.66,223.06,-,114.8,CSQ,K0FCC,Columbia Heights,Anoka,Minnesota,FM EchoLink ,,45.27,-93.242,county_fallback
+224.64,223.04,-,CSQ,,KA0PQW,Ellendale,Steele,Minnesota,FM EchoLink ,,,,none
+224.54,222.94,-,100,,W0BU,Burnsville ,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+224.52,226.12,+,,,N0KP,Saint Peter,Nicollet,Minnesota,FM ,,,,none
+224.5,222.9,-,114.8,,K0FCC,Columbia Heights,Anoka,Minnesota,FM ,,45.27,-93.242,county_fallback
+224.24,222.64,-,146.2,,N0FWG,Rassat,Wright,Minnesota,FM ,,45.168,-93.965,county_fallback
+224.08,222.48,-,225.7,,N0VCE,Dalton,Otter Tail,Minnesota,FM ,,,,none
+223.98,222.38,-,114.8,114.8,KF0ES,Roseville,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+223.94,225.54,+,,,N0BZZ,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+223.94,222.34,-,100,,KA0PQW,Arden Hills,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+223.9,222.3,-,100,CSQ,KE0NA,Falcon Heights - UMN,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+147.39,147.99,+,,,K0NLC,Emmaville - Camp Wilderness BSA Camp,Hubbard,Minnesota,FM ,,47.017,-94.917,county_fallback
+147.39,147.99,+,,,WA0VFY,East Grand Forks,Polk,Minnesota,FM ,,,,none
+147.375,147.975,+,146.2,,KB0WJP,Hutchinson,McLeod,Minnesota,FM EchoLink ,,,,none
+147.375,147.975,+,,,N0EO,Duluth,St Louis,Minnesota,DSTAR ,,47.35,-92.45,county_fallback
+147.36,147.96,+,123,,WB0WTI,Thief River Falls,Pennington,Minnesota,FM ,,,,none
+147.36,147.96,+,141.3,141.3,W0DRK,Fulda,Murray,Minnesota,FM Fusion ,,,,none
+147.36,147.96,+,141.3,141.3,W0DRK,Fulda,Murray,Minnesota,FM ,,,,none
+147.36,147.96,+,136.5,136.5,KD0ZSA,Dennison,Goodhue,Minnesota,FM ,,,,none
+147.36,147.96,+,162.2,,N0BZZ,Cook,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.36,147.96,+,203.5,,N0BZZ,Aitkin,Aitkin,Minnesota,FM ,,46.533,-93.717,county_fallback
+147.345,147.945,+,123,123,W0BJI,Kelliher,Beltrami,Minnesota,FM ,,47.717,-94.917,county_fallback
+147.345,147.945,+,D172,D172,KD0YLG,Becker - Excel Energy Power Plant,Sherburne,Minnesota,FM AllStar EchoLink IRLP Fusion ,,45.44,-93.767,county_fallback
+147.33,147.93,+,,,N0WN,Sebeka - Water Tower,Wadena,Minnesota,FM EchoLink ,,46.433,-95.0,county_fallback
+147.33,147.93,+,151.4,,N0BZZ,Proctor,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.33,147.93,+,136.5,136.5,N0PBA,Mankato,Blue Earth,Minnesota,FM P-25 ,293,,,none
+147.33,147.93,+,103.5,,N0BZZ,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.315,147.915,+,91.5,91.5,K0GOI,North Branch,Chisago,Minnesota,FM ,,45.458,-92.891,county_fallback
+147.315,147.915,+,123,123,N0MHO,Grygla,Beltrami,Minnesota,FM AllStar EchoLink ,,47.717,-94.917,county_fallback
+147.3,147.9,+,136.5,136.5,AA0RW,Red Wing,Goodhue,Minnesota,FM ,,,,none
+147.3,147.9,+,,,K0GUV,Park Rapids,Hubbard,Minnesota,FM ,,47.017,-94.917,county_fallback
+147.3,147.9,+,146.2,146.2,K0MCR,Litchfield,Meeker,Minnesota,FM ,,,,none
+147.3,147.9,+,114.8,,KB0QYC,Isabella,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+147.285,147.885,+,123,,K0QIK,Fergus Falls,Otter Tail,Minnesota,FM ,,,,none
+147.27,147.87,+,103.5,,WB0DGK,Two Harbors,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+147.27,147.87,+,114.8,,WB0ZKB,Minneapolis,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+147.27,147.87,+,123,123,W0BJI,Lengby,Polk,Minnesota,FM ,,,,none
+147.27,147.87,+,,,KD0JOS,Chaska,Carver,Minnesota,DSTAR ,,44.807,-93.798,county_fallback
+147.255,147.855,+,141.3,141.3,W0DRK,Windom,Cottonwood,Minnesota,FM ,,,,none
+147.255,147.855,+,,,W0ALX,Sauk Centre,Stearns,Minnesota,FM ,,45.558,-94.612,county_fallback
+147.255,147.855,+,100,,KD0EBO,Rochester,Olmsted,Minnesota,FM EchoLink ,,44.022,-92.468,county_fallback
+147.24,147.84,+,146.2,146.2,KD0CI,Ogilvie,Kanabec,Minnesota,FM ,,45.95,-93.3,county_fallback
+147.24,147.84,+,136.5,,W0WCL,Mankato,Blue Earth,Minnesota,FM IRLP P-25 ,555,,,none
+147.24,147.84,+,156.7,,N0BZZ,Aurora,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.225,147.825,+,141.3,141.3,NY0I,Granite Falls - US-212 Overlook,Chippewa,Minnesota,FM ,,,,none
+147.225,147.825,+,141.3,,W0UJ,Crosby,Crow Wing,Minnesota,FM Fusion ,,46.45,-94.15,county_fallback
+147.21,147.81,+,100,100,W0BU,Burnsville,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+147.21,147.81,+,123,,N0MHO,Angle Inlet,Lake of the Woods,Minnesota,FM ,,,,none
+147.195,147.795,+,151.4,151.4,K0VRC,Ely - Water Tower,St Louis,Minnesota,FM EchoLink Fusion WIRES-X ,,47.35,-92.45,county_fallback
+147.195,147.795,+,,,W0EMZ,Detroit Lakes,Becker,Minnesota,FM ,,46.85,-95.717,county_fallback
+147.18,147.78,+,103.5,,KA0TMW,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.18,147.78,+,74.4,74.4,W0CGM,Cottage Grove,Washington,Minnesota,FM ,,45.05,-92.91,county_fallback
+147.18,147.78,+,82.5,82.5,WA0IUJ,Bemidji,Beltrami,Minnesota,FM ,,47.717,-94.917,county_fallback
+147.165,147.765,+,114.8,,KB0QYC,Coleraine,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+147.165,147.765,+,107.2,107.2,WB0RMK,Carver - Water Tower,Carver,Minnesota,FM ,,44.807,-93.798,county_fallback
+147.15,147.75,+,141.3,141.3,W0DRK,Tracy,Murray,Minnesota,FM ,,,,none
+147.15,147.75,+,114.8,114.8,W0YC,Saint Paul,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+147.15,147.75,+,123,CSQ,K0QIK,Perham,Otter Tail,Minnesota,FM ,,,,none
+147.15,147.75,+,151.4,,NT0B,Gilbert - Water Tower,St Louis,Minnesota,FM Fusion ,,47.35,-92.45,county_fallback
+147.135,147.735,+,100,,N0ANE,Saint Peter,Nicollet,Minnesota,FM Fusion ,,,,none
+147.135,147.735,+,123,,W0REA,Little Falls,Morrison,Minnesota,FM ,,46.017,-94.317,county_fallback
+147.135,147.735,+,103.5,103.5,KC0RTX,Knife River,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+147.135,147.735,+,123,123,KE0WYB,Karlstad - Wiktel Warehouse,Kittson,Minnesota,FM ,,,,none
+147.12,147.72,+,146.2,146.2,NY0I,Montevideo,Chippewa,Minnesota,FM Fusion ,,,,none
+147.12,147.72,+,CSQ,,W0MR,Maplewood,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+147.12,147.72,+,,,N0AGX,Hibbing - Water Tower,St Louis,Minnesota,FM Fusion ,,47.35,-92.45,county_fallback
+147.12,147.72,+,123,,KB0BSJ,Crookston,Polk,Minnesota,FM ,,,,none
+147.12,147.72,+,123,CSQ,N0WN,Bertha - Water Tower,Todd,Minnesota,FM ,,46.167,-94.933,county_fallback
+147.105,147.705,+,,,WB0VAJ,Owatonna,Steele,Minnesota,FM EchoLink Fusion ,,,,none
+147.105,147.705,+,141.3,141.3,KD0MC,Luverne,Rock,Minnesota,FM ,,,,none
+147.105,147.705,+,123,123,W0BJI,Debs,Beltrami,Minnesota,FM EchoLink ,,47.717,-94.917,county_fallback
+147.105,147.705,+,85.4,,K0STC,Avon,Stearns,Minnesota,FM EchoLink ,,45.558,-94.612,county_fallback
+147.09,147.69,+,123,,KC0IGT,Wannaska,Roseau,Minnesota,FM EchoLink ,,,,none
+147.09,147.69,+,114.8,,N0BZZ,Silver Bay,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+147.075,147.675,+,141.3,,W0DRK,Pipestone,Pipestone,Minnesota,FM ,,,,none
+147.075,147.675,+,,,K0GPZ,Marcell,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+147.075,147.675,+,100,,KD0TGF,Lemond,Steele,Minnesota,FM ,,,,none
+147.075,147.675,+,85.4,85.4,KD0NRL,Foley,Benton,Minnesota,FM ,,,,none
+147.06,147.66,+,103.5,,K5PFF,Virginia,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.06,147.66,+,D026,D026,W0JH,Stillwater,Washington,Minnesota,FM Fusion ,,45.05,-92.91,county_fallback
+147.06,147.66,+,110.9,,KC0IPA,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+147.045,147.645,+,123,,W0BOY,Wolf Lake,Becker,Minnesota,FM ,,46.85,-95.717,county_fallback
+147.045,147.645,+,136.5,,W0WCL,Mankato,Blue Earth,Minnesota,FM ,,,,none
+147.03,146.43,-,,,W0SW,Willmar,Kandiyohi,Minnesota,FM ,,,,none
+147.03,147.63,+,114.8,114.8,KD0JOU,Maple Plain,Hennepin,Minnesota,DSTAR ,,44.977,-93.265,county_fallback
+147.03,147.63,+,141.3,CSQ,W0UJ,Crosslake,Crow Wing,Minnesota,FM ,,46.45,-94.15,county_fallback
+147.015,147.615,+,110.9,,W0VGW,Wykoff,Fillmore,Minnesota,FM EchoLink ,,,,none
+147.015,147.615,+,100,100,W0SV,Collegeville,Stearns,Minnesota,FM ,,45.558,-94.612,county_fallback
+147,146.4,-,123,,N0MHO,Roosevelt,Roseau,Minnesota,FM ,,,,none
+147,147.6,+,114.8,114.8,K0LTC,Maple Plain,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+147,147.6,+,136.5,136.5,N0PBA,Blue Earth,Faribault,Minnesota,FM ,,,,none
+146.985,146.385,-,,,W0CGM,Hastings,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+146.985,146.385,-,118.8,,KB0CIM,Cohasset,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+146.97,146.37,-,131.8,131.8,W9UP,La Crescent,Houston,Minnesota,FM Fusion WIRES-X ,,,,none
+146.97,146.37,-,,,K0HKZ,International Falls,Koochiching,Minnesota,FM EchoLink ,,,,none
+146.97,146.37,-,,114.8,K0CJD,Elk River,Sherburne,Minnesota,FM ,,45.44,-93.767,county_fallback
+146.955,146.355,-,141.3,,W0UJ,Nisswa - WJJY Tower,Crow Wing,Minnesota,FM Fusion ,,46.45,-94.15,county_fallback
+146.955,146.355,-,141.3,141.3,W0WX,Marshall - Avera Marshall Reg Med Ctr,Lyon,Minnesota,FM Fusion WIRES-X ,,,,none
+146.955,146.355,-,146.2,146.2,KD9EJA,Askov,Pine,Minnesota,FM AllStar P-25 ,5B6,46.083,-92.783,county_fallback
+146.94,146.34,-,141.3,141.3,WA0CJU,Waseca - Water Tower,Waseca,Minnesota,FM Fusion WIRES-X ,,,,none
+146.94,146.34,-,103.5,103.5,W0GKP,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+146.94,146.34,-,100,100,W0SV,Collegville - St Johns University,Stearns,Minnesota,FM ,,45.558,-94.612,county_fallback
+146.925,146.325,-,107.2,127.3,KB0UPW,Little Canada,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+146.925,146.325,-,CSQ,CSQ,N0WN,Deer Creek - Water Tower,Otter Tail,Minnesota,FM ,,,,none
+146.91,146.31,-,100,100,W0SW,Willmar,Kandiyohi,Minnesota,FM ,,,,none
+146.91,146.31,-,146.2,146.2,KD0CI,Duxbury,Pine,Minnesota,FM ,,46.083,-92.783,county_fallback
+146.91,146.31,-,103.5,,N0NKC,Big Falls,Koochiching,Minnesota,FM ,,,,none
+146.895,146.295,-,151.4,,W0BBN,Grand Marais,Cook,Minnesota,FM ,,,,none
+146.88,146.28,-,,,K0GPZ,Grand Rapids,Itasca,Minnesota,FM ,,47.5,-93.5,county_fallback
+146.88,146.28,-,100,,WA0RAX,Glenville,Freeborn,Minnesota,FM Fusion ,,,,none
+146.88,146.28,-,CSQ,,K0EPR,Eden Prairie,Hennepin,Minnesota,FM EchoLink Fusion ,,44.977,-93.265,county_fallback
+146.865,146.265,-,141.3,141.3,KB0CGJ,Wabasso,Redwood,Minnesota,FM EchoLink ,,,,none
+146.865,146.265,-,151.4,,W0BBN,Tofte,Cook,Minnesota,FM ,,,,none
+146.85,146.25,-,123,,WB0WTI,Thief River Falls,Pennington,Minnesota,FM ,,,,none
+146.85,146.25,-,,,WD0HWT,Oakdale,Washington,Minnesota,FM AllStar ,,45.05,-92.91,county_fallback
+146.835,146.235,-,131.8,131.8,W0NE,Winona,Winona,Minnesota,FM Fusion ,,,,none
+146.82,146.22,-,100,,W0MXW,Rochester,Olmsted,Minnesota,FM ,,44.022,-92.468,county_fallback
+146.82,146.22,-,127.3,127.3,W0PZT,Golden Valley,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+146.82,146.22,-,,,N0RJO,Fergus Falls,Otter Tail,Minnesota,FM ,,,,none
+146.805,146.205,-,141.3,141.3,KC0QNA,Gaylord - Water Tower,Sibley,Minnesota,FM P-25 ,293,,,none
+146.805,146.205,-,156.7,156.7,KC0QXC,Aitkin,Aitkin,Minnesota,FM P-25 ,293,46.533,-93.717,county_fallback
+146.79,146.19,-,141.3,141.3,W0DRK,Slayton - DOT on Hwy 59,Murray,Minnesota,FM Fusion ,,,,none
+146.79,146.19,-,100,,KD0ZSA,Faribault,Rice,Minnesota,FM ,,,,none
+146.79,146.19,-,146.2,146.2,W0ALX,Alexandria,Douglas,Minnesota,FM Fusion ,,,,none
+146.775,146.175,-,146.2,146.2,KD0YEQ,Princeton,Mille Lacs,Minnesota,FM ,,46.017,-93.65,county_fallback
+146.76,146.16,-,114.8,114.8,W0EF,Saint Louis Park,Hennepin,Minnesota,FM EchoLink ,,44.977,-93.265,county_fallback
+146.745,146.145,-,107.2,,N0GOI,Foreston,Mille Lacs,Minnesota,FM ,,46.017,-93.65,county_fallback
+146.73,146.13,-,146.2,,K0LQP,Madison,Lac Qui Parle,Minnesota,FM Fusion ,,,,none
+146.73,146.13,-,151.4,,W0BBN,Grand Marais - Gunflint Lake,Cook,Minnesota,FM ,,,,none
+146.73,146.13,-,114.8,,W0REA,Forest Lake,Washington,Minnesota,FM AllStar ,,45.05,-92.91,county_fallback
+146.73,146.13,-,100,,K0LQP,Dawson,Lac Qui Parle,Minnesota,FM EchoLink ,,,,none
+146.73,146.13,-,123,123,W0BJI,Bemidji,Beltrami,Minnesota,FM EchoLink ,,47.717,-94.917,county_fallback
+146.73,146.13,-,100,,W0AZR,Austin,Mower,Minnesota,FM ,,,,none
+146.715,146.115,-,141.3,,KB0UJL,Waseca,Waseca,Minnesota,FM ,,,,none
+146.7,146.1,-,127.3,118.8,WC0HC,Plymouth,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+146.7,146.1,-,127.3,127.3,WC0HC,Minneapolis,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+146.7,146.1,-,141.3,,W0UJ,Brainerd,Crow Wing,Minnesota,FM EchoLink ,,46.45,-94.15,county_fallback
+146.685,146.085,-,,,W0QQK,Ulen,Clay,Minnesota,FM ,,46.9,-96.45,county_fallback
+146.685,146.085,-,100,,NX0P,Glenville,Freeborn,Minnesota,FM EchoLink ,,,,none
+146.685,146.085,-,146.2,,W0CRC,Darwin,Meeker,Minnesota,FM EchoLink ,,,,none
+146.67,146.07,-,141.3,,K0QBI,Worthington,Nobles,Minnesota,FM Fusion ,,,,none
+146.67,146.07,-,,,WA0GWI,Cloquet,Carlton,Minnesota,FM ,,46.583,-92.633,county_fallback
+146.67,146.07,-,114.8,114.8,W0YFZ,Blaine,Anoka,Minnesota,FM ,,45.27,-93.242,county_fallback
+146.655,146.055,-,,,KC0TAF,Long Prairie,Todd,Minnesota,FM ,,46.167,-94.933,county_fallback
+146.655,146.055,-,127.3,127.3,KB0ISW,Karlstad,Kittson,Minnesota,FM Fusion WIRES-X ,,,,none
+146.655,146.055,-,151.4,,W0BBN,Grand Portage,Cook,Minnesota,FM ,,,,none
+146.64,146.04,-,100,100,W0NE,Winona,Winona,Minnesota,FM Fusion ,,,,none
+146.64,146.04,-,146.2,146.2,W0ICR,Isanti,Isanti,Minnesota,FM ,,45.487,-93.247,county_fallback
+146.64,146.04,-,,,K0QIK,Fergus Falls,Otter Tail,Minnesota,FM ,,,,none
+146.64,146.04,-,,,K0SXR,Fairmont,Martin,Minnesota,FM ,,,,none
+146.64,146.04,-,151.4,,N0OIW,Ely,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+146.625,146.025,-,100,100,W0MXW,Rochester - Mayo Clinic,Olmsted,Minnesota,FM Fusion WIRES-X ,,44.022,-92.468,county_fallback
+146.625,146.025,-,146.2,,AE0GD,Litchfield,Meeker,Minnesota,FM EchoLink ,,,,none
+146.61,146.01,-,136.5,,WB0ERN,Le Sueur,Le Sueur,Minnesota,FM Fusion ,,,,none
+146.61,146.01,-,141.3,141.3,W0REA,Isle,Kanabec,Minnesota,FM AllStar ,,45.95,-93.3,county_fallback
+146.55,147.15,+,,,,Hibbing,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+145.49,144.89,-,100,,K0HNY,Owatonna,Steele,Minnesota,FM EchoLink ,,,,none
+145.49,144.89,-,146.2,146.2,K0SCA,Big Lake,Sherburne,Minnesota,FM ,,45.44,-93.767,county_fallback
+145.47,144.87,-,123,,KA0NWV,Karlstad,Kittson,Minnesota,FM ,,,,none
+145.47,144.87,-,100,,W0AZR,Austin,Mower,Minnesota,FM ,,,,none
+145.45,144.85,-,,,N0BVE,Minnetonka,Hennepin,Minnesota,FM AllStar EchoLink ,,44.977,-93.265,county_fallback
+145.45,144.85,-,103.5,103.5,KC0RTX,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+145.45,144.85,-,,,KB0MM,Bemidji,Beltrami,Minnesota,FM ,,47.717,-94.917,county_fallback
+145.43,144.83,-,127.3,,WC0HC,Edina,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+145.41,144.81,-,114.8,,N0BZZ,Finland,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+145.41,144.81,-,100,,KC0HXC,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+145.405,144.805,-,,,W0ANA,Ham Lake,Anoka,Minnesota,DSTAR ,,45.27,-93.242,county_fallback
+145.39,144.79,-,D047,D047,W0RRC,Richfield,Hennepin,Minnesota,FM Fusion ,,44.977,-93.265,county_fallback
+145.39,144.79,-,,,KC0OQR,Bemidji,Beltrami,Minnesota,DMR ,,47.717,-94.917,county_fallback
+145.35,144.75,-,123,,W0ILO,Moorhead,Clay,Minnesota,FM ,,46.9,-96.45,county_fallback
+145.35,144.75,-,141.3,,KD0JOU,Milaca,Mille Lacs,Minnesota,FM ,,46.017,-93.65,county_fallback
+145.33,144.73,-,146.2,,K0ECM,Rush City,Chisago,Minnesota,FM AllStar ,,45.458,-92.891,county_fallback
+145.31,144.71,-,114.8,114.8,K0AGF,Saint Paul - U of St Thomas,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+145.31,144.71,-,110.9,,N0EO,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+145.29,144.69,-,114.8,114.8,K0FCC,New Brighton,Ramsey,Minnesota,FM EchoLink ,,45.015,-93.1,county_fallback
+145.27,144.67,-,D172,D172,KD0YLG,Paynesville,Stearns,Minnesota,FM AllStar EchoLink ,,45.558,-94.612,county_fallback
+145.25,144.65,-,D172,,KC0CAP,Litchfield,Meeker,Minnesota,FM Fusion WIRES-X ,,,,none
+145.25,144.65,-,,,KB0YHX,"Cloquet, MN - Community Memorial Hospital",Carlton,Minnesota,Fusion ,,46.583,-92.633,county_fallback
+145.23,144.63,-,114.8,114.8,N0BVE,Chaska,Carver,Minnesota,FM Fusion WIRES-X ,,44.807,-93.798,county_fallback
+145.21,144.61,-,114.8,114.8,W0ICR,Crown,Isanti,Minnesota,FM ,,45.487,-93.247,county_fallback
+145.19,144.59,-,D172,D172,N0ANC,Saint Cloud - Water Tower,Stearns,Minnesota,FM Fusion WIRES-X ,,45.558,-94.612,county_fallback
+145.19,144.59,-,100,,KF0SNN,Rochester,Olmsted,Minnesota,FM ,,44.022,-92.468,county_fallback
+145.19,144.59,-,100,,N0ZR,Faribault,Rice,Minnesota,FM ,,,,none
+145.17,144.57,-,100,,K0GOI,Saint Paul,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+145.15,144.55,-,CSQ,CSQ,W0JPJ,Moorhead,Clay,Minnesota,FM DMR Fusion WIRES-X ,6,46.9,-96.45,county_fallback
+145.15,144.55,-,,,KD0JOV,Golden Valley,Hennepin,Minnesota,DSTAR ,,44.977,-93.265,county_fallback
+145.13,144.53,-,141.3,,W0UJ,Brainerd,Crow Wing,Minnesota,AllStar DMR EchoLink ,7,46.45,-94.15,county_fallback
+145.11,144.51,-,146.2,,WB6AMY,Tyler,Lincoln,Minnesota,FM ,,,,none
+145.11,144.51,-,114.8,,N0TL,Minneapolis,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+53.37,52.87,-,100,,W0BU,Burnsville,Dakota,Minnesota,FM ,,44.668,-93.065,county_fallback
+53.27,52.77,-,114.8,,KD0JOS,Chaska,Carver,Minnesota,FM ,,44.807,-93.798,county_fallback
+53.15,52.65,-,103.5,,KB0QYC,Virginia,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+53.15,52.65,s,114.8,114.8,W0YC,Saint Paul,Ramsey,Minnesota,FM ,,45.015,-93.1,county_fallback
+53.13,52.63,-,103.5,,KB0QYC,Duluth,St Louis,Minnesota,FM ,,47.35,-92.45,county_fallback
+53.02,52.52,-,103.5,,KB0TNB,Two Harbors,Lake,Minnesota,FM ,,47.517,-91.183,county_fallback
+29.66,29.56,-,100,,N0BVE,Bloomington,Hennepin,Minnesota,FM ,,44.977,-93.265,county_fallback
+29.62,29.52,-,,,N0KP,Credit River,Scott,Minnesota,FM ,,44.66,-93.47,county_fallback

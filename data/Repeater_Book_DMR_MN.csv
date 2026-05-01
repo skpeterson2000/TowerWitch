@@ -1,0 +1,40 @@
+Output Freq,Input Freq,Offset,Uplink Tone,Downlink Tone,Call,Location,County,State,Modes,Digital Access
+927.925,902.925,-,162.2,162.2,NH7CY,Saint Paul - Como Park,Ramsey,Minnesota,FM AllStar DMR P-25 ,11700
+927.9,902.9,-,162.2,162.2,NH7CY,Saint Paul,Ramsey,Minnesota,FM DMR P-25 ,11700
+444.925,449.925,+,,,N0BVE,Bloomington,Hennepin,Minnesota,DMR ,11
+444.8,449.8,+,,,WB0WTI,Thief River Falls,Pennington,Minnesota,DMR ,6
+444.525,449.525,+,141.3,,KB0CGJ,Wabasso,Redwood,Minnesota,FM DMR EchoLink ,10
+444.23125,449.23125,+,,,KF0CQX,Little Falls - Lindbergh Park,Morrison,Minnesota,DMR ,1
+444.23125,449.23125,+,,,N0DZQ,Hugo,Washington,Minnesota,DMR ,3
+444.2,449.2,+,,,NH7CY,Minneapolis - UMN,Hennepin,Minnesota,DMR ,11
+443.975,448.975,+,,,KB0ISW,Karlstad,Kittson,Minnesota,DMR ,6
+443.95,448.95,+,,,N0NKI,White Bear Lake - Benson Airport,Ramsey,Minnesota,DMR ,1
+443.86875,448.86875,+,,,KF0KYZ,Isanti,Isanti,Minnesota,DMR ,3
+443.725,448.725,+,,,KD0TGF,Medford,Steele,Minnesota,DMR ,2
+443.7,448.7,+,,,K1LEO,Rockford,Wright,Minnesota,DMR ,1
+443.7,448.7,+,,,W0WX,Marshall - Avera Marshall Reg Med Ctr,Lyon,Minnesota,DMR ,1
+443.625,448.625,+,,,K0GOI,Centerville,Anoka,Minnesota,DMR ,11
+443.425,448.425,+,,,N0YNT,Oakdale,Washington,Minnesota,FM DMR ,1
+443.35,448.35,+,,,K0WPD,Clara City,Chippewa,Minnesota,DMR ,3
+443.225,448.225,+,,,KC0FTV,Bemidji,Beltrami,Minnesota,DMR ,6
+443.2,448.2,+,,,N0AGI,Medina,Hennepin,Minnesota,DMR ,11
+443.15,448.15,+,,,K0LTZ,White Bear Lake,Ramsey,Minnesota,DMR ,11
+443.125,448.125,+,,,N0BVE,Burnsville - Buck Hill,Dakota,Minnesota,DMR ,1
+443.1,448.1,+,,,N0NKI,Bloomington,Hennepin,Minnesota,DMR ,1
+443,448,+,,,N0MHO,Warroad,Roseau,Minnesota,DMR ,1
+442.875,447.875,+,,,KB0UPW,Little Canada,Ramsey,Minnesota,DMR ,11
+442.85,447.85,+,,,KA0KMJ,Brooklyn Park - Fleet Farm,Hennepin,Minnesota,DMR ,1
+442.825,447.825,+,,,N0GOI,Woodbury - Woodwinds Hospital,Washington,Minnesota,DMR ,11
+442.65,447.65,+,,,N0BVE,Minneapolis - Riverview Apts,Hennepin,Minnesota,DMR ,2
+442.575,447.575,+,,,NH7CY,Saint Paul,Dakota,Minnesota,DMR ,1
+442.5,447.5,+,,,W9YZI,Princeton,Mille Lacs,Minnesota,DMR ,3
+442.475,447.475,+,,,N0BVE,Red Wing,Goodhue,Minnesota,DMR ,2
+442.325,447.325,+,,,KC0ARX,Saint Cloud,Stearns,Minnesota,DMR ,3
+442.3,447.3,+,,,WJ0U,Cold Spring,Stearns,Minnesota,DMR ,3
+442.175,447.175,+,,,N0AGI,Faribault,Rice,Minnesota,DMR ,1
+442.075,447.075,+,,,KD0TGF,Lemond,Steele,Minnesota,DMR ,10
+442.025,447.025,+,,,KD0TGF,Waseca,Waseca,Minnesota,DMR ,10
+442.025,447.025,+,,,K0GOI,Saint Paul,Ramsey,Minnesota,DMR ,11
+145.39,144.79,-,,,KC0OQR,Bemidji,Beltrami,Minnesota,DMR ,
+145.15,144.55,-,CSQ,CSQ,W0JPJ,Moorhead,Clay,Minnesota,FM DMR Fusion WIRES-X ,6
+145.13,144.53,-,141.3,,W0UJ,Brainerd,Crow Wing,Minnesota,AllStar DMR EchoLink ,7
