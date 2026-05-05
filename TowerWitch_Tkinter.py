@@ -479,19 +479,30 @@ class TowerWitchTkinter:
 
         # Configuration
         self.config_file = os.path.join(os.path.dirname(__file__), "towerwitch_config.ini")
+        self.state_file = os.path.join(os.path.dirname(__file__), "towerwitch_state.json")
         self.load_configuration()
 
         # Initialize APIs
         self.radio_api = RadioReferenceAPI(self.api_key)
 
-        # GPS data
-        self.last_lat = 44.9778  # Default Minneapolis
-        self.last_lon = -93.2650
+        # Load saved state (position, town, etc.) - prevents Minneapolis default API calls
+        saved_state = self.load_state()
+        
+        # GPS data - use saved state or fall back to Minneapolis
+        self.last_lat = saved_state.get('last_lat', 44.9778)
+        self.last_lon = saved_state.get('last_lon', -93.2650)
         self.gps_worker = None
-        self.nearest_town = "Minneapolis, MN"  # Cache for nearest town
+        self.nearest_town = saved_state.get('nearest_town', "Minneapolis, MN")
         self.last_geocode_time = 0  # Rate limiting for geocoding (60 sec intervals)
         self.last_tower_update = 0  # Rate limiting for tower distance updates
         self.update_counter = 0  # Counter for staggered updates
+
+        # Restore window geometry if saved
+        if 'window_geometry' in saved_state:
+            try:
+                self.root.geometry(saved_state['window_geometry'])
+            except:
+                pass
 
         # Amateur radio data
         self.amateur_2m_data = []
@@ -505,23 +516,26 @@ class TowerWitchTkinter:
         self.create_widgets()
         self.setup_colored_tabs()
         self.setup_keyboard_shortcuts()
+        
+        # Load static data with saved position
+        if saved_state:
+            print(f"[OK] Restored last position: {self.last_lat:.6f}, {self.last_lon:.6f}")
+            print(f"[OK] Restored nearest town: {self.nearest_town}")
+            print("[INFO] Displaying saved data - click 'Refresh Data' to update for current location")
+        
         self.load_static_data()
         print("[DEBUG] Static data loaded")
         print("[DEBUG] About to start GPS...")
         self.start_gps()
         print("[DEBUG] GPS started")
         
-        # Get initial nearest town (in background thread)
-        threading.Thread(target=lambda: self.get_nearest_town(self.last_lat, self.last_lon), 
-                        daemon=True).start()
-        
-        # Log the staggered update schedule
-        print("[INFO] Update schedule:")
-        print("  - GPS position: Every 1 second")
-        print("  - GPS display: Every 1 second (lightweight)")
-        print("  - Nearest town: Every 60 seconds (when moved >100m)")
-        print("  - Skywarn towers: Every 20 seconds")
-        print("  - Amateur towers: Every 20 seconds (offset 10s from Skywarn)")
+        # Manual refresh mode - performance optimization for Raspberry Pi
+        print("[INFO] Running in MANUAL REFRESH mode for optimal performance")
+        print("  - GPS position: Continuous tracking")
+        print("  - GPS display: Updates automatically") 
+        print("  - Tower/Repeater data: Use 'Refresh Data' button to update")
+        print("  - Nearest town: Updates with manual refresh")
+        print("[TIP] Click 'Refresh Data' after moving to a new location")
 
         # Update datetime
         self.update_datetime()
@@ -554,6 +568,37 @@ class TowerWitchTkinter:
             print("[OK] Radio Reference API key found")
         else:
             print("[WARN] No Radio Reference API key configured")
+
+    def load_state(self):
+        """Load saved application state (last position, window geometry, etc.)"""
+        if not os.path.exists(self.state_file):
+            return {}
+        
+        try:
+            with open(self.state_file, 'r') as f:
+                state = json.load(f)
+                print(f"[OK] Loaded saved state from {self.state_file}")
+                return state
+        except Exception as e:
+            print(f"[WARN] Could not load state file: {e}")
+            return {}
+    
+    def save_state(self):
+        """Save current application state for next session"""
+        try:
+            state = {
+                'last_lat': self.last_lat,
+                'last_lon': self.last_lon,
+                'nearest_town': self.nearest_town,
+                'window_geometry': self.root.geometry(),
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            with open(self.state_file, 'w') as f:
+                json.dump(state, f, indent=2)
+            print(f"[OK] Saved application state to {self.state_file}")
+        except Exception as e:
+            print(f"[WARN] Could not save state: {e}")
 
     def create_widgets(self):
         """Create the main interface widgets"""
@@ -668,6 +713,10 @@ class TowerWitchTkinter:
     def quit_application(self):
         """Cleanly exit the application"""
         print("[OK] Shutting down TowerWitch...")
+        
+        # Save current state for next session
+        self.save_state()
+        
         if self.gps_worker:
             self.gps_worker.stop()
         self.root.quit()
@@ -733,14 +782,68 @@ class TowerWitchTkinter:
             print(f"[ERROR] Error updating tab indicators: {e}")
 
     def create_gps_tab(self):
-        """Create GPS data tab"""
+        """Create GPS data tab with navigation dashboard"""
         gps_frame = ttk.Frame(self.notebook)
         self.notebook.add(gps_frame, text="GPS")
 
-        # GPS info label - larger for touch screens
-        info_label = ttk.Label(gps_frame, text="GPS Location and Status Information",
-                              font=('Arial', 16, 'bold'))
-        info_label.pack(pady=15)
+        # GPS Navigation Dashboard - visual status panel
+        dashboard_frame = ttk.LabelFrame(gps_frame, text="GPS Navigation Dashboard", padding=10)
+        dashboard_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        
+        # Create dashboard grid (3 columns)
+        dashboard_grid = ttk.Frame(dashboard_frame)
+        dashboard_grid.pack(fill=tk.X)
+        
+        # Column 1: Fix Status
+        col1 = ttk.Frame(dashboard_grid)
+        col1.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col1, text="Fix Status", font=('Arial', 10, 'bold')).pack()
+        self.nav_fix_status = ttk.Label(col1, text="NO FIX", font=('Arial', 14, 'bold'), foreground='red')
+        self.nav_fix_status.pack()
+        
+        # Column 2: Satellites
+        col2 = ttk.Frame(dashboard_grid)
+        col2.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col2, text="Satellites", font=('Arial', 10, 'bold')).pack()
+        self.nav_satellites = ttk.Label(col2, text="0", font=('Arial', 14, 'bold'))
+        self.nav_satellites.pack()
+        
+        # Column 3: Speed
+        col3 = ttk.Frame(dashboard_grid)
+        col3.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col3, text="Speed", font=('Arial', 10, 'bold')).pack()
+        self.nav_speed = ttk.Label(col3, text="0.0 mph", font=('Arial', 14))
+        self.nav_speed.pack()
+        
+        # Second row: Heading and Altitude
+        dashboard_grid2 = ttk.Frame(dashboard_frame)
+        dashboard_grid2.pack(fill=tk.X, pady=(10, 0))
+        
+        # Column 4: Heading
+        col4 = ttk.Frame(dashboard_grid2)
+        col4.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col4, text="Heading", font=('Arial', 10, 'bold')).pack()
+        self.nav_heading = ttk.Label(col4, text="---°", font=('Arial', 14))
+        self.nav_heading.pack()
+        
+        # Column 5: Altitude
+        col5 = ttk.Frame(dashboard_grid2)
+        col5.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col5, text="Altitude", font=('Arial', 10, 'bold')).pack()
+        self.nav_altitude = ttk.Label(col5, text="--- ft", font=('Arial', 14))
+        self.nav_altitude.pack()
+        
+        # Column 6: Last Update
+        col6 = ttk.Frame(dashboard_grid2)
+        col6.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
+        ttk.Label(col6, text="Last Update", font=('Arial', 10, 'bold')).pack()
+        self.nav_last_update = ttk.Label(col6, text="--:--:--", font=('Arial', 14))
+        self.nav_last_update.pack()
+
+        # GPS detailed info label
+        info_label = ttk.Label(gps_frame, text="Detailed GPS Information",
+                              font=('Arial', 14, 'bold'))
+        info_label.pack(pady=(10, 5))
 
         # GPS data tree
         columns = ('Property', 'Value', 'Unit')
@@ -2409,22 +2512,165 @@ class TowerWitchTkinter:
         except Exception as e:
             print(f"[ERROR] Error loading Fusion data: {e}")
     
+    def approximate_location_from_name(self, location, county):
+        """Approximate coordinates from location and county names"""
+        location_lower = location.lower()
+        county_lower = county.lower() if county else ''
+        
+        # Common Minnesota cities and towns
+        city_coords = {
+            'minneapolis': (44.9778, -93.2650),
+            'saint paul': (44.9537, -93.0900),
+            'st paul': (44.9537, -93.0900),
+            'st. paul': (44.9537, -93.0900),
+            'duluth': (46.7867, -92.1005),
+            'rochester': (43.9667, -92.4580),
+            'bloomington': (44.8408, -93.2983),
+            'brooklyn park': (45.0941, -93.3563),
+            'plymouth': (45.0105, -93.4555),
+            'woodbury': (44.9239, -92.9594),
+            'maple grove': (45.0725, -93.4558),
+            'blaine': (45.1608, -93.2349),
+            'lakeville': (44.6497, -93.2427),
+            'burnsville': (44.7678, -93.2777),
+            'eden prairie': (44.8547, -93.4708),
+            'coon rapids': (45.1199, -93.2877),
+            'st cloud': (45.5579, -94.1632),
+            'brainerd': (46.3580, -94.2008),
+            'bemidji': (47.4736, -94.8803),
+            'thief river falls': (48.1169, -96.1812),
+            'marshall': (44.4469, -95.7883),
+            'mankato': (44.1636, -93.9993),
+            'moorhead': (46.8738, -96.7678),
+            'winona': (44.0499, -91.6393),
+            'albert lea': (43.6480, -93.3683),
+            'white bear lake': (45.0847, -93.0099),
+            'burnsville': (44.7678, -93.2777),
+            'medina': (45.0430, -93.5827),
+            'little falls': (45.9763, -94.3627),
+            'pine river': (46.7280, -94.3947),
+            'walker': (47.1013, -94.5886),
+            'aitkin': (46.5330, -93.7108),
+            'crosby': (46.4830, -93.9571),
+            'crosslake': (46.6619, -94.1069),
+            'pequot lakes': (46.6038, -94.3105),
+            'backus': (46.8272, -94.5068),
+            'hugo': (45.1608, -92.9955),
+            'oakdale': (44.9630, -92.9649),
+            'centerville': (45.1622, -93.0558),
+            'medford': (44.1694, -93.2452),
+            'rockford': (45.0877, -93.7341),
+            'clara city': (44.9516, -95.3647),
+            'karlstad': (48.5730, -96.5178),
+            'warroad': (48.9055, -95.3133),
+            'isanti': (45.4911, -93.2477),
+            'princeton': (45.5705, -93.5816),
+            'little canada': (45.0241, -93.0877),
+            'wabasso': (44.4061, -95.2464),
+        }
+        
+        # Check for city name match
+        for city, coords in city_coords.items():
+            if city in location_lower:
+                return coords
+        
+        # County center fallbacks
+        county_centers = {
+            'ramsey': (44.9537, -93.0900),
+            'hennepin': (44.9778, -93.2650),
+            'dakota': (44.7678, -93.2777),
+            'anoka': (45.1608, -93.2349),
+            'washington': (45.0491, -92.8288),
+            'crow wing': (46.4500, -94.1500),
+            'cass': (47.0000, -94.3000),
+            'beltrami': (47.6500, -94.9000),
+            'pennington': (48.0500, -96.0000),
+            'redwood': (44.5500, -95.2500),
+            'morrison': (46.0000, -94.3000),
+            'kittson': (48.7500, -96.7500),
+            'steele': (44.0000, -93.2500),
+            'wright': (45.1800, -93.9600),
+            'lyon': (44.4500, -95.8500),
+            'chippewa': (45.0000, -95.5000),
+        }
+        
+        if county_lower in county_centers:
+            return county_centers[county_lower]
+        
+        # Default to central Minnesota
+        return (46.0, -94.0)
+    
     def load_dmr_dstar_data(self):
         """Load DMR and D-Star repeater data from CSV or Radio Reference"""
         # Clear existing data
         for item in self.dmr_dstar_tree.get_children():
             self.dmr_dstar_tree.delete(item)
         
-        # Try loading from Radio Reference CSV files
-        repeater_files = [
-            'data/crow_wing_county_radio_reference.csv',
-            'data/cass_county_radio_reference.csv',
-        ]
-        
         # Build coordinate cache for lookups
         coord_cache = self.build_repeater_coordinate_cache()
         
         dmr_dstar_repeaters = []
+        
+        # First, try loading from dedicated Repeater Book DMR file
+        dmr_book_file = os.path.join(os.path.dirname(__file__), 'data/Repeater_Book_DMR_MN.csv')
+        if os.path.exists(dmr_book_file):
+            try:
+                with open(dmr_book_file, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        try:
+                            output_freq = row.get('Output Freq', '0').strip()
+                            input_freq = row.get('Input Freq', '0').strip()
+                            
+                            if not output_freq or float(output_freq) == 0:
+                                continue
+                            
+                            call = row.get('Call', '').strip()
+                            location_name = row.get('Location', 'Unknown').strip()
+                            county = row.get('County', '').strip()
+                            modes = row.get('Modes', 'DMR').strip()
+                            digital_access = row.get('Digital Access', '').strip()
+                            
+                            # Parse location for coordinates
+                            lat, lon = None, None
+                            location_lower = location_name.lower()
+                            
+                            # Use coordinate cache or location-based lookup
+                            if call and call in coord_cache:
+                                lat, lon = coord_cache[call]
+                            else:
+                                # Try to geocode from location name
+                                location_key = f"{location_name.split('-')[0].strip().lower()}|{county.lower()}|minnesota"
+                                if location_key in coord_cache:
+                                    lat, lon = coord_cache[location_key]
+                                else:
+                                    # Use approximate coordinates for known cities
+                                    lat, lon = self.approximate_location_from_name(location_name, county)
+                            
+                            repeater = {
+                                'call': call if call else 'N0CALL',
+                                'location': f"{location_name}, {county}" if county else location_name,
+                                'output': output_freq,
+                                'input': input_freq if input_freq else output_freq,
+                                'mode': modes,
+                                'cc_id': digital_access if digital_access else 'N/A',
+                                'lat': lat,
+                                'lon': lon
+                            }
+                            dmr_dstar_repeaters.append(repeater)
+                            
+                        except (ValueError, KeyError) as e:
+                            continue
+                            
+                print(f"[OK] Loaded {len(dmr_dstar_repeaters)} repeaters from Repeater Book DMR file")
+            except Exception as e:
+                print(f"[WARN] Error loading DMR from Repeater Book: {e}")
+        
+        # Also load from Radio Reference CSV files (for additional coverage)
+        repeater_files = [
+            'data/crow_wing_county_radio_reference.csv',
+            'data/cass_county_radio_reference.csv',
+        ]
         
         for csv_file in repeater_files:
             file_path = os.path.join(os.path.dirname(__file__), csv_file)
@@ -2738,6 +2984,8 @@ class TowerWitchTkinter:
         
         for system, value, info in grid_items:
             self.grid_tree.insert('', 'end', values=(system, value, info))
+        
+        print(f"[OK] Updated grid display for position: {self.last_lat:.6f}, {self.last_lon:.6f}")
 
     def dd_to_dm(self, lat, lon):
         """Convert decimal degrees to degrees/minutes format"""
@@ -3104,67 +3352,38 @@ class TowerWitchTkinter:
         self.gps_worker.start()
 
     def on_gps_update(self, gps_data):
-        """Handle GPS data updates with smart refresh logic"""
+        """Handle GPS data updates - MANUAL REFRESH mode (performance optimized)
+        This is called from GPS worker thread, so schedule all UI updates on main thread"""
+        if not gps_data:
+            return
+        
+        # Schedule the actual update on the main thread
+        try:
+            self.root.after(0, lambda: self._process_gps_update(gps_data))
+        except Exception as e:
+            print(f"[WARN] Could not schedule GPS update: {e}")
+    
+    def _process_gps_update(self, gps_data):
+        """Process GPS update on main thread (safe for tkinter widget updates)"""
         if gps_data:
             old_lat, old_lon = self.last_lat, self.last_lon
             self.last_lat = gps_data.get('lat', self.last_lat)
             self.last_lon = gps_data.get('lon', self.last_lon)
             
-            current_time = time.time()
-            self.update_counter += 1
-            
-            # Calculate how far we've moved
+            # Calculate how far we've moved (for display purposes only)
             distance_moved = self.calculate_distance(old_lat, old_lon, 
                                                      self.last_lat, self.last_lon)
             
-            # If this is first real GPS data (moving from demo default), reload everything immediately
+            # Check if this is first real GPS data (moving from demo default)
             is_first_real_gps = (old_lat == 44.9778 and old_lon == -93.2650) and not gps_data.get('demo', False)
             
             if is_first_real_gps:
-                print(f"[INFO] First real GPS position received: {self.last_lat:.6f}, {self.last_lon:.6f}")
-                print("[INFO] Loading tower data for actual location...")
-                # Load everything immediately - use API if available
-                if self.api_key and self.api_key != 'your_api_key_here':
-                    print("[INFO] Fetching live repeater data from Radio Reference API...")
-                    threading.Thread(target=self._fetch_and_update_live_repeaters, daemon=True).start()
-                else:
-                    # Fall back to static data
-                    threading.Thread(target=self.load_armer_data, daemon=True).start()
-                    threading.Thread(target=self.load_skywarn_data, daemon=True).start()
-                    threading.Thread(target=self.load_amateur_data, daemon=True).start()
-                
-                # Load aviation data for actual location
-                print("[INFO] Loading nearby airports for actual location...")
-                threading.Thread(target=self.load_aviation_data, daemon=True).start()
-                
-                # Force geocoding immediately
-                self.last_geocode_time = 0  # Reset to force immediate update
-                threading.Thread(target=lambda: self.get_nearest_town(self.last_lat, self.last_lon), 
-                               daemon=True).start()
-            else:
-                # Update nearest town only if moved > 5 miles AND 60 seconds have passed
-                if distance_moved > 5.0 and (current_time - self.last_geocode_time) >= 60:
-                    print(f"[INFO] Moved {distance_moved:.1f} miles, updating nearest town...")
-                    threading.Thread(target=lambda: self.get_nearest_town(self.last_lat, self.last_lon), 
-                                   daemon=True).start()
-                
-                # Update tower distances only if moved > 0.5 miles (about 800 meters)
-                # This reduces updates dramatically - only when you actually drive somewhere new
-                if distance_moved > 0.5:
-                    print(f"[INFO] Moved {distance_moved:.1f} miles, updating tower distances...")
-                    self.last_tower_update = current_time
-                    # Update all tower data with new position - use API if available
-                    if self.api_key and self.api_key != 'your_api_key_here':
-                        threading.Thread(target=self._fetch_and_update_live_repeaters, daemon=True).start()
-                    else:
-                        threading.Thread(target=self.load_armer_data, daemon=True).start()
-                        threading.Thread(target=self.load_skywarn_data, daemon=True).start()
-                        threading.Thread(target=self.load_amateur_data, daemon=True).start()
-                    
-                    # Also reload aviation data to show nearest airports
-                    print(f"[INFO] Updating nearby airports...")
-                    threading.Thread(target=self.load_aviation_data, daemon=True).start()
-
+                print(f"[INFO] First real GPS position: {self.last_lat:.6f}, {self.last_lon:.6f}")
+                print("[INFO] Click 'Refresh Data' button to load data for your location")
+            
+            # MANUAL REFRESH MODE - only update GPS display, no automatic data loading
+            # User must click "Refresh Data" button to update tower/repeater data
+            
             # Always update GPS display (lightweight operation)
             self.update_gps_display(gps_data)
             
@@ -3230,6 +3449,48 @@ class TowerWitchTkinter:
 
         for prop, value, unit in gps_items:
             self.gps_tree.insert('', 'end', values=(prop, value, unit))
+        
+        # Update Navigation Dashboard
+        try:
+            # Fix Status
+            mode = gps_data.get('mode', 0)
+            if is_demo:
+                self.nav_fix_status.config(text="DEMO MODE", foreground='#FFA500')
+            elif mode >= 3:
+                self.nav_fix_status.config(text="3D FIX", foreground='#00FF00')
+            elif mode == 2:
+                self.nav_fix_status.config(text="2D FIX", foreground='#FFFF00')
+            else:
+                self.nav_fix_status.config(text="NO FIX", foreground='#FF0000')
+            
+            # Satellites
+            sats = gps_data.get('satellites_used', 0)
+            self.nav_satellites.config(text=str(sats))
+            
+            # Speed (convert m/s to mph)
+            speed_ms = gps_data.get('speed', 0)
+            speed_mph = speed_ms * 2.23694
+            self.nav_speed.config(text=f"{speed_mph:.1f} mph")
+            
+            # Heading (track)
+            heading = gps_data.get('track', None)
+            if heading is not None:
+                # Convert heading to cardinal direction
+                directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+                idx = int((heading + 22.5) / 45) % 8
+                self.nav_heading.config(text=f"{heading:.0f}° {directions[idx]}")
+            else:
+                self.nav_heading.config(text="---°")
+            
+            # Altitude
+            self.nav_altitude.config(text=f"{alt_feet:.0f} ft")
+            
+            # Last Update
+            time_now = datetime.now().strftime("%H:%M:%S")
+            self.nav_last_update.config(text=time_now)
+            
+        except Exception as e:
+            print(f"[WARN] Error updating navigation dashboard: {e}")
 
     def update_datetime(self):
         """Update date/time display"""
@@ -3358,14 +3619,18 @@ class TowerWitchTkinter:
                 pass
 
     def refresh_all_data(self):
-        """Refresh all data sources including Radio Reference API"""
-        print("[OK] Refreshing all data...")
+        """Refresh all data sources including Radio Reference API (MANUAL REFRESH MODE)"""
+        print("[OK] Refreshing all data for current location...")
+        print(f"[INFO] Current position: {self.last_lat:.6f}, {self.last_lon:.6f}")
         
         # Update status to show we're refreshing
         self.gps_status.config(text="Refreshing data...")
         
         # Refresh in background thread to not block GUI
         def do_refresh():
+            # Update nearest town
+            self.get_nearest_town(self.last_lat, self.last_lon)
+            
             # Try to fetch from Radio Reference API
             if self.api_key and self.api_key != 'your_api_key_here':
                 print("[INFO] Fetching live data from Radio Reference API...")
@@ -3384,10 +3649,23 @@ class TowerWitchTkinter:
                 # Fall back to static data
                 self.root.after(0, self.load_static_data)
             
-            # Update GPS, grid, and ARMER displays
+            # Update all displays with current position
+            print("[INFO] Updating GPS display...")
             self.root.after(0, self.update_gps_display)
+            
+            print("[INFO] Updating grid display with current position...")
             self.root.after(0, self.update_grid_display)
+            
+            print("[INFO] Updating ARMER data...")
             self.root.after(0, self.load_armer_data)
+            
+            print("[INFO] Updating aviation data...")
+            self.root.after(0, self.load_aviation_data)
+            
+            # Save state after successful refresh
+            self.save_state()
+            
+            print("[OK] Data refresh complete!")
         
         threading.Thread(target=do_refresh, daemon=True).start()
 

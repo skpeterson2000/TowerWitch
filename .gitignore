@@ -37,6 +37,9 @@ radio_cache/
 # Configuration files with sensitive data
 towerwitch_config.ini
 
+# Application state (saved between sessions)
+towerwitch_state.json
+
 # IDE files
 .vscode/
 .idea/

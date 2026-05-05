@@ -55,6 +55,7 @@ Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha 
 122.9,0,,,Aitkin Municipal (Steve Kurtz Field) - CTAF,AIT CTAF,CSQ,,AM,BM,Airport,KAIT,CTAF
 122.8,0,,,Aitkin Municipal - UNICOM,AIT UNICOM,CSQ,,AM,BM,Airport,KAIT,UNICOM
 118.375,0,,,Aitkin Municipal - AWOS,AIT AWOS,CSQ,,AM,BM,Airport,KAIT,AWOS
+122.9,0,,,Backus Municipal - CTAF,7Y3 CTAF,CSQ,,AM,BM,Airport,7Y3,CTAF
 122.9,0,,,Walker Municipal - CTAF,Y49 CTAF,CSQ,,AM,BM,Airport,Y49,CTAF
 119.0,0,,,Walker Municipal - AWOS,Y49 AWOS,CSQ,,AM,BM,Airport,Y49,AWOS
 122.8,0,,,Owatonna Degner Regional - CTAF,OWA CTAF,CSQ,,AM,BM,Airport,KOWA,CTAF
