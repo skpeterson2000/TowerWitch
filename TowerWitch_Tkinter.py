@@ -8,12 +8,14 @@ This tkinter version provides better control over styling and colored tabs.
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import configparser
 import os
 import sys
 import json
 import csv
+import fcntl
+import tempfile
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt, atan2, degrees, tan
 import threading
@@ -215,7 +217,7 @@ class RadioReferenceAPI:
 
 class GPSWorker:
     """GPS worker with robust error handling and demo fallback"""
-    def __init__(self, callback):
+    def __init__(self, callback, send_demo_on_failure=True):
         self.callback = callback
         self.running = False
         self.thread = None
@@ -224,19 +226,18 @@ class GPSWorker:
         self.max_attempts = 12  # 4 methods × 3 tries
         self.no_fix_warned = False
         self.use_json_fallback = False
+        # When False, skip the Minneapolis demo callback if gpsd is unreachable
+        # — caller already seeded the UI with a saved last-known position.
+        self.send_demo_on_failure = send_demo_on_failure
 
     def start(self):
-        """Start GPS monitoring with fallback to demo mode"""
+        """Start GPS monitoring. The JSON-socket path uses raw sockets and
+        does not require the optional `gpsd` Python module — try it first."""
         self.running = True
-        if GPS_AVAILABLE:
-            print("[INFO] Attempting to connect to GPS...")
-            # Use JSON socket by default - same as cgps uses
-            self.use_json_fallback = True
-            self.thread = threading.Thread(target=self._gps_loop_json, daemon=True)
-            self.thread.start()
-        else:
-            print("[WARN] GPS library not available - using DEMO mode")
-            self._send_demo_data()
+        print("[INFO] Attempting to connect to gpsd via JSON socket...")
+        self.use_json_fallback = True
+        self.thread = threading.Thread(target=self._gps_loop_json, daemon=True)
+        self.thread.start()
 
     def _send_demo_data(self):
         """Send demo GPS data - Minneapolis coordinates"""
@@ -338,8 +339,11 @@ class GPSWorker:
             
         except Exception as e:
             print(f"[ERROR] Could not establish JSON socket: {e}")
-            print("[WARN] Falling back to DEMO mode")
-            self._send_demo_data()
+            if self.send_demo_on_failure:
+                print("[WARN] Falling back to DEMO mode")
+                self._send_demo_data()
+            else:
+                print("[INFO] Keeping last-known saved location on display")
 
     def _gps_loop(self):
         """GPS monitoring loop - reads actual GPS data from gpsd"""
@@ -487,7 +491,8 @@ class TowerWitchTkinter:
 
         # Load saved state (position, town, etc.) - prevents Minneapolis default API calls
         saved_state = self.load_state()
-        
+        self.has_saved_state = bool(saved_state)
+
         # GPS data - use saved state or fall back to Minneapolis
         self.last_lat = saved_state.get('last_lat', 44.9778)
         self.last_lon = saved_state.get('last_lon', -93.2650)
@@ -496,6 +501,15 @@ class TowerWitchTkinter:
         self.last_geocode_time = 0  # Rate limiting for geocoding (60 sec intervals)
         self.last_tower_update = 0  # Rate limiting for tower distance updates
         self.update_counter = 0  # Counter for staggered updates
+
+        # Position at which local CSV data was last loaded. Used to detect when
+        # the GPS has drifted far enough that data is "out of sync" and the
+        # Refresh button should flash to prompt the user.
+        self.data_lat = self.last_lat
+        self.data_lon = self.last_lon
+        self.stale_threshold_miles = 5.0
+        self._flash_after_id = None
+        self._flash_on = False
 
         # Restore window geometry if saved
         if 'window_geometry' in saved_state:
@@ -522,9 +536,24 @@ class TowerWitchTkinter:
             print(f"[OK] Restored last position: {self.last_lat:.6f}, {self.last_lon:.6f}")
             print(f"[OK] Restored nearest town: {self.nearest_town}")
             print("[INFO] Displaying saved data - click 'Refresh Data' to update for current location")
-        
+
         self.load_static_data()
         print("[DEBUG] Static data loaded")
+
+        # Seed the GPS display with the saved location so the user sees their
+        # last-known position immediately on startup, not a blank or DEMO label.
+        # First-time users (no state file) still get DEMO via GPSWorker fallback.
+        if self.has_saved_state:
+            self.update_gps_display({
+                'lat': self.last_lat,
+                'lon': self.last_lon,
+                'alt': 0.0,
+                'time': datetime.now().isoformat(),
+                'mode': 0,
+                'satellites_used': 0,
+            })
+            self.gps_status.config(text="GPS: Last Known (waiting for fix)", foreground='#FFA500')
+
         print("[DEBUG] About to start GPS...")
         self.start_gps()
         print("[DEBUG] GPS started")
@@ -654,9 +683,12 @@ class TowerWitchTkinter:
         night_mode_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Refresh button - larger and more touch-friendly
-        refresh_btn = ttk.Button(controls_frame, text="Refresh Data",
+        # Configure a "stale data" style we can swap in to make the button flash
+        # when GPS drifts too far from the position the local data was loaded for.
+        self.style.configure('Stale.TButton', background='#FF6B6B', foreground='#000000')
+        self.refresh_btn = ttk.Button(controls_frame, text="Refresh Data",
                                 command=self.refresh_all_data)
-        refresh_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
+        self.refresh_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
 
         # Fullscreen toggle button - for touch screen access
         fullscreen_btn = ttk.Button(controls_frame, text="⛶ Fullscreen",
@@ -3348,7 +3380,9 @@ class TowerWitchTkinter:
     def start_gps(self):
         """Start GPS monitoring"""
         print("[OK] GPS Worker started")
-        self.gps_worker = GPSWorker(self.on_gps_update)
+        # Skip demo fallback if we already seeded the UI with a saved position.
+        self.gps_worker = GPSWorker(self.on_gps_update,
+                                     send_demo_on_failure=not self.has_saved_state)
         self.gps_worker.start()
 
     def on_gps_update(self, gps_data):
@@ -3369,6 +3403,19 @@ class TowerWitchTkinter:
             old_lat, old_lon = self.last_lat, self.last_lon
             self.last_lat = gps_data.get('lat', self.last_lat)
             self.last_lon = gps_data.get('lon', self.last_lon)
+
+            # If GPS has drifted far from where data was last loaded, flash the
+            # Refresh button to prompt the user. Skip in demo mode and only when
+            # we actually have a fix worth trusting (mode >= 2).
+            mode = gps_data.get('mode', 0)
+            is_demo = gps_data.get('demo', False)
+            if not is_demo and mode >= 2:
+                drift = self.calculate_distance(self.data_lat, self.data_lon,
+                                                 self.last_lat, self.last_lon)
+                if drift > self.stale_threshold_miles:
+                    self._start_refresh_flash()
+                else:
+                    self._stop_refresh_flash()
             
             # Calculate how far we've moved (for display purposes only)
             distance_moved = self.calculate_distance(old_lat, old_lon, 
@@ -3619,55 +3666,145 @@ class TowerWitchTkinter:
                 pass
 
     def refresh_all_data(self):
-        """Refresh all data sources including Radio Reference API (MANUAL REFRESH MODE)"""
+        """Refresh all data from local CSV sources (MANUAL REFRESH MODE).
+
+        CSV-only by default. The Radio Reference API is opt-in: if the local
+        data has no results for the current area, the user is prompted to try
+        the API (only when a key is configured in towerwitch_config.ini).
+        """
         print("[OK] Refreshing all data for current location...")
         print(f"[INFO] Current position: {self.last_lat:.6f}, {self.last_lon:.6f}")
-        
-        # Update status to show we're refreshing
-        self.gps_status.config(text="Refreshing data...")
-        
-        # Refresh in background thread to not block GUI
+
+        # Data is now in sync with the current GPS position, stop any flashing.
+        self.data_lat = self.last_lat
+        self.data_lon = self.last_lon
+        self._stop_refresh_flash()
+
+        # Save the current status so we can restore it after refresh
+        prev_status = self.gps_status.cget('text')
+        prev_color = self.gps_status.cget('foreground')
+        self.gps_status.config(text="Refreshing data...", foreground='#FFA500')
+
         def do_refresh():
-            # Update nearest town
-            self.get_nearest_town(self.last_lat, self.last_lon)
-            
-            # Try to fetch from Radio Reference API
-            if self.api_key and self.api_key != 'your_api_key_here':
+            try:
+                # Load everything from local CSVs (load_static_data covers
+                # ARMER, Skywarn, amateur bands, simplex, DMR/D-Star, Fusion,
+                # NOAA, interop, aviation, and grid display).
+                self.root.after(0, self.load_static_data)
+                self.root.after(0, self.update_gps_display)
+
+                # Look up nearest town in a separate thread so a slow Nominatim
+                # response can't delay the data refresh or hang the UI.
+                threading.Thread(
+                    target=lambda: self.get_nearest_town(self.last_lat, self.last_lon),
+                    daemon=True,
+                ).start()
+
+                # Persist state
+                self.save_state()
+                print("[OK] Data refresh complete (CSV-only)")
+            except Exception as e:
+                print(f"[ERROR] Refresh failed: {e}")
+            finally:
+                # Always restore the status label and check for empty results.
+                # Scheduled via after(0) so it runs after the data loaders above.
+                self.root.after(0, lambda: self._on_refresh_complete(prev_status, prev_color))
+
+        threading.Thread(target=do_refresh, daemon=True).start()
+
+    def _on_refresh_complete(self, prev_status, prev_color):
+        """Restore the status label and, if local data is empty for this area,
+        offer to fetch from the Radio Reference API."""
+        try:
+            self.gps_status.config(text=prev_status, foreground=prev_color)
+        except Exception:
+            pass
+
+        # Detect "no local data for this area" by checking the location-sensitive
+        # trees. If all three are empty, the CSVs likely don't cover this region.
+        try:
+            armer_empty = len(self.armer_tree.get_children()) == 0
+            skywarn_empty = len(self.skywarn_tree.get_children()) == 0
+            amateur_2m = getattr(self, 'amateur_2m_tree', None)
+            amateur_empty = (amateur_2m is None) or (len(amateur_2m.get_children()) == 0)
+        except Exception:
+            return
+
+        if not (armer_empty and skywarn_empty and amateur_empty):
+            return  # We have data — nothing to prompt about
+
+        has_api_key = bool(self.api_key) and self.api_key != 'your_api_key_here'
+        if has_api_key:
+            ok = messagebox.askyesno(
+                "No local data for this area",
+                "Local CSV files returned no repeaters for your current "
+                "location.\n\nFetch live data from the Radio Reference API now?",
+                parent=self.root,
+            )
+            if ok:
+                self._fetch_from_api_async()
+        else:
+            messagebox.showinfo(
+                "No local data for this area",
+                "Local CSV files returned no repeaters for your current "
+                "location.\n\nTo enable live lookups, set "
+                "'radio_reference_key' in towerwitch_config.ini.",
+                parent=self.root,
+            )
+
+    def _start_refresh_flash(self):
+        """Begin flashing the Refresh button to signal data is stale."""
+        if self._flash_after_id is not None:
+            return  # Already flashing
+        self._flash_on = False
+        self._tick_refresh_flash()
+
+    def _stop_refresh_flash(self):
+        """Stop flashing the Refresh button and restore its normal appearance."""
+        if self._flash_after_id is not None:
+            try:
+                self.root.after_cancel(self._flash_after_id)
+            except Exception:
+                pass
+            self._flash_after_id = None
+        self._flash_on = False
+        try:
+            self.refresh_btn.config(text="Refresh Data", style='TButton')
+        except Exception:
+            pass
+
+    def _tick_refresh_flash(self):
+        """Toggle the button's text/style. Reschedules itself every 700ms."""
+        try:
+            self._flash_on = not self._flash_on
+            if self._flash_on:
+                self.refresh_btn.config(text="⚠ Refresh Data (stale)", style='Stale.TButton')
+            else:
+                self.refresh_btn.config(text="Refresh Data", style='TButton')
+        except Exception:
+            return
+        self._flash_after_id = self.root.after(700, self._tick_refresh_flash)
+
+    def _fetch_from_api_async(self):
+        """Opt-in: fetch live data from Radio Reference in a background thread."""
+        prev_status = self.gps_status.cget('text')
+        prev_color = self.gps_status.cget('foreground')
+        self.gps_status.config(text="Fetching from API...", foreground='#FFA500')
+
+        def do_api_fetch():
+            try:
                 print("[INFO] Fetching live data from Radio Reference API...")
-                
-                # Fetch Skywarn repeaters
                 skywarn_live = self.radio_api.get_skywarn_repeaters(
                     self.last_lat, self.last_lon, radius=100)
-                
-                # Fetch Amateur repeaters  
                 amateur_live = self.radio_api.get_amateur_repeaters(
                     self.last_lat, self.last_lon, radius=50)
-                
-                # Update display on main thread
                 self.root.after(0, lambda: self._update_with_live_data(skywarn_live, amateur_live))
-            else:
-                # Fall back to static data
-                self.root.after(0, self.load_static_data)
-            
-            # Update all displays with current position
-            print("[INFO] Updating GPS display...")
-            self.root.after(0, self.update_gps_display)
-            
-            print("[INFO] Updating grid display with current position...")
-            self.root.after(0, self.update_grid_display)
-            
-            print("[INFO] Updating ARMER data...")
-            self.root.after(0, self.load_armer_data)
-            
-            print("[INFO] Updating aviation data...")
-            self.root.after(0, self.load_aviation_data)
-            
-            # Save state after successful refresh
-            self.save_state()
-            
-            print("[OK] Data refresh complete!")
-        
-        threading.Thread(target=do_refresh, daemon=True).start()
+            except Exception as e:
+                print(f"[ERROR] API fetch failed: {e}")
+            finally:
+                self.root.after(0, lambda: self.gps_status.config(text=prev_status, foreground=prev_color))
+
+        threading.Thread(target=do_api_fetch, daemon=True).start()
 
     def _fetch_and_update_live_repeaters(self):
         """Fetch live repeater data from Radio Reference API and update displays"""
@@ -3798,8 +3935,27 @@ class TowerWitchTkinter:
             import traceback
             traceback.print_exc()
 
+def acquire_single_instance_lock():
+    """Acquire an exclusive lock file to prevent a second instance from running.
+    Returns the file descriptor (kept open for process lifetime) or None if
+    another instance already holds the lock."""
+    lock_path = os.path.join(tempfile.gettempdir(), 'towerwitch.lock')
+    try:
+        lock_fd = open(lock_path, 'w')
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_fd.write(str(os.getpid()))
+        lock_fd.flush()
+        return lock_fd
+    except (OSError, IOError):
+        return None
+
 def main():
     """Main entry point"""
+    lock_fd = acquire_single_instance_lock()
+    if lock_fd is None:
+        print("[ERROR] TowerWitch is already running. Exiting.")
+        sys.exit(1)
+
     root = tk.Tk()
     app = TowerWitchTkinter(root)
 
