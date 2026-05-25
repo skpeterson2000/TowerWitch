@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TowerWitch - Enhanced GPS Tower Locator (Tkinter Version)
+TowerWitch - GPS-Enhanced Tower Locator (Tkinter Version)
 A comprehensive amateur radio repeater and emergency services tower locator
 with GPS integration, multiple band support, and enhanced visual interface.
 
@@ -475,9 +475,12 @@ class TowerWitchTkinter:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("TowerWitch - Enhanced GPS Tower Locator")
+        # Hide the window until __init__ finishes so the user doesn't see the
+        # default 1024x600 frame flash before saved geometry is applied.
+        self.root.withdraw()
+        self.root.title("TowerWitch by KC9SP - GPS-Enhanced Tower Locator")
         self.root.geometry("1024x600")
-        
+
         # Handle window close button (X)
         self.root.protocol("WM_DELETE_WINDOW", self.quit_application)
 
@@ -661,6 +664,11 @@ class TowerWitchTkinter:
                                font=('Arial', 22, 'bold'))
         title_label.pack(side=tk.LEFT, padx=5)
 
+        # Author attribution next to the main title
+        attribution_label = ttk.Label(header_frame, text="by KC9SP",
+                                       font=('Arial', 12, 'italic'))
+        attribution_label.pack(side=tk.LEFT, padx=(0, 10), pady=(8, 0))
+
         # DateTime display - larger for touch screens
         self.datetime_label = ttk.Label(header_frame, text="",
                                        font=('Arial', 14))
@@ -694,6 +702,12 @@ class TowerWitchTkinter:
         fullscreen_btn = ttk.Button(controls_frame, text="⛶ Fullscreen",
                                    command=self.toggle_fullscreen)
         fullscreen_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
+
+        # OP25 integration placeholder — handoff of selected ARMER tower/talkgroup
+        # data to OP25 for monitoring is planned. Button stub for now.
+        op25_btn = ttk.Button(controls_frame, text="📡 Send to OP25",
+                              command=self.send_to_op25)
+        op25_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
 
         # Create main notebook (tabbed interface)
         self.notebook = ttk.Notebook(main_frame)
@@ -762,6 +776,18 @@ class TowerWitchTkinter:
             print("[OK] Fullscreen mode enabled (press F11 to exit)")
         else:
             print("[OK] Windowed mode enabled")
+
+    def send_to_op25(self):
+        """Placeholder for the OP25 integration. Eventually this will hand off
+        the currently-selected ARMER tower/talkgroup data to a running OP25
+        instance for monitoring."""
+        messagebox.showinfo(
+            "Send to OP25",
+            "OP25 integration is currently under development.\n\n"
+            "This button will eventually hand off the selected tower and "
+            "talkgroup data to OP25 for monitoring.",
+            parent=self.root,
+        )
 
     def apply_tab_colors(self):
         """Apply colors using tkinter's Frame-based approach"""
@@ -1548,9 +1574,8 @@ class TowerWitchTkinter:
                     freq_count += 1
                     airport_count += 1
                 
-                # Start with airports expanded for visibility
-                if freq_count > 0:
-                    self.aviation_nearby_tree.item(airport_node, open=True)
+                # Start with airports collapsed; user can click to expand.
+                self.aviation_nearby_tree.item(airport_node, open=False)
             
             print(f"[OK] Loaded {airport_count} frequencies from {len(nearby_airports[:10])} nearby airports")
         else:
@@ -3006,7 +3031,7 @@ class TowerWitchTkinter:
             ('Maidenhead (6-char)', grid_6char, 'Full precision'),
             ('Maidenhead (4-char)', grid_4char, 'Common format'),
             ('Decimal Degrees', f"{self.last_lat:.6f}, {self.last_lon:.6f}", 'DD format'),
-            ('Degrees Minutes', self.dd_to_dm(self.last_lat, self.last_lon), 'DM format'),
+            ('Degrees Minutes Seconds', self.dd_to_dms(self.last_lat, self.last_lon), 'DMS format'),
             ('MGRS/UTM', mgrs_coord, 'Military Grid Reference'),
         ]
         
@@ -3019,17 +3044,21 @@ class TowerWitchTkinter:
         
         print(f"[OK] Updated grid display for position: {self.last_lat:.6f}, {self.last_lon:.6f}")
 
-    def dd_to_dm(self, lat, lon):
-        """Convert decimal degrees to degrees/minutes format"""
-        lat_d = int(abs(lat))
-        lat_m = (abs(lat) - lat_d) * 60
+    def dd_to_dms(self, lat, lon):
+        """Convert decimal degrees to degrees/minutes/seconds format."""
+        def split(value):
+            d = int(abs(value))
+            m_full = (abs(value) - d) * 60
+            m = int(m_full)
+            s = (m_full - m) * 60
+            return d, m, s
+
+        lat_d, lat_m, lat_s = split(lat)
+        lon_d, lon_m, lon_s = split(lon)
         lat_dir = 'N' if lat >= 0 else 'S'
-        
-        lon_d = int(abs(lon))
-        lon_m = (abs(lon) - lon_d) * 60
         lon_dir = 'E' if lon >= 0 else 'W'
-        
-        return f"{lat_d}°{lat_m:.3f}'{lat_dir}, {lon_d}°{lon_m:.3f}'{lon_dir}"
+        return (f"{lat_d}°{lat_m:02d}'{lat_s:05.2f}\"{lat_dir}, "
+                f"{lon_d}°{lon_m:02d}'{lon_s:05.2f}\"{lon_dir}")
 
     def get_utm_zone(self, lon):
         """Get UTM zone from longitude"""
@@ -3343,12 +3372,19 @@ class TowerWitchTkinter:
                 'KAUM': (43.6650, -92.9344),  # Austin Municipal
                 'KGPZ': (47.2111, -93.5098),  # Grand Rapids
                 'KBJI': (47.5094, -94.9347),  # Bemidji
-                'KINL': (48.5662, -93.4031),  # International Falls
+                'KINL': (48.5656, -93.4022),  # Falls International-Einarson Field
                 'KMKT': (44.2216, -93.9187),  # Mankato
                 'KAEL': (43.6815, -93.3676),  # Albert Lea
                 'KONA': (44.0797, -91.7093),  # Winona
                 'KRWF': (44.5472, -95.0825),  # Redwood Falls
                 'KTVF': (48.0656, -96.1850),  # Thief River Falls
+                '7Y3':  (46.8272, -94.5068),  # Backus Municipal
+                'KSEZ': (34.8486, -111.7884), # Sedona (AZ)
+                'KAXN': (45.8663, -95.3947),  # Alexandria Regional/Chandler Field
+                '8MN3': (46.5958, -94.2200),  # Breezy Point (private)
+                'KPNM': (45.5599, -93.6082),  # Princeton Municipal
+                '18Y':  (45.7725, -93.6322),  # Milaca Municipal
+                'KSAZ': (46.3809, -94.8066),  # Staples Municipal
             }
             
             # Calculate distances and filter by radius
@@ -3918,6 +3954,10 @@ class TowerWitchTkinter:
             # Apply colored tabs after everything is created
             self.root.after(100, self.apply_tab_colors)
 
+            # Reveal the window now that all setup is complete (we hid it in
+            # __init__ to avoid a default-geometry flash before state restore).
+            self.root.deiconify()
+
             # Bring window to front and focus it
             self.root.lift()
             self.root.attributes('-topmost', True)
@@ -3935,6 +3975,18 @@ class TowerWitchTkinter:
             import traceback
             traceback.print_exc()
 
+def _log_startup_event(message):
+    """Append a startup diagnostic event to /tmp/towerwitch_startup.log.
+    Used to debug duplicate-instance reports. Each launch appends one line
+    with timestamp, pid, ppid, and argv so we can see exactly what fired."""
+    try:
+        log_path = os.path.join(tempfile.gettempdir(), 'towerwitch_startup.log')
+        with open(log_path, 'a') as f:
+            f.write(f"{datetime.now().isoformat()} pid={os.getpid()} "
+                    f"ppid={os.getppid()} argv={sys.argv} -- {message}\n")
+    except Exception:
+        pass
+
 def acquire_single_instance_lock():
     """Acquire an exclusive lock file to prevent a second instance from running.
     Returns the file descriptor (kept open for process lifetime) or None if
@@ -3945,15 +3997,25 @@ def acquire_single_instance_lock():
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         lock_fd.write(str(os.getpid()))
         lock_fd.flush()
+        _log_startup_event("lock acquired")
         return lock_fd
-    except (OSError, IOError):
+    except (OSError, IOError) as e:
+        _log_startup_event(f"lock REJECTED ({e})")
         return None
 
 def main():
     """Main entry point"""
+    _log_startup_event("main() entered")
+    print(f"[BOOT] pid={os.getpid()} ppid={os.getppid()} argv={sys.argv}")
+
     lock_fd = acquire_single_instance_lock()
     if lock_fd is None:
-        print("[ERROR] TowerWitch is already running. Exiting.")
+        try:
+            with open(os.path.join(tempfile.gettempdir(), 'towerwitch.lock')) as f:
+                holder = f.read().strip()
+        except Exception:
+            holder = '?'
+        print(f"[ERROR] TowerWitch is already running (held by pid={holder}). Exiting.")
         sys.exit(1)
 
     root = tk.Tk()
