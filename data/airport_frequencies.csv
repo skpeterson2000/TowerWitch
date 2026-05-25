@@ -36,9 +36,8 @@ Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha 
 118.325,0,,,Bemidji Regional - Tower,BJI Tower,CSQ,,AM,BM,Airport,KBJI,Tower
 121.7,0,,,Bemidji Regional - Ground,BJI Ground,CSQ,,AM,BM,Airport,KBJI,Ground
 118.025,0,,,Bemidji Regional - ATIS,BJI ATIS,CSQ,,AM,BM,Airport,KBJI,ATIS
-123.0,0,,,International Falls - CTAF,INL CTAF,CSQ,,AM,BM,Airport,KINL,CTAF
-122.8,0,,,International Falls - UNICOM,INL UNICOM,CSQ,,AM,BM,Airport,KINL,UNICOM
-118.175,0,,,International Falls - ATIS,INL ATIS,CSQ,,AM,BM,Airport,KINL,ATIS
+122.8,0,,,International Falls - CTAF/UNICOM,INL UNICOM,CSQ,,AM,BM,Airport,KINL,UNICOM
+120.0,0,,,International Falls - ASOS,INL ASOS,CSQ,,AM,BM,Airport,KINL,AWOS
 123.0,0,,,Mankato Regional - CTAF,MKT CTAF,CSQ,,AM,BM,Airport,KMKT,CTAF
 122.8,0,,,Mankato Regional - UNICOM,MKT UNICOM,CSQ,,AM,BM,Airport,KMKT,UNICOM
 118.6,0,,,Albert Lea - CTAF,AEL CTAF,CSQ,,AM,BM,Airport,KAEL,CTAF
@@ -69,6 +68,17 @@ Frequency Output,Frequency Input,FCC Callsign,Agency/Category,Description,Alpha 
 118.525,0,,,Little Falls/Morrison County - AWOS,LXL AWOS,CSQ,,AM,BM,Airport,KLXL,AWOS
 122.9,0,,,Isedor Iverson/McGregor - CTAF,HZX CTAF,CSQ,,AM,BM,Airport,KHZX,CTAF
 119.575,0,,,Isedor Iverson/McGregor - AWOS,HZX AWOS,CSQ,,AM,BM,Airport,KHZX,AWOS
+123.0,0,,,Sedona - CTAF/UNICOM,SEZ UNICOM,CSQ,,AM,BM,Airport,KSEZ,UNICOM
+118.525,0,,,Sedona - AWOS,SEZ AWOS,CSQ,,AM,BM,Airport,KSEZ,AWOS
+123.0,0,,,Alexandria Regional - CTAF/UNICOM,AXN UNICOM,CSQ,,AM,BM,Airport,KAXN,UNICOM
+118.375,0,,,Alexandria - ASOS,AXN ASOS,CSQ,,AM,BM,Airport,KAXN,AWOS
+122.9,0,,,Breezy Point - CTAF,8MN3 CTAF,CSQ,,AM,BM,Airport,8MN3,CTAF
+123.0,0,,,Princeton Municipal - CTAF/UNICOM,PNM UNICOM,CSQ,,AM,BM,Airport,KPNM,UNICOM
+119.025,0,,,Princeton - AWOS,PNM AWOS,CSQ,,AM,BM,Airport,KPNM,AWOS
+122.9,0,,,Milaca Municipal - CTAF,18Y CTAF,CSQ,,AM,BM,Airport,18Y,CTAF
+122.9,0,,,Staples Municipal - CTAF,SAZ CTAF,CSQ,,AM,BM,Airport,KSAZ,CTAF
+118.325,0,,,Staples Municipal - AWOS,SAZ AWOS,CSQ,,AM,BM,Airport,KSAZ,AWOS
+121.725,0,,,Staples Municipal - GCO,SAZ GCO,CSQ,,AM,BM,Airport,KSAZ,GCO
 123.6,0,,,Minneapolis Center,MSP Center,CSQ,,AM,BM,Airport,ZMP,Center
 127.85,0,,,Minneapolis Center (High),MSP Center HI,CSQ,,AM,BM,Airport,ZMP,Center
 132.4,0,,,Minneapolis Center (Low),MSP Center LO,CSQ,,AM,BM,Airport,ZMP,Center
