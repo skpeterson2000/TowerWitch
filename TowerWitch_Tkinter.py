@@ -673,6 +673,17 @@ class TowerWitchTkinter:
                        fieldbackground='#3b3b3b', font=('Arial', 11), rowheight=30)
         self.style.configure('Treeview.Heading', background='#4a4a4a', foreground='#ffffff', 
                        font=('Arial', 12, 'bold'))
+        self.style.map('Treeview.Heading',
+                       background=[('active', '#5a5a5a'), ('!active', '#4a4a4a')],
+                       foreground=[('active', '#ffffff'), ('!active', '#ffffff')])
+        # Suppress the clam theme's column separators and outer frame
+        # bevels — they render in a theme color we don't control.
+        self.style.configure('Treeview', borderwidth=0, relief='flat',
+                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                             darkcolor='#2b2b2b')
+        self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
+                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                             darkcolor='#2b2b2b')
         
         # Store root background reference
         self.root.configure(bg='#2b2b2b')
@@ -729,11 +740,10 @@ class TowerWitchTkinter:
                                    command=self.toggle_fullscreen)
         fullscreen_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
 
-        # OP25 integration placeholder — handoff of selected ARMER tower/talkgroup
-        # data to OP25 for monitoring is planned. Button stub for now.
-        op25_btn = ttk.Button(controls_frame, text="📡 Send to OP25",
-                              command=self.send_to_op25)
-        op25_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
+        # Exit button — clean shutdown of all background threads
+        exit_btn = ttk.Button(controls_frame, text="❌ Exit",
+                              command=self.quit_application)
+        exit_btn.pack(side=tk.RIGHT, padx=10, pady=5, ipadx=15, ipady=8)
 
         # Create main notebook (tabbed interface)
         self.notebook = ttk.Notebook(main_frame)
@@ -759,10 +769,17 @@ class TowerWitchTkinter:
                        font=('Arial', 12, 'bold'),
                        focuscolor='none')
 
-        # Map different colors based on tab state
+        # Map different colors based on tab state. Include !selected so
+        # the inactive-tab and tab-strip backgrounds match the dark theme
+        # instead of falling through to the clam theme default (light gray).
+        self.style.configure("TNotebook", background='#2b2b2b', borderwidth=0,
+                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                             darkcolor='#2b2b2b')
         self.style.map("TNotebook.Tab",
-                 background=[('selected', '#3498DB'), ('active', '#5DADE2')],
-                 foreground=[('selected', '#ffffff'), ('active', '#ffffff')])
+                 background=[('selected', '#3498DB'), ('active', '#5DADE2'),
+                             ('!selected', '#2b2b2b')],
+                 foreground=[('selected', '#ffffff'), ('active', '#ffffff'),
+                             ('!selected', '#cccccc')])
 
         print("[OK] Base tab styles configured!")
 
@@ -789,10 +806,13 @@ class TowerWitchTkinter:
         # Save current state for next session
         self.save_state()
         
+        if getattr(self, 'op25_client', None) is not None:
+            self.op25_client.stop()
         if self.gps_worker:
             self.gps_worker.stop()
         self.root.quit()
         self.root.destroy()
+        sys.exit(0)
 
     def toggle_fullscreen(self):
         """Toggle between fullscreen and windowed mode"""
@@ -1047,9 +1067,19 @@ class TowerWitchTkinter:
         armer_frame = ttk.Frame(self.notebook)
         self.notebook.add(armer_frame, text="ARMER")
 
-        info_label = ttk.Label(armer_frame, text="ARMER Radio Sites and Talkgroups",
+        # Header bar: tab title left, Send-to-OP25 button right.
+        # Acts as a tab-local action affordance now that the button is
+        # contextually scoped to the ARMER view.
+        armer_header = ttk.Frame(armer_frame)
+        armer_header.pack(fill=tk.X, padx=10, pady=10)
+
+        info_label = ttk.Label(armer_header, text="ARMER Radio Sites and Talkgroups",
                               font=('Arial', 16, 'bold'))
-        info_label.pack(pady=15)
+        info_label.pack(side=tk.LEFT)
+
+        op25_btn = ttk.Button(armer_header, text="📡 Send to OP25",
+                              command=self.send_to_op25)
+        op25_btn.pack(side=tk.RIGHT, padx=5, ipadx=15, ipady=6)
 
         # ARMER sites tree
         columns = ('Site', 'Description', 'County', 'Distance', 'Bearing', 'Range', 'Frequencies')
@@ -3692,14 +3722,32 @@ class TowerWitchTkinter:
                                background='#200000', 
                                foreground='#ff5555',
                                fieldbackground='#200000')
+            # Deep red header — dark enough to preserve dark-adapted vision.
             self.style.configure('Treeview.Heading', 
-                               background='#300000', 
-                               foreground='#ff6666')
+                               background='#1a0000', 
+                               foreground='#aa3333')
+            # Force it past clam theme defaults via .map for all states.
+            self.style.map('Treeview.Heading',
+                           background=[('active', '#2a0000'), ('!active', '#1a0000')],
+                           foreground=[('active', '#cc3333'), ('!active', '#aa3333')])
+            # Kill all border/bevel colors so the only thing the eye catches
+            # is the data — no glare from column dividers or frame edges.
+            self.style.configure('Treeview', borderwidth=0, relief='flat',
+                                 bordercolor='#1a0000', lightcolor='#1a0000',
+                                 darkcolor='#1a0000')
+            self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
+                                 bordercolor='#1a0000', lightcolor='#1a0000',
+                                 darkcolor='#1a0000')
             
             # Tab colors for night mode
+            self.style.configure("TNotebook", background='#1a0000', borderwidth=0,
+                                 bordercolor='#1a0000', lightcolor='#1a0000',
+                                 darkcolor='#1a0000')
             self.style.map("TNotebook.Tab",
-                         background=[('selected', '#4a0000'), ('active', '#5a0000')],
-                         foreground=[('selected', '#ff6666'), ('active', '#ff6666')])
+                         background=[('selected', '#4a0000'), ('active', '#5a0000'),
+                                     ('!selected', '#1a0000')],
+                         foreground=[('selected', '#ff6666'), ('active', '#ff6666'),
+                                     ('!selected', '#aa3333')])
             
             # Force update all treeview widgets individually
             self.update_treeview_colors('#200000', '#ff5555', '#300000', '#ff6666')
@@ -3733,11 +3781,27 @@ class TowerWitchTkinter:
             self.style.configure('Treeview.Heading', 
                                background='#4a4a4a', 
                                foreground='#ffffff')
+            # clam theme overrides .configure via internal state maps — force the
+            # heading colors with explicit .map entries for all states.
+            self.style.map('Treeview.Heading',
+                           background=[('active', '#5a5a5a'), ('!active', '#4a4a4a')],
+                           foreground=[('active', '#ffffff'), ('!active', '#ffffff')])
+            self.style.configure('Treeview', borderwidth=0, relief='flat',
+                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                                 darkcolor='#2b2b2b')
+            self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
+                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                                 darkcolor='#2b2b2b')
             
             # Tab colors for day mode
+            self.style.configure("TNotebook", background='#2b2b2b', borderwidth=0,
+                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
+                                 darkcolor='#2b2b2b')
             self.style.map("TNotebook.Tab",
-                         background=[('selected', '#3498DB'), ('active', '#5DADE2')],
-                         foreground=[('selected', '#ffffff'), ('active', '#ffffff')])
+                         background=[('selected', '#3498DB'), ('active', '#5DADE2'),
+                                     ('!selected', '#2b2b2b')],
+                         foreground=[('selected', '#ffffff'), ('active', '#ffffff'),
+                                     ('!selected', '#cccccc')])
             
             # Force update all treeview widgets individually
             self.update_treeview_colors('#3b3b3b', '#ffffff', '#4a4a4a', '#ffffff')
@@ -4113,5 +4177,4 @@ def main():
             app.gps_worker.stop()
 
 if __name__ == "__main__":
-    main()
     main()
