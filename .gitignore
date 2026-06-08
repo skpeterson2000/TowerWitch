@@ -54,3 +54,5 @@ Thumbs.db
 *.tmp
 *.temp
 temp/
+# TowerWitch runtime state — generated at startup, location-specific
+data/armer_state.json
