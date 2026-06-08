@@ -470,6 +470,16 @@ class GPSWorker:
         """Stop GPS monitoring"""
         self.running = False
 
+# --- TowerWitch -> OP25 sidecar wiring ---
+import armer_state_store
+from op25_client import Op25Client
+
+OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # op25 Pi LAN IP
+ARMER_CSV_PATH   = os.path.join(os.path.dirname(__file__), "trs_sites_3508.csv")
+ARMER_STATE_JSON = os.path.join(os.path.dirname(__file__), "data", "armer_state.json")
+OP25_IMPORT_PATH = "/tw/import"
+# --- end op25 wiring ---
+
 class TowerWitchTkinter:
     """Main application class using tkinter"""
 
@@ -495,6 +505,22 @@ class TowerWitchTkinter:
         # Load saved state (position, town, etc.) - prevents Minneapolis default API calls
         saved_state = self.load_state()
         self.has_saved_state = bool(saved_state)
+
+        # Bootstrap ARMER state JSON (idempotent; preserves prior observations)
+        try:
+            armer_state_store.bootstrap_from_csv(ARMER_CSV_PATH, ARMER_STATE_JSON)
+            print(f"[OK] ARMER state bootstrapped at {ARMER_STATE_JSON}")
+        except Exception as e:
+            print(f"[WARN] ARMER state bootstrap failed: {e}")
+
+        # Background poller for the op25 HTTP terminal
+        self.op25_client = Op25Client(
+            url=OP25_SIDECAR_URL,
+            on_update=lambda st: armer_state_store.update_from_op25(ARMER_STATE_JSON, st),
+            log_fn=lambda msg: print(f"[OP25] {msg}"),
+        )
+        self.op25_client.start()
+
 
         # GPS data - use saved state or fall back to Minneapolis
         self.last_lat = saved_state.get('last_lat', 44.9778)
@@ -778,16 +804,72 @@ class TowerWitchTkinter:
             print("[OK] Windowed mode enabled")
 
     def send_to_op25(self):
-        """Placeholder for the OP25 integration. Eventually this will hand off
-        the currently-selected ARMER tower/talkgroup data to a running OP25
-        instance for monitoring."""
-        messagebox.showinfo(
-            "Send to OP25",
-            "OP25 integration is currently under development.\n\n"
-            "This button will eventually hand off the selected tower and "
-            "talkgroup data to OP25 for monitoring.",
-            parent=self.root,
+        """Hand off the selected ARMER site to a running op25 instance.
+
+        Reads the enriched site record from armer_state.json (which has any
+        WACN/SYSID picked up by the op25 client thread) and POSTs an overlay
+        fragment to the op25 sidecar's /tw/import endpoint.
+        """
+        import urllib.request, urllib.error
+        selection = self.armer_tree.selection()
+        if not selection:
+            messagebox.showwarning("Send to OP25", "Select an ARMER site first.", parent=self.root)
+            return
+        iid = selection[0]
+        try:
+            rfid_str, stid_str = iid.split("-", 1)
+            rfid, stid = int(rfid_str), int(stid_str)
+        except ValueError:
+            messagebox.showerror("Send to OP25", f"Could not parse site key: {iid}", parent=self.root)
+            return
+
+        site = armer_state_store.get_site(ARMER_STATE_JSON, rfid, stid)
+        if site is None:
+            messagebox.showerror("Send to OP25", f"Site {iid} not found in state file.", parent=self.root)
+            return
+
+        chan_entry = {
+            "sysname": "ARMER",
+            "site_id": site["site_id_key"],
+            "site_description": site["description"],
+            "control_channel_list": ",".join(f"{hz/1e6:.6f}" for hz in site["cc_freqs_hz"]),
+        }
+        for k in ("nac", "wacn", "sysid"):
+            if site.get(k):
+                chan_entry[k] = site[k]
+
+        payload = {
+            "_source": "towerwitch",
+            "_sent_at": datetime.now().isoformat(),
+            "_gps": {"lat": self.last_lat, "lon": self.last_lon},
+            "_confidence": site["confidence"],
+            "trunking": {"chans": [chan_entry]},
+        }
+
+        url = OP25_SIDECAR_URL.rstrip("/") + OP25_IMPORT_PATH
+        req = urllib.request.Request(
+            url, data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
         )
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                resp_body = json.loads(resp.read().decode())
+            messagebox.showinfo(
+                "Send to OP25",
+                f"Sent {chan_entry['sysname']}\n"
+                f"Confidence: {site['confidence']}\n"
+                f"Response: {resp_body}",
+                parent=self.root,
+            )
+        except urllib.error.URLError as e:
+            messagebox.showerror(
+                "Send to OP25",
+                f"Could not reach op25 sidecar at {url}\n\n{e.reason}\n\n"
+                "Is multi_rx.py running on the op25 Pi?",
+                parent=self.root,
+            )
+        except Exception as e:
+            messagebox.showerror("Send to OP25", f"Error: {e}", parent=self.root)
 
     def apply_tab_colors(self):
         """Apply colors using tkinter's Frame-based approach"""
@@ -3191,6 +3273,7 @@ class TowerWitchTkinter:
                         
                         site = {
                             'site_id': row[1],
+                            'rfid': row[0],
                             'description': row[4],
                             'county': row[5],
                             'range': row[8],
@@ -3216,7 +3299,7 @@ class TowerWitchTkinter:
                         f"{site['range']} mi",
                         site['freqs']
                     )
-                    self.armer_tree.insert('', 'end', values=values)
+                    self.armer_tree.insert('', 'end', iid=f"{site['rfid']}-{site['site_id']}", values=values)
                 
                 print(f"[OK] Loaded {len(sites)} ARMER sites")
                 
