@@ -491,6 +491,15 @@ class TowerWitchTkinter:
         self.root.title("TowerWitch by KC9SP - GPS-Enhanced Tower Locator")
         self.root.geometry("1024x600")
 
+        # Application icon (window title bar / taskbar). Kept as an attribute so
+        # Tk doesn't garbage-collect the image after __init__ returns.
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), "assets", "towerwitch_64.png")
+            self.app_icon = tk.PhotoImage(file=icon_path)
+            self.root.iconphoto(True, self.app_icon)
+        except Exception as e:
+            print(f"[WARN] Could not set window icon: {e}")
+
         # Handle window close button (X)
         self.root.protocol("WM_DELETE_WINDOW", self.quit_application)
 
@@ -667,7 +676,13 @@ class TowerWitchTkinter:
         # Configure dark theme colors with larger fonts for touch screens
         self.style.configure('TLabel', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
         self.style.configure('TFrame', background='#2b2b2b')
-        self.style.configure('TButton', padding=10, font=('Arial', 12))
+        self.style.configure('TButton', padding=10, font=('Arial', 12),
+                             background='#4a4a4a', foreground='#ffffff')
+        # clam supplies a light hover/pressed background by default; pin the
+        # active/pressed states so mouse-over tracks the theme instead of white.
+        self.style.map('TButton',
+                       background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')],
+                       foreground=[('pressed', '#ffffff'), ('active', '#ffffff')])
         self.style.configure('TCheckbutton', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
         self.style.configure('Treeview', background='#3b3b3b', foreground='#ffffff',
                        fieldbackground='#3b3b3b', font=('Arial', 11), rowheight=30)
@@ -684,7 +699,22 @@ class TowerWitchTkinter:
         self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
                              bordercolor='#2b2b2b', lightcolor='#2b2b2b',
                              darkcolor='#2b2b2b')
-        
+        # LabelFrame (e.g. the GPS Navigation Dashboard). The clam theme draws a
+        # light bevel border by default; pin all border colors to the background
+        # so it tracks the theme instead of showing a white edge.
+        self.style.configure('TLabelframe', background='#2b2b2b', borderwidth=1,
+                             relief='groove', bordercolor='#4a4a4a',
+                             lightcolor='#4a4a4a', darkcolor='#4a4a4a')
+        self.style.configure('TLabelframe.Label', background='#2b2b2b',
+                             foreground='#ffffff')
+        # Scrollbar (GPS page). clam defaults to a light trough/thumb; pin the
+        # trough, thumb, arrows and border so it tracks the dark theme.
+        self.style.configure('Vertical.TScrollbar', background='#4a4a4a',
+                             troughcolor='#2b2b2b', bordercolor='#2b2b2b',
+                             arrowcolor='#ffffff', relief='flat')
+        self.style.map('Vertical.TScrollbar',
+                       background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')])
+
         # Store root background reference
         self.root.configure(bg='#2b2b2b')
 
@@ -695,6 +725,16 @@ class TowerWitchTkinter:
         # Header frame
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Logo to the left of the title. Kept as an attribute so Tk doesn't
+        # garbage-collect the image once create_widgets returns.
+        try:
+            logo_path = os.path.join(os.path.dirname(__file__), "assets", "towerwitch_48.png")
+            self.header_logo = tk.PhotoImage(file=logo_path)
+            logo_label = ttk.Label(header_frame, image=self.header_logo)
+            logo_label.pack(side=tk.LEFT, padx=(0, 8))
+        except Exception as e:
+            print(f"[WARN] Could not load header logo: {e}")
 
         # Title - larger for touch screens
         title_label = ttk.Label(header_frame, text="TowerWitch",
@@ -3717,6 +3757,10 @@ class TowerWitchTkinter:
             self.style.configure('TLabel', background='#1a0000', foreground='#ff4444')
             self.style.configure('TFrame', background='#1a0000')
             self.style.configure('TButton', background='#2a0000', foreground='#ff6666')
+            # Mouse-over/pressed: brighter dark red, never the clam default white.
+            self.style.map('TButton',
+                           background=[('pressed', '#3a0000'), ('active', '#3a0000')],
+                           foreground=[('pressed', '#ff8888'), ('active', '#ff8888')])
             self.style.configure('TCheckbutton', background='#1a0000', foreground='#ff4444', font=('Arial', 11))
             self.style.configure('Treeview', 
                                background='#200000', 
@@ -3738,7 +3782,20 @@ class TowerWitchTkinter:
             self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
                                  bordercolor='#1a0000', lightcolor='#1a0000',
                                  darkcolor='#1a0000')
-            
+            # LabelFrame border + title (GPS Navigation Dashboard) — deep red so
+            # it no longer shows a white edge against the night-mode theme.
+            self.style.configure('TLabelframe', background='#1a0000', borderwidth=1,
+                                 relief='groove', bordercolor='#4a0000',
+                                 lightcolor='#4a0000', darkcolor='#4a0000')
+            self.style.configure('TLabelframe.Label', background='#1a0000',
+                                 foreground='#ff4444')
+            # Scrollbar (GPS page) — deep red trough/thumb for night vision.
+            self.style.configure('Vertical.TScrollbar', background='#3a0000',
+                                 troughcolor='#1a0000', bordercolor='#1a0000',
+                                 arrowcolor='#ff6666', relief='flat')
+            self.style.map('Vertical.TScrollbar',
+                           background=[('pressed', '#4a0000'), ('active', '#4a0000')])
+
             # Tab colors for night mode
             self.style.configure("TNotebook", background='#1a0000', borderwidth=0,
                                  bordercolor='#1a0000', lightcolor='#1a0000',
@@ -3773,6 +3830,10 @@ class TowerWitchTkinter:
             self.style.configure('TLabel', background='#2b2b2b', foreground='#ffffff')
             self.style.configure('TFrame', background='#2b2b2b')
             self.style.configure('TButton', background='#4a4a4a', foreground='#ffffff')
+            # Mouse-over/pressed: lighter gray, never the clam default white.
+            self.style.map('TButton',
+                           background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')],
+                           foreground=[('pressed', '#ffffff'), ('active', '#ffffff')])
             self.style.configure('TCheckbutton', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
             self.style.configure('Treeview', 
                                background='#3b3b3b', 
@@ -3792,7 +3853,20 @@ class TowerWitchTkinter:
             self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
                                  bordercolor='#2b2b2b', lightcolor='#2b2b2b',
                                  darkcolor='#2b2b2b')
-            
+            # LabelFrame border + title (GPS Navigation Dashboard) — restore the
+            # day-mode gray border so it matches the normal dark theme.
+            self.style.configure('TLabelframe', background='#2b2b2b', borderwidth=1,
+                                 relief='groove', bordercolor='#4a4a4a',
+                                 lightcolor='#4a4a4a', darkcolor='#4a4a4a')
+            self.style.configure('TLabelframe.Label', background='#2b2b2b',
+                                 foreground='#ffffff')
+            # Scrollbar (GPS page) — restore gray trough/thumb for day mode.
+            self.style.configure('Vertical.TScrollbar', background='#4a4a4a',
+                                 troughcolor='#2b2b2b', bordercolor='#2b2b2b',
+                                 arrowcolor='#ffffff', relief='flat')
+            self.style.map('Vertical.TScrollbar',
+                           background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')])
+
             # Tab colors for day mode
             self.style.configure("TNotebook", background='#2b2b2b', borderwidth=0,
                                  bordercolor='#2b2b2b', lightcolor='#2b2b2b',
