@@ -274,6 +274,47 @@ TowerWitch can broadcast real-time location and tower data for integration with:
 - Automatic rate limiting to prevent network spam
 - Only sends when tower data is available
 
+## Serving repeaters to ELMER
+
+Two Pis in one vehicle: only one has TowerWitch and the RadioReference
+credentials. `repeater_service.py` lets the other one ask over the network
+instead of copying a CSV by hand at a campsite.
+
+```bash
+python3 repeater_service.py          # serves on 0.0.0.0:8137
+```
+
+```
+GET /api/repeaters?lat=46.59836&lon=-94.31539&radius_km=100
+
+{"data": [
+  {"call": "W0UJ", "output": 146.955, "input": 146.355, "offset": -0.6,
+   "tone": "141.3", "location": "Nisswa", "lat": 46.5216, "lon": -94.2883}
+]}
+```
+
+That is the shape TowerWitch already writes into `radio_cache`, so ELMER's
+existing parser reads it unchanged. On the other machine:
+
+```bash
+./elmer.py --towerwitch-url http://192.168.1.5:8137/api/repeaters
+```
+
+It looks nothing up. It serves the cached lookups and RepeaterBook exports
+TowerWitch has already found - the subscription is TowerWitch's to hold, not
+this endpoint's to spend on behalf of whoever asks. Parsed rows are cached
+against file mtime, so a lookup done while parked is picked up on the next
+request without a restart.
+
+To run it at boot, `systemd/towerwitch-repeaters.service` is a template:
+
+```bash
+sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$PWD|g" \
+    systemd/towerwitch-repeaters.service \
+  | sudo tee /etc/systemd/system/towerwitch-repeaters.service >/dev/null
+sudo systemctl enable --now towerwitch-repeaters
+```
+
 ## Screenshots
 
 *[Screenshots would go here showing the main interface, night mode, different tabs]*

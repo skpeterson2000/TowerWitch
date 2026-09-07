@@ -1,0 +1,31 @@
+[Unit]
+# Serves TowerWitch's repeater list to ELMER on another machine.
+# Install:
+#   sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$PWD|g" \
+#       systemd/towerwitch-repeaters.service \
+#     | sudo tee /etc/systemd/system/towerwitch-repeaters.service >/dev/null
+#   sudo systemctl enable --now towerwitch-repeaters
+Description=TowerWitch repeater service for ELMER
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=/usr/bin/python3 __DIR__/repeater_service.py
+Restart=on-failure
+RestartSec=10
+
+# It reads TowerWitch's own files and answers questions about them; it has no
+# reason to touch anything else on the machine.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
