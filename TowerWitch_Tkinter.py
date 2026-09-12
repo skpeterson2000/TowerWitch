@@ -372,6 +372,12 @@ class GPSWorker:
                             'lat': lat,
                             'lon': lon,
                             'alt': msg.get('alt', 0.0),
+                            # m/s and degrees true, as gpsd reports them; the
+                            # display converts. track is absent when the
+                            # receiver has no heading (standing still) and
+                            # the display shows ---° for None.
+                            'speed': msg.get('speed', 0.0),
+                            'track': msg.get('track'),
                             'time': msg.get('time', datetime.now().isoformat()),
                             'mode': mode,
                             'satellites_used': sats_used,
