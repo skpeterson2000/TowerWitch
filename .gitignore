@@ -56,3 +56,17 @@ Thumbs.db
 temp/
 # TowerWitch runtime state — generated at startup, location-specific
 data/armer_state.json
+
+# Database exports made under the operator's own Radio Reference and
+# RepeaterBook accounts. Licensed to that person, not to this repository:
+# kept here for the machine that made them and never committed. The
+# history was rewritten in September 2026 to remove ones that had been.
+data/*_radio_reference.*
+data/Repeater_Book_*
+data/fusion_*
+data/sky_warn.csv
+data/interoperability.*
+data/trs_sites_*
+data/trs_tg_*
+trs_sites_*
+trs_tg_*

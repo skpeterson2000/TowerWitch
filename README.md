@@ -24,7 +24,7 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 
 ### 🌐 Live Data Integration
 - **Radio Reference API** - Live repeater database access (premium account)
-- **CSV Databases** - Comprehensive built-in data (no account needed)
+- **Your own CSV data** - exports you make under your own accounts, kept locally (not shipped)
 - **Intelligent Caching** - Reduces API calls and enables offline operation
 - **Static Fallbacks** - Works without internet connectivity
 - **Auto-refresh** - Updates when you move to new locations
@@ -88,7 +88,7 @@ cp towerwitch_config.ini.example towerwitch_config.ini
 python3 TowerWitch-P.py
 ```
 
-**Note:** TowerWitch works immediately with built-in CSV databases - no API setup required!
+**Note:** TowerWitch ships no repeater or public-safety data. See *Your data, not ours* below.
 
 ## Configuration
 
@@ -102,24 +102,28 @@ radio_reference_username = your_username
 radio_reference_password = your_password
 ```
 
-### Alternative: CSV Data Sources (No API Required)
-**Don't have a Radio Reference premium account?** TowerWitch includes comprehensive CSV databases:
+### Your data, not ours
 
-- **`trs_sites_3508.csv`** - Complete ARMER (Minnesota P25) site database
-- **`AmateurSimplex.csv`** - Amateur radio simplex frequencies by band
-- **Built-in Static Data** - Extensive repeater databases for emergency fallback
+TowerWitch does not ship anybody's database. Repeater lists, trunked-system
+site tables and agency channel lists come from Radio Reference and
+RepeaterBook under *their* terms, which license the data to the person who
+holds the account - so this repository carries none of it, and its history
+was rewritten in September 2026 to remove exports that had been committed
+earlier. What is here is the format and the code that reads it.
 
-TowerWitch automatically uses these CSV sources when:
-- No API credentials are configured
-- API is temporarily unavailable
-- Working in offline environments
-- Limited API calls remaining
+To fill it in, export for where you are under your own account and drop the
+files in `data/` (the `.gitignore` keeps them out of commits):
 
-**Benefits of CSV mode:**
-- ✅ **No subscription required** - Works immediately out of the box
-- ✅ **Offline capability** - Perfect for remote field operations  
-- ✅ **Fast performance** - No network delays
-- ✅ **Emergency backup** - Always available as fallback
+- `data/*_radio_reference.csv` / `.pdf` - Radio Reference county or system exports
+- `data/Repeater_Book_*.csv`, `data/fusion_*.csv`, `data/sky_warn.csv` - RepeaterBook exports
+- `data/interoperability.csv` - a statewide interoperability export
+- `data/trs_sites_*.csv`, `data/trs_tg_*.csv` - a trunked system's sites and talkgroups
+
+What *is* shipped is public: `airport_frequencies.csv` (FAA-published
+tower, ground, approach and CTAF frequencies - see `AIRPORT_README.md`) and
+`amateur_simplex.csv` (the national simplex calling frequencies). With only
+those on the shelf TowerWitch runs, shows GPS and grids, and says which
+tabs are waiting for data.
 
 ### GPS Configuration
 TowerWitch uses `gpsd` for GPS data:
@@ -211,10 +215,10 @@ TowerWitch automatically adjusts update behavior based on your speed:
 - Automatic location-based updates
 - Comprehensive coverage
 
-**Without API (CSV Mode):**
-- Built-in ARMER database (trs_sites_3508.csv)
-- Simplex frequencies (AmateurSimplex.csv)
-- Static repeater fallback data
+**Without API (CSV mode):**
+- Your own exports in `data/` (see *Your data, not ours*)
+- Simplex frequencies (`data/amateur_simplex.csv`)
+- FAA airport frequencies (`data/airport_frequencies.csv`)
 - Full offline operation
 
 ### Keyboard Shortcuts
@@ -343,11 +347,10 @@ We welcome contributions! Areas where help is needed:
 
 ### Data Sources
 - **Radio Reference API** - Premium live database access
-- **CSV Files** - Local databases included (no subscription required)
-  - `trs_sites_3508.csv` - Complete ARMER site data
-  - `AmateurSimplex.csv` - Amateur simplex frequencies
-- **Static Databases** - Emergency fallback data
-- **Regional Files** - State/country-specific repeater data
+- **CSV Files** - your own exports, kept locally in `data/` and never committed
+  - `data/amateur_simplex.csv` - Amateur simplex frequencies (shipped; public)
+  - `data/airport_frequencies.csv` - FAA airport frequencies (shipped; public)
+- **Regional Files** - State-specific exports you make under your own accounts
 - **Band Plans** - International frequency allocations
 - **Emergency Services** - Local public safety frequencies
 
@@ -360,7 +363,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ### Quick Tips
 - **No GPS?** Check `sudo systemctl status gpsd` and ensure GPS hardware is connected
 - **Slow Updates?** Normal behavior - updates every 25-35 seconds during motion for battery conservation
-- **No Radio Reference Data?** Application works fine with built-in CSV databases - no API required
+- **No Radio Reference Data?** The application runs; the public-safety and repeater tabs wait until you add your own exports to `data/`
 - **Touch Screen Issues?** Use fullscreen mode (F11) for optimal mobile experience
 - **Night Operations?** Night mode (Ctrl+N) preserves night vision with red-tinted display
 
@@ -408,8 +411,7 @@ TowerWitch/
 ├── TowerWitch-K.py                  # Kivy version (v2.0 prototype)
 ├── towerwitch_config.ini            # Configuration file
 ├── towerwitch_config.ini.example    # Configuration template
-├── trs_sites_3508.csv              # ARMER site database
-├── AmateurSimplex.csv              # Simplex frequency database
+├── data/                            # airport + simplex shipped; your own exports go here, ignored by git
 ├── radio_cache/                    # API response cache directory
 ├── custom_qt_style.py              # Custom PyQt5 styling
 ├── KIVY_ROADMAP.md                 # Kivy development roadmap
