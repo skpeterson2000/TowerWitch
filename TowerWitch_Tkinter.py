@@ -217,8 +217,12 @@ class RadioReferenceAPI:
 
 class GPSWorker:
     """GPS worker with robust error handling and demo fallback"""
-    def __init__(self, callback, send_demo_on_failure=True):
+    def __init__(self, callback, send_demo_on_failure=True, status_callback=None):
         self.callback = callback
+        # Hears how the wait for a fix is going while there is no position
+        # to send: a dict with 'state' of 'waiting' (with mode and satellite
+        # counts), 'silent' (receiver not reporting) or 'unreachable' (gpsd).
+        self.status_callback = status_callback
         self.running = False
         self.thread = None
         self.gps_connected = False
@@ -252,98 +256,160 @@ class GPSWorker:
             'demo': True
         })
 
+    # With no fix yet, say how the wait is going this soon after connecting
+    # and then this often; a receiver that has not reported in this long is
+    # called silent. A dropped gpsd connection is retried this often.
+    FIRST_WAIT_REPORT_SECONDS = 10
+    WAIT_REPORT_SECONDS = 30
+    RECONNECT_SECONDS = 5
+    GPSD_ADDRESS = ('localhost', 2947)
+
     def _gps_loop_json(self):
-        """Direct JSON socket connection to gpsd - bypasses library caching"""
+        """Direct JSON socket connection to gpsd - bypasses library caching.
+
+        Stays up for the life of the program: if gpsd goes away (restarted by
+        restart_gps.sh, say) or refuses the connection, wait and try again
+        rather than leaving the display frozen on the last position until
+        TowerWitch is relaunched."""
         print("[INFO] Using direct JSON socket to gpsd...")
+        first_attempt = True
+        while self.running:
+            connected = self._gps_session_json()
+            if first_attempt and not connected:
+                if self.send_demo_on_failure:
+                    print("[WARN] Falling back to DEMO mode")
+                    self._send_demo_data()
+                else:
+                    print("[INFO] Keeping last-known saved location on display")
+            first_attempt = False
+            if not self.running:
+                break
+            self._report_status({'state': 'unreachable'})
+            print(f"[INFO] Reconnecting to gpsd in {self.RECONNECT_SECONDS}s...")
+            self._sleep_unless_stopped(self.RECONNECT_SECONDS)
+
+    def _gps_session_json(self):
+        """One connection to gpsd, held until it drops or stop() is called.
+        Returns whether the connection was ever made; the caller retries."""
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect(('localhost', 2947))
-            sock.settimeout(2.0)
-            
+            sock = socket.create_connection(self.GPSD_ADDRESS, timeout=5.0)
+        except OSError as e:
+            print(f"[ERROR] Could not establish JSON socket: {e}")
+            return False
+        sock.settimeout(2.0)
+        print("[OK] Connected to gpsd via JSON socket")
+        self.gps_connected = True
+
+        buffer = b''
+        mode = 0             # last TPV fix mode: 1 none, 2 = 2D, 3 = 3D
+        sats_used = 0        # from SKY: in the solution / in view
+        sats_seen = 0
+        have_fix = False
+        last_tpv = None      # when the receiver last reported at all
+        connected_at = time.monotonic()
+        next_report = connected_at + self.FIRST_WAIT_REPORT_SECONDS
+        try:
             # Enable watch mode and request JSON
             sock.sendall(b'?WATCH={"enable":true,"json":true}\n')
-            
-            buffer = b''
-            print("[OK] Connected to gpsd via JSON socket")
-            sat_count = 0
-            first_fix = False
-            
+
             while self.running:
                 try:
                     data = sock.recv(4096)
                     if not data:
-                        print("[ERROR] GPS socket closed")
-                        break
-                    
+                        print("[ERROR] GPS socket closed by gpsd")
+                        return True
                     buffer += data
-                    while b'\n' in buffer:
-                        line, buffer = buffer.split(b'\n', 1)
-                        if not line:
-                            continue
-                        
-                        try:
-                            msg = json.loads(line.decode('utf-8'))
-                            
-                            # Get satellite count from SKY messages
-                            if msg.get('class') == 'SKY':
-                                satellites = msg.get('satellites', [])
-                                sat_count = sum(1 for s in satellites if s.get('used', False))
-                            
-                            # Look for TPV (Time-Position-Velocity) messages
-                            elif msg.get('class') == 'TPV':
-                                lat = msg.get('lat')
-                                lon = msg.get('lon')
-                                mode = msg.get('mode', 0)
-                                
-                                # Check if we have valid coordinates (not None and not 0,0)
-                                if lat is None or lon is None:
-                                    continue
-                                if lat == 0.0 and lon == 0.0:
-                                    if not first_fix:
-                                        print(f"[INFO] GPS connected, waiting for valid coordinates...")
-                                        first_fix = True
-                                    continue
-                                
-                                gps_data = {
-                                    'lat': lat,
-                                    'lon': lon,
-                                    'alt': msg.get('alt', 0.0),
-                                    'time': msg.get('time', datetime.now().isoformat()),
-                                    'mode': mode,
-                                    'satellites_used': sat_count,
-                                    'demo': False
-                                }
-                                
-                                if mode >= 2:  # 2D or 3D fix
-                                    if not self.no_fix_warned:
-                                        print(f"[OK] GPS fix via JSON socket! Position: {lat:.6f}, {lon:.6f}")
-                                        print(f"[OK] Altitude: {msg.get('alt', 0):.1f}m, Satellites: {sat_count}")
-                                        self.no_fix_warned = True
-                                    self.callback(gps_data)
-                                else:
-                                    # Have position but no fix
-                                    if not self.no_fix_warned:
-                                        print(f"[INFO] GPS position available but no fix (mode={mode})")
-                                        print(f"[INFO] Position: {lat:.6f}, {lon:.6f}, Sats: {sat_count}")
-                                
-                        except json.JSONDecodeError:
-                            pass
-                        
                 except socket.timeout:
-                    continue
-                except Exception as e:
+                    pass
+                except OSError as e:
                     print(f"[ERROR] JSON socket error: {e}")
-                    break
-            
+                    return True
+
+                while b'\n' in buffer:
+                    line, buffer = buffer.split(b'\n', 1)
+                    if not line:
+                        continue
+                    try:
+                        msg = json.loads(line.decode('utf-8'))
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        continue
+                    cls = msg.get('class')
+
+                    if cls == 'DEVICE':
+                        # A receiver coming or going. gpsd keeps our socket
+                        # open through an unplug, so this is the only sign.
+                        state = 'activated' if msg.get('activated') else 'removed'
+                        print(f"[INFO] gpsd device {state}: {msg.get('path', '?')} "
+                              f"({msg.get('driver', 'unknown driver')})")
+                    elif cls == 'DEVICES':
+                        paths = [d.get('path', '?') for d in msg.get('devices', [])]
+                        print(f"[INFO] gpsd devices: {', '.join(paths) or 'none'}")
+                    elif cls == 'SKY':
+                        satellites = msg.get('satellites', [])
+                        sats_seen = len(satellites)
+                        sats_used = sum(1 for s in satellites if s.get('used', False))
+                    elif cls == 'TPV':
+                        last_tpv = time.monotonic()
+                        mode = msg.get('mode', 0)
+                        lat = msg.get('lat')
+                        lon = msg.get('lon')
+                        # No fix: gpsd omits lat/lon, some receivers send 0,0
+                        no_position = (lat is None or lon is None
+                                       or (lat == 0.0 and lon == 0.0))
+                        if no_position or mode < 2:
+                            if have_fix:
+                                have_fix = False
+                                print(f"[WARN] GPS fix lost: mode={mode}, "
+                                      f"satellites {sats_used}/{sats_seen}")
+                                next_report = last_tpv  # report on this pass
+                            continue
+                        if not have_fix:
+                            have_fix = True
+                            print(f"[OK] GPS fix via JSON socket! Position: {lat:.6f}, {lon:.6f}")
+                            print(f"[OK] Mode {mode}, altitude: {msg.get('alt', 0):.1f}m, "
+                                  f"satellites: {sats_used}/{sats_seen}")
+                        self.callback({
+                            'lat': lat,
+                            'lon': lon,
+                            'alt': msg.get('alt', 0.0),
+                            'time': msg.get('time', datetime.now().isoformat()),
+                            'mode': mode,
+                            'satellites_used': sats_used,
+                            'demo': False
+                        })
+
+                # Still no fix: say how the wait is going, on the display and
+                # in the log, so a cold start under no sky and a receiver that
+                # is stuck or unplugged stop looking the same.
+                now = time.monotonic()
+                if not have_fix and now >= next_report:
+                    next_report = now + self.WAIT_REPORT_SECONDS
+                    silent = int(now - (last_tpv if last_tpv is not None else connected_at))
+                    if silent >= self.FIRST_WAIT_REPORT_SECONDS:
+                        print(f"[WARN] No report from the receiver in {silent}s "
+                              "- unplugged, or gpsd has no device?")
+                        self._report_status({'state': 'silent', 'silent_seconds': silent})
+                    else:
+                        print(f"[INFO] GPS waiting for fix: mode={mode}, "
+                              f"satellites {sats_used}/{sats_seen}")
+                        self._report_status({'state': 'waiting', 'mode': mode,
+                                             'satellites_used': sats_used,
+                                             'satellites_seen': sats_seen})
+        finally:
+            self.gps_connected = False
             sock.close()
-            
-        except Exception as e:
-            print(f"[ERROR] Could not establish JSON socket: {e}")
-            if self.send_demo_on_failure:
-                print("[WARN] Falling back to DEMO mode")
-                self._send_demo_data()
-            else:
-                print("[INFO] Keeping last-known saved location on display")
+        return True
+
+    def _report_status(self, info):
+        """Tell the display how the wait for a fix is going. Optional; the
+        position callback is unaffected."""
+        if self.status_callback:
+            self.status_callback(info)
+
+    def _sleep_unless_stopped(self, seconds):
+        deadline = time.monotonic() + seconds
+        while self.running and time.monotonic() < deadline:
+            time.sleep(0.2)
 
     def _gps_loop(self):
         """GPS monitoring loop - reads actual GPS data from gpsd"""
@@ -3572,8 +3638,35 @@ class TowerWitchTkinter:
         print("[OK] GPS Worker started")
         # Skip demo fallback if we already seeded the UI with a saved position.
         self.gps_worker = GPSWorker(self.on_gps_update,
-                                     send_demo_on_failure=not self.has_saved_state)
+                                     send_demo_on_failure=not self.has_saved_state,
+                                     status_callback=self.on_gps_status)
         self.gps_worker.start()
+
+    def on_gps_status(self, info):
+        """Show how the wait for a fix is going: the header label and the GPS
+        tab's satellite count, so a receiver that sees no sky and one that is
+        unplugged stop looking the same on screen. Called from the GPS worker
+        thread, so the widget updates go to the main thread."""
+        state = info.get('state')
+        if state == 'waiting':
+            used, seen = info.get('satellites_used', 0), info.get('satellites_seen', 0)
+            text, color, sats = f"GPS: Waiting for fix ({used}/{seen} sats)", '#FFA500', f"{used}/{seen}"
+        elif state == 'silent':
+            text, color, sats = "GPS: No data from receiver", '#FF6B6B', '--'
+        else:
+            text, color, sats = "GPS: gpsd unreachable (retrying)", '#FF6B6B', '--'
+
+        def show():
+            self.gps_status.config(text=text, foreground=color)
+            try:
+                self.nav_satellites.config(text=sats)
+            except Exception:
+                pass
+
+        try:
+            self.root.after(0, show)
+        except Exception as e:
+            print(f"[WARN] Could not schedule GPS status update: {e}")
 
     def on_gps_update(self, gps_data):
         """Handle GPS data updates - MANUAL REFRESH mode (performance optimized)
