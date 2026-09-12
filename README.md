@@ -150,6 +150,23 @@ moves, while gpsmon (which decodes the receiver's packets itself) shows it
 moving. `-b` leaves the receiver in NMEA mode, where it tracks. Restart gpsd
 after changing it: `sudo systemctl restart gpsd.socket gpsd`.
 
+The lists reload themselves once the vehicle is `refresh_miles` from where
+they were loaded. In `towerwitch_config.ini`:
+
+```ini
+[GPS]
+refresh_miles = 5
+auto_refresh = true
+```
+
+`auto_refresh = false` flashes the Refresh button at that distance instead
+and waits for a hand.
+
+Everything TowerWitch prints goes to `logs/towerwitch.log` with a clock stamp
+on each line (2 MB, three kept), so a run can be laid against `journalctl`
+and gpsd's own record. `[GPS]` lines every 30 s give position, speed, heading,
+fix, satellites and distance from the loaded data.
+
 ### UDP Broadcasting Configuration
 TowerWitch can broadcast nearest tower data via UDP for integration with external systems:
 
@@ -375,12 +392,13 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Support
 
 ### Quick Tips
-- **No GPS?** Check `sudo systemctl status gpsd` and ensure GPS hardware is connected
-- **Position never moves, or sits on 0,0?** `gpspipe -w -n 20` shows the same
-  lat/lon in every report while gpsmon shows the receiver moving: gpsd is
-  running the receiver in binary mode. Put `-b` in `GPSD_OPTIONS` (see GPS
-  Configuration). The header label and `~/.xsession-errors` say which driver
-  gpsd activated; `NMEA0183` tracks, `u-blox` does not.
+- **GPS trouble of any kind?** `python3 gps_doctor.py` first. It watches gpsd
+  for 15 s and says which link is broken - no gpsd, no receiver, receiver
+  silent, no fix, position frozen, no heading - and what to do about it.
+- **Position never moves, or sits on 0,0?** The doctor calls this "position
+  frozen": gpsd is running the receiver in binary mode. Put `-b` in
+  `GPSD_OPTIONS` (see GPS Configuration). `logs/towerwitch.log` says which
+  driver gpsd activated; `NMEA0183` tracks, `u-blox` does not.
 - **Slow Updates?** Normal behavior - updates every 25-35 seconds during motion for battery conservation
 - **No Radio Reference Data?** The application runs; the public-safety and repeater tabs wait until you add your own exports to `data/`
 - **Touch Screen Issues?** Use fullscreen mode (F11) for optimal mobile experience

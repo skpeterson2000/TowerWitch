@@ -617,9 +617,15 @@ class TowerWitchTkinter:
         # Refresh button should flash to prompt the user.
         self.data_lat = self.last_lat
         self.data_lon = self.last_lon
-        self.stale_threshold_miles = 5.0
+        # This far from where the lists were loaded they are stale. With
+        # auto_refresh on they reload themselves there; off, the Refresh
+        # button flashes and waits for a hand.
+        self.stale_threshold_miles = self.config.getfloat('GPS', 'refresh_miles', fallback=5.0)
+        self.auto_refresh = self.config.getboolean('GPS', 'auto_refresh', fallback=True)
+        self._refresh_running = False
         self._flash_after_id = None
         self._flash_on = False
+        self._last_gps_heartbeat = 0.0
 
         # Restore window geometry if saved
         if 'window_geometry' in saved_state:
@@ -693,8 +699,8 @@ class TowerWitchTkinter:
                 'force_refresh_cache': 'false'
             }
             self.config['GPS'] = {
-                'update_interval': '5',
-                'movement_threshold': '0.01'
+                'refresh_miles': '5',
+                'auto_refresh': 'true'
             }
 
             with open(self.config_file, 'w') as f:
@@ -3702,7 +3708,11 @@ class TowerWitchTkinter:
                 drift = self.calculate_distance(self.data_lat, self.data_lon,
                                                  self.last_lat, self.last_lon)
                 if drift > self.stale_threshold_miles:
-                    self._start_refresh_flash()
+                    if self.auto_refresh and not self._refresh_running:
+                        print(f"[INFO] {drift:.1f} mi from where data was loaded - refreshing")
+                        self.refresh_all_data()
+                    else:
+                        self._start_refresh_flash()
                 else:
                     self._stop_refresh_flash()
             
@@ -3741,6 +3751,20 @@ class TowerWitchTkinter:
                 self.gps_status.config(text=f"GPS: 2D Fix ({sats} sats)", foreground='#FFFF00')  # Yellow
             else:
                 self.gps_status.config(text=f"GPS: No Fix ({sats} sats)", foreground='#FF6B6B')  # Red
+
+            # One line every 30 s with the whole picture, so the log shows
+            # where the vehicle was and what the receiver said without a
+            # thousand grid lines to read through.
+            now = time.monotonic()
+            if not is_demo and mode >= 2 and now - self._last_gps_heartbeat >= 30:
+                self._last_gps_heartbeat = now
+                mph = (gps_data.get('speed') or 0.0) * 2.23694
+                track = gps_data.get('track')
+                heading = f"{track:.0f}\u00b0" if track is not None else "---\u00b0"
+                drift = self.calculate_distance(self.data_lat, self.data_lon,
+                                                 self.last_lat, self.last_lon)
+                print(f"[GPS] {self.last_lat:.6f},{self.last_lon:.6f} {mph:.0f} mph {heading} "
+                      f"mode {mode} {sats} sats, {drift:.1f} mi from loaded data")
 
     def update_gps_display(self, gps_data=None):
         """Update GPS data display"""
@@ -4031,6 +4055,7 @@ class TowerWitchTkinter:
         """
         print("[OK] Refreshing all data for current location...")
         print(f"[INFO] Current position: {self.last_lat:.6f}, {self.last_lon:.6f}")
+        self._refresh_running = True
 
         # Data is now in sync with the current GPS position, stop any flashing.
         self.data_lat = self.last_lat
@@ -4072,6 +4097,7 @@ class TowerWitchTkinter:
     def _on_refresh_complete(self, prev_status, prev_color):
         """Restore the status label and, if local data is empty for this area,
         offer to fetch from the Radio Reference API."""
+        self._refresh_running = False
         try:
             self.gps_status.config(text=prev_status, foreground=prev_color)
         except Exception:
@@ -4296,6 +4322,69 @@ class TowerWitchTkinter:
             import traceback
             traceback.print_exc()
 
+class _StampedLog:
+    """Stands in for stdout or stderr: every line goes on to the original
+    stream and to logs/towerwitch.log, stamped with the clock time. The file
+    outlives a login (~/.xsession-errors does not) and stamped lines lay
+    against journalctl and gpsd. Rotates at 2 MB, keeps three."""
+    _file = None
+    _lock = threading.Lock()
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs', 'towerwitch.log')
+    max_bytes = 2_000_000
+    keep = 3
+
+    def __init__(self, stream):
+        self._stream = stream
+        self._at_line_start = True
+        if _StampedLog._file is None:
+            try:
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                _StampedLog._file = open(self.path, 'a', buffering=1)
+            except OSError as e:
+                stream.write(f"[WARN] No log file at {self.path}: {e}\n")
+
+    def write(self, text):
+        with self._lock:
+            out = []
+            for piece in text.splitlines(keepends=True):
+                if self._at_line_start:
+                    out.append(datetime.now().strftime('%H:%M:%S '))
+                out.append(piece)
+                self._at_line_start = piece.endswith('\n')
+            stamped = ''.join(out)
+            self._stream.write(stamped)
+            f = _StampedLog._file
+            if f is not None:
+                try:
+                    f.write(stamped)
+                    if f.tell() > self.max_bytes:
+                        self._rotate()
+                except Exception:
+                    pass
+
+    def _rotate(self):
+        _StampedLog._file.close()
+        for n in range(self.keep, 0, -1):
+            newer = self.path if n == 1 else f"{self.path}.{n - 1}"
+            if os.path.exists(newer):
+                os.replace(newer, f"{self.path}.{n}")
+        _StampedLog._file = open(self.path, 'a', buffering=1)
+
+    def flush(self):
+        self._stream.flush()
+        if _StampedLog._file is not None:
+            try:
+                _StampedLog._file.flush()
+            except Exception:
+                pass
+
+    def fileno(self):
+        return self._stream.fileno()
+
+    def isatty(self):
+        return self._stream.isatty()
+
+
 def _log_startup_event(message):
     """Append a startup diagnostic event to /tmp/towerwitch_startup.log.
     Used to debug duplicate-instance reports. Each launch appends one line
@@ -4327,6 +4416,9 @@ def acquire_single_instance_lock():
 def main():
     """Main entry point"""
     _log_startup_event("main() entered")
+    sys.stdout = _StampedLog(sys.stdout)
+    sys.stderr = _StampedLog(sys.stderr)
+    print(f"==== TowerWitch {datetime.now():%Y-%m-%d %H:%M:%S} ====")
     print(f"[BOOT] pid={os.getpid()} ppid={os.getppid()} argv={sys.argv}")
 
     lock_fd = acquire_single_instance_lock()

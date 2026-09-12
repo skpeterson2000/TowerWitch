@@ -13,11 +13,10 @@ radio_reference_password = your_password_here
 # what3words_key = YOUR_KEY_HERE
 
 [GPS]
-# GPS daemon settings
-gpsd_host = 127.0.0.1
-gpsd_port = 2947
-# GPS update interval in seconds
-update_interval = 1.0
+# Reload the lists this many miles from where they were loaded
+refresh_miles = 5
+# false: flash the Refresh button at that distance instead and wait
+auto_refresh = true
 
 [UI]
 # Interface settings
