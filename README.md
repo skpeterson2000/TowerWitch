@@ -136,6 +136,20 @@ sudo systemctl start gpsd
 cgps -s
 ```
 
+Run gpsd read-only. In `/etc/default/gpsd`:
+
+```
+GPSD_OPTIONS="-G -b"
+```
+
+Without `-b`, gpsd 3.22 (Raspberry Pi OS Bookworm) switches a u-blox 7 into
+its binary protocol and then never asks it for the messages that carry
+position and velocity. The last NMEA fix it saw is re-stamped every second, so
+TowerWitch, cgps and everything else reading gpsd show a position that never
+moves, while gpsmon (which decodes the receiver's packets itself) shows it
+moving. `-b` leaves the receiver in NMEA mode, where it tracks. Restart gpsd
+after changing it: `sudo systemctl restart gpsd.socket gpsd`.
+
 ### UDP Broadcasting Configuration
 TowerWitch can broadcast nearest tower data via UDP for integration with external systems:
 
@@ -362,6 +376,11 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ### Quick Tips
 - **No GPS?** Check `sudo systemctl status gpsd` and ensure GPS hardware is connected
+- **Position never moves, or sits on 0,0?** `gpspipe -w -n 20` shows the same
+  lat/lon in every report while gpsmon shows the receiver moving: gpsd is
+  running the receiver in binary mode. Put `-b` in `GPSD_OPTIONS` (see GPS
+  Configuration). The header label and `~/.xsession-errors` say which driver
+  gpsd activated; `NMEA0183` tracks, `u-blox` does not.
 - **Slow Updates?** Normal behavior - updates every 25-35 seconds during motion for battery conservation
 - **No Radio Reference Data?** The application runs; the public-safety and repeater tabs wait until you add your own exports to `data/`
 - **Touch Screen Issues?** Use fullscreen mode (F11) for optimal mobile experience
