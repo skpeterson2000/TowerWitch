@@ -544,6 +544,7 @@ class GPSWorker:
 
 # --- TowerWitch -> OP25 sidecar wiring ---
 import armer_state_store
+import tw_theme
 from op25_client import Op25Client
 
 OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # fallback when [OP25] url is not set
@@ -558,6 +559,7 @@ class TowerWitchTkinter:
 
     def __init__(self, root):
         self.root = root
+        self.p = tw_theme.DAY   # the palette in use; NIGHT after the toggle
         # Hide the window until __init__ finishes so the user doesn't see the
         # default 1024x600 frame flash before saved geometry is applied.
         self.root.withdraw()
@@ -648,7 +650,6 @@ class TowerWitchTkinter:
 
         # Create the interface
         self.create_widgets()
-        self.setup_colored_tabs()
         self.setup_keyboard_shortcuts()
         
         # Load static data with saved position
@@ -672,7 +673,7 @@ class TowerWitchTkinter:
                 'mode': 0,
                 'satellites_used': 0,
             })
-            self.gps_status.config(text="GPS: Last Known (waiting for fix)", foreground='#FFA500')
+            self.gps_status.config(text="GPS: Last Known (waiting for fix)", foreground=self.p.amber)
 
         print("[DEBUG] About to start GPS...")
         self.start_gps()
@@ -751,92 +752,41 @@ class TowerWitchTkinter:
 
     def create_widgets(self):
         """Create the main interface widgets"""
-        # Configure style for dark theme
         self.style = ttk.Style()
-        self.style.theme_use('clam')  # Use clam theme as base
+        tw_theme.apply(self.style, self.root, self.p)
 
-        # Configure dark theme colors with larger fonts for touch screens
-        self.style.configure('TLabel', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
-        self.style.configure('TFrame', background='#2b2b2b')
-        self.style.configure('TButton', padding=10, font=('Arial', 12),
-                             background='#4a4a4a', foreground='#ffffff')
-        # clam supplies a light hover/pressed background by default; pin the
-        # active/pressed states so mouse-over tracks the theme instead of white.
-        self.style.map('TButton',
-                       background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')],
-                       foreground=[('pressed', '#ffffff'), ('active', '#ffffff')])
-        self.style.configure('TCheckbutton', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
-        self.style.configure('Treeview', background='#3b3b3b', foreground='#ffffff',
-                       fieldbackground='#3b3b3b', font=('Arial', 11), rowheight=30)
-        self.style.configure('Treeview.Heading', background='#4a4a4a', foreground='#ffffff', 
-                       font=('Arial', 12, 'bold'))
-        self.style.map('Treeview.Heading',
-                       background=[('active', '#5a5a5a'), ('!active', '#4a4a4a')],
-                       foreground=[('active', '#ffffff'), ('!active', '#ffffff')])
-        # Suppress the clam theme's column separators and outer frame
-        # bevels — they render in a theme color we don't control.
-        self.style.configure('Treeview', borderwidth=0, relief='flat',
-                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                             darkcolor='#2b2b2b')
-        self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
-                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                             darkcolor='#2b2b2b')
-        # LabelFrame (e.g. the GPS Navigation Dashboard). The clam theme draws a
-        # light bevel border by default; pin all border colors to the background
-        # so it tracks the theme instead of showing a white edge.
-        self.style.configure('TLabelframe', background='#2b2b2b', borderwidth=1,
-                             relief='groove', bordercolor='#4a4a4a',
-                             lightcolor='#4a4a4a', darkcolor='#4a4a4a')
-        self.style.configure('TLabelframe.Label', background='#2b2b2b',
-                             foreground='#ffffff')
-        # Scrollbar (GPS page). clam defaults to a light trough/thumb; pin the
-        # trough, thumb, arrows and border so it tracks the dark theme.
-        self.style.configure('Vertical.TScrollbar', background='#4a4a4a',
-                             troughcolor='#2b2b2b', bordercolor='#2b2b2b',
-                             arrowcolor='#ffffff', relief='flat')
-        self.style.map('Vertical.TScrollbar',
-                       background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')])
+        # Top bar, edge to edge on its own panel with a hairline under it,
+        # as ELMER's: the mark and its sub-line left, the state chips right.
+        header_frame = ttk.Frame(self.root, style='Topbar.TFrame', padding=(14, 8))
+        header_frame.pack(fill=tk.X)
+        ttk.Separator(self.root, orient='horizontal').pack(fill=tk.X)
 
-        # Store root background reference
-        self.root.configure(bg='#2b2b2b')
-
-        # Main frame
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Header frame
-        header_frame = ttk.Frame(main_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 10))
-
-        # Logo to the left of the title. Kept as an attribute so Tk doesn't
+        # Logo to the left of the mark. Kept as an attribute so Tk doesn't
         # garbage-collect the image once create_widgets returns.
         try:
             logo_path = os.path.join(os.path.dirname(__file__), "assets", "towerwitch_48.png")
             self.header_logo = tk.PhotoImage(file=logo_path)
-            logo_label = ttk.Label(header_frame, image=self.header_logo)
-            logo_label.pack(side=tk.LEFT, padx=(0, 8))
+            logo_label = ttk.Label(header_frame, image=self.header_logo, style='Topbar.TLabel')
+            logo_label.pack(side=tk.LEFT, padx=(0, 10))
         except Exception as e:
             print(f"[WARN] Could not load header logo: {e}")
 
-        # Title - larger for touch screens
-        title_label = ttk.Label(header_frame, text="TowerWitch",
-                               font=('Arial', 22, 'bold'))
-        title_label.pack(side=tk.LEFT, padx=5)
+        brand = ttk.Frame(header_frame, style='Topbar.TFrame')
+        brand.pack(side=tk.LEFT)
+        ttk.Label(brand, text="TOWERWITCH", style='Brand.TLabel').pack(anchor='w')
+        ttk.Label(brand, text="GPS-ENHANCED TOWER LOCATOR  \u00b7  KC9SP",
+                  style='BrandSub.TLabel').pack(anchor='w', pady=(2, 0))
 
-        # Author attribution next to the main title
-        attribution_label = ttk.Label(header_frame, text="by KC9SP",
-                                       font=('Arial', 12, 'italic'))
-        attribution_label.pack(side=tk.LEFT, padx=(0, 10), pady=(8, 0))
+        self.datetime_label = ttk.Label(header_frame, text="", style='Topbar.TLabel',
+                                        font=tw_theme.font(12))
+        self.datetime_label.pack(side=tk.RIGHT, padx=(10, 4))
 
-        # DateTime display - larger for touch screens
-        self.datetime_label = ttk.Label(header_frame, text="",
-                                       font=('Arial', 14))
-        self.datetime_label.pack(side=tk.RIGHT, padx=5)
-
-        # GPS status - larger for touch screens
-        self.gps_status = ttk.Label(header_frame, text="GPS: Starting...",
-                                   font=('Arial', 13))
-        self.gps_status.pack(side=tk.RIGHT, padx=10)
+        # GPS state as a chip; its colour is set with the state.
+        self.gps_status = ttk.Label(header_frame, text="GPS: Starting...", style='Chip.TLabel')
+        self.gps_status.pack(side=tk.RIGHT, padx=6)
 
         # Control buttons frame
         controls_frame = ttk.Frame(main_frame)
@@ -849,10 +799,8 @@ class TowerWitchTkinter:
                                         command=self.toggle_night_mode)
         night_mode_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
-        # Refresh button - larger and more touch-friendly
-        # Configure a "stale data" style we can swap in to make the button flash
-        # when GPS drifts too far from the position the local data was loaded for.
-        self.style.configure('Stale.TButton', background='#FF6B6B', foreground='#000000')
+        # Refresh button. Plain at rest; while the lists are stale it flashes
+        # to the accent (Stale.TButton in tw_theme), the colour that asks.
         self.refresh_btn = ttk.Button(controls_frame, text="Refresh Data",
                                 command=self.refresh_all_data)
         self.refresh_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
@@ -863,7 +811,7 @@ class TowerWitchTkinter:
         fullscreen_btn.pack(side=tk.LEFT, padx=10, pady=5, ipadx=15, ipady=8)
 
         # Exit button — clean shutdown of all background threads
-        exit_btn = ttk.Button(controls_frame, text="❌ Exit",
+        exit_btn = ttk.Button(controls_frame, text="\u2715 Exit", style='Danger.TButton',
                               command=self.quit_application)
         exit_btn.pack(side=tk.RIGHT, padx=10, pady=5, ipadx=15, ipady=8)
 
@@ -883,28 +831,7 @@ class TowerWitchTkinter:
         self.create_amateur_tab()
         self.create_fusion_tab()
         self.create_dmr_dstar_tab()
-
-    def setup_colored_tabs(self):
-        """Setup colored tabs using ttk.Style"""
-        # Configure the main notebook tab style with colors - larger for touch
-        self.style.configure("TNotebook.Tab",
-                       padding=[20, 12],
-                       font=('Arial', 12, 'bold'),
-                       focuscolor='none')
-
-        # Map different colors based on tab state. Include !selected so
-        # the inactive-tab and tab-strip backgrounds match the dark theme
-        # instead of falling through to the clam theme default (light gray).
-        self.style.configure("TNotebook", background='#2b2b2b', borderwidth=0,
-                             bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                             darkcolor='#2b2b2b')
-        self.style.map("TNotebook.Tab",
-                 background=[('selected', '#3498DB'), ('active', '#5DADE2'),
-                             ('!selected', '#2b2b2b')],
-                 foreground=[('selected', '#ffffff'), ('active', '#ffffff'),
-                             ('!selected', '#cccccc')])
-
-        print("[OK] Base tab styles configured!")
+        tw_theme.dress(self.root)
 
     def setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for common operations"""
@@ -1098,22 +1025,22 @@ class TowerWitchTkinter:
         # Column 1: Fix Status
         col1 = ttk.Frame(dashboard_grid)
         col1.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col1, text="Fix Status", font=('Arial', 10, 'bold')).pack()
-        self.nav_fix_status = ttk.Label(col1, text="NO FIX", font=('Arial', 14, 'bold'), foreground='red')
+        ttk.Label(col1, text="FIX STATUS", style='Title.TLabel').pack()
+        self.nav_fix_status = ttk.Label(col1, text="NO FIX", font=tw_theme.font(15, 'bold', mono=True), foreground=self.p.red)
         self.nav_fix_status.pack()
         
         # Column 2: Satellites
         col2 = ttk.Frame(dashboard_grid)
         col2.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col2, text="Satellites", font=('Arial', 10, 'bold')).pack()
-        self.nav_satellites = ttk.Label(col2, text="0", font=('Arial', 14, 'bold'))
+        ttk.Label(col2, text="SATELLITES", style='Title.TLabel').pack()
+        self.nav_satellites = ttk.Label(col2, text="0", font=tw_theme.font(15, 'bold', mono=True))
         self.nav_satellites.pack()
         
         # Column 3: Speed
         col3 = ttk.Frame(dashboard_grid)
         col3.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col3, text="Speed", font=('Arial', 10, 'bold')).pack()
-        self.nav_speed = ttk.Label(col3, text="0.0 mph", font=('Arial', 14))
+        ttk.Label(col3, text="SPEED", style='Title.TLabel').pack()
+        self.nav_speed = ttk.Label(col3, text="0.0 mph", font=tw_theme.font(15, 'bold', mono=True))
         self.nav_speed.pack()
         
         # Second row: Heading and Altitude
@@ -1123,27 +1050,27 @@ class TowerWitchTkinter:
         # Column 4: Heading
         col4 = ttk.Frame(dashboard_grid2)
         col4.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col4, text="Heading", font=('Arial', 10, 'bold')).pack()
-        self.nav_heading = ttk.Label(col4, text="---°", font=('Arial', 14))
+        ttk.Label(col4, text="HEADING", style='Title.TLabel').pack()
+        self.nav_heading = ttk.Label(col4, text="---°", font=tw_theme.font(15, 'bold', mono=True))
         self.nav_heading.pack()
         
         # Column 5: Altitude
         col5 = ttk.Frame(dashboard_grid2)
         col5.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col5, text="Altitude", font=('Arial', 10, 'bold')).pack()
-        self.nav_altitude = ttk.Label(col5, text="--- ft", font=('Arial', 14))
+        ttk.Label(col5, text="ALTITUDE", style='Title.TLabel').pack()
+        self.nav_altitude = ttk.Label(col5, text="--- ft", font=tw_theme.font(15, 'bold', mono=True))
         self.nav_altitude.pack()
         
         # Column 6: Last Update
         col6 = ttk.Frame(dashboard_grid2)
         col6.pack(side=tk.LEFT, expand=True, fill=tk.BOTH, padx=5)
-        ttk.Label(col6, text="Last Update", font=('Arial', 10, 'bold')).pack()
-        self.nav_last_update = ttk.Label(col6, text="--:--:--", font=('Arial', 14))
+        ttk.Label(col6, text="LAST UPDATE", style='Title.TLabel').pack()
+        self.nav_last_update = ttk.Label(col6, text="--:--:--", font=tw_theme.font(15, 'bold', mono=True))
         self.nav_last_update.pack()
 
         # GPS detailed info label
         info_label = ttk.Label(gps_frame, text="Detailed GPS Information",
-                              font=('Arial', 14, 'bold'))
+                              font=(tw_theme.SANS, 14, 'bold'))
         info_label.pack(pady=(10, 5))
 
         # GPS data tree
@@ -1179,7 +1106,7 @@ class TowerWitchTkinter:
         self.notebook.add(grid_frame, text="Grids")
 
         info_label = ttk.Label(grid_frame, text="Location Grid Systems & Coordinates",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # Grid data tree
@@ -1215,7 +1142,7 @@ class TowerWitchTkinter:
         armer_header.pack(fill=tk.X, padx=10, pady=10)
 
         info_label = ttk.Label(armer_header, text="ARMER Radio Sites and Talkgroups",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(side=tk.LEFT)
 
         # Greyed with the reason until there is a site to send and an op25
@@ -1256,7 +1183,7 @@ class TowerWitchTkinter:
         self.notebook.add(interop_frame, text="InterOp")
 
         info_label = ttk.Label(interop_frame, text="Minnesota Interoperability Channels",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # Interop data tree
@@ -1303,7 +1230,7 @@ class TowerWitchTkinter:
 
         # Description label
         desc_label = ttk.Label(subtab_frame, text=description,
-                              font=('Arial', 14, 'bold'))
+                              font=(tw_theme.SANS, 14, 'bold'))
         desc_label.pack(pady=12)
 
         # Columns for aviation data
@@ -1350,8 +1277,8 @@ class TowerWitchTkinter:
         # Configure tags for styling (especially for Nearby airports)
         if tab_name == "Nearby":
             # Make airport parent rows bold and slightly different
-            aviation_tree.tag_configure('airport', font=('Arial', 12, 'bold'))
-            aviation_tree.tag_configure('frequency', font=('Arial', 11))
+            aviation_tree.tag_configure('airport', font=(tw_theme.SANS, 12, 'bold'))
+            aviation_tree.tag_configure('frequency', font=(tw_theme.SANS, 11))
 
         # Store reference to the tree based on tab name
         if tab_name == "Nearby":
@@ -1369,7 +1296,7 @@ class TowerWitchTkinter:
         self.notebook.add(skywarn_frame, text="Skywarn")
 
         info_label = ttk.Label(skywarn_frame, text="Skywarn Weather Emergency Repeaters",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # Skywarn data tree
@@ -1402,7 +1329,7 @@ class TowerWitchTkinter:
         self.amateur_notebook.add(fusion_frame, text="Fusion")
 
         info_label = ttk.Label(fusion_frame, text="Yaesu System Fusion Digital Repeaters",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # Fusion data tree - optimized for touch screen with responsive columns
@@ -1448,7 +1375,7 @@ class TowerWitchTkinter:
         self.amateur_notebook.add(dmr_dstar_frame, text="DMR/D-Star")
 
         info_label = ttk.Label(dmr_dstar_frame, text="DMR and D-Star Digital Repeaters",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # DMR/D-Star data tree - optimized for touch screen
@@ -1496,14 +1423,14 @@ class TowerWitchTkinter:
         self.notebook.add(noaa_frame, text="NOAA")
 
         info_label = ttk.Label(noaa_frame, text="NOAA Weather Radio (NWR) Frequencies",
-                              font=('Arial', 16, 'bold'))
+                              font=(tw_theme.SANS, 16, 'bold'))
         info_label.pack(pady=15)
 
         # Instructions
         instructions = ttk.Label(noaa_frame, 
                                 text="These are the 7 NOAA Weather Radio frequencies used nationwide.\n"
                                      "Check which station(s) cover your area at weather.gov/nwr",
-                                font=('Arial', 11),
+                                font=(tw_theme.SANS, 11),
                                 justify=tk.CENTER)
         instructions.pack(pady=10)
 
@@ -1551,7 +1478,7 @@ class TowerWitchTkinter:
 
         # Band description - larger for touch screens
         desc_label = ttk.Label(band_frame, text=description,
-                              font=('Arial', 14, 'bold'))
+                              font=(tw_theme.SANS, 14, 'bold'))
         desc_label.pack(pady=12)
 
         # Different columns for Simplex tab
@@ -3691,11 +3618,11 @@ class TowerWitchTkinter:
         state = info.get('state')
         if state == 'waiting':
             used, seen = info.get('satellites_used', 0), info.get('satellites_seen', 0)
-            text, color, sats = f"GPS: Waiting for fix ({used}/{seen} sats)", '#FFA500', f"{used}/{seen}"
+            text, color, sats = f"GPS: Waiting for fix ({used}/{seen} sats)", self.p.amber, f"{used}/{seen}"
         elif state == 'silent':
-            text, color, sats = "GPS: No data from receiver", '#FF6B6B', '--'
+            text, color, sats = "GPS: No data from receiver", self.p.red, '--'
         else:
-            text, color, sats = "GPS: gpsd unreachable (retrying)", '#FF6B6B', '--'
+            text, color, sats = "GPS: gpsd unreachable (retrying)", self.p.red, '--'
 
         def show():
             self.gps_status.config(text=text, foreground=color)
@@ -3773,13 +3700,13 @@ class TowerWitchTkinter:
             
             if is_demo:
                 status_text = "GPS: DEMO MODE (Minneapolis)"
-                self.gps_status.config(text=status_text, foreground='#FFA500')  # Orange for demo
+                self.gps_status.config(text=status_text, foreground=self.p.amber)  # Orange for demo
             elif mode >= 3:
-                self.gps_status.config(text=f"GPS: 3D Fix ({sats} sats)", foreground='#00FF00')  # Green
+                self.gps_status.config(text=f"GPS: 3D Fix ({sats} sats)", foreground=self.p.green)  # Green
             elif mode == 2:
-                self.gps_status.config(text=f"GPS: 2D Fix ({sats} sats)", foreground='#FFFF00')  # Yellow
+                self.gps_status.config(text=f"GPS: 2D Fix ({sats} sats)", foreground=self.p.amber)  # Yellow
             else:
-                self.gps_status.config(text=f"GPS: No Fix ({sats} sats)", foreground='#FF6B6B')  # Red
+                self.gps_status.config(text=f"GPS: No Fix ({sats} sats)", foreground=self.p.red)  # Red
 
             # One line every 30 s with the whole picture, so the log shows
             # where the vehicle was and what the receiver said without a
@@ -3844,13 +3771,13 @@ class TowerWitchTkinter:
             # Fix Status
             mode = gps_data.get('mode', 0)
             if is_demo:
-                self.nav_fix_status.config(text="DEMO MODE", foreground='#FFA500')
+                self.nav_fix_status.config(text="DEMO MODE", foreground=self.p.amber)
             elif mode >= 3:
-                self.nav_fix_status.config(text="3D FIX", foreground='#00FF00')
+                self.nav_fix_status.config(text="3D FIX", foreground=self.p.green)
             elif mode == 2:
-                self.nav_fix_status.config(text="2D FIX", foreground='#FFFF00')
+                self.nav_fix_status.config(text="2D FIX", foreground=self.p.amber)
             else:
-                self.nav_fix_status.config(text="NO FIX", foreground='#FF0000')
+                self.nav_fix_status.config(text="NO FIX", foreground=self.p.red)
             
             # Satellites
             sats = gps_data.get('satellites_used', 0)
@@ -3896,158 +3823,34 @@ class TowerWitchTkinter:
         self.toggle_night_mode()
 
     def toggle_night_mode(self):
-        """Toggle night mode - red-tinted colors to preserve night vision"""
+        """Night is the same look in red; everything reads its colour from
+        the palette, so swapping the palette is the whole change."""
         self.night_mode_on = self.night_mode_var.get()
-
-        if self.night_mode_on:
-            # Night mode: Dark backgrounds with red text (preserves night vision)
-            print("[OK] Night mode enabled - red tinted display for night vision")
-            
-            # Root background
-            self.root.configure(bg='#1a0000')
-            
-            # Style configurations
-            self.style.configure('TLabel', background='#1a0000', foreground='#ff4444')
-            self.style.configure('TFrame', background='#1a0000')
-            self.style.configure('TButton', background='#2a0000', foreground='#ff6666')
-            # Mouse-over/pressed: brighter dark red, never the clam default white.
-            self.style.map('TButton',
-                           background=[('pressed', '#3a0000'), ('active', '#3a0000')],
-                           foreground=[('pressed', '#ff8888'), ('active', '#ff8888')])
-            self.style.configure('TCheckbutton', background='#1a0000', foreground='#ff4444', font=('Arial', 11))
-            self.style.configure('Treeview', 
-                               background='#200000', 
-                               foreground='#ff5555',
-                               fieldbackground='#200000')
-            # Deep red header — dark enough to preserve dark-adapted vision.
-            self.style.configure('Treeview.Heading', 
-                               background='#1a0000', 
-                               foreground='#aa3333')
-            # Force it past clam theme defaults via .map for all states.
-            self.style.map('Treeview.Heading',
-                           background=[('active', '#2a0000'), ('!active', '#1a0000')],
-                           foreground=[('active', '#cc3333'), ('!active', '#aa3333')])
-            # Kill all border/bevel colors so the only thing the eye catches
-            # is the data — no glare from column dividers or frame edges.
-            self.style.configure('Treeview', borderwidth=0, relief='flat',
-                                 bordercolor='#1a0000', lightcolor='#1a0000',
-                                 darkcolor='#1a0000')
-            self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
-                                 bordercolor='#1a0000', lightcolor='#1a0000',
-                                 darkcolor='#1a0000')
-            # LabelFrame border + title (GPS Navigation Dashboard) — deep red so
-            # it no longer shows a white edge against the night-mode theme.
-            self.style.configure('TLabelframe', background='#1a0000', borderwidth=1,
-                                 relief='groove', bordercolor='#4a0000',
-                                 lightcolor='#4a0000', darkcolor='#4a0000')
-            self.style.configure('TLabelframe.Label', background='#1a0000',
-                                 foreground='#ff4444')
-            # Scrollbar (GPS page) — deep red trough/thumb for night vision.
-            self.style.configure('Vertical.TScrollbar', background='#3a0000',
-                                 troughcolor='#1a0000', bordercolor='#1a0000',
-                                 arrowcolor='#ff6666', relief='flat')
-            self.style.map('Vertical.TScrollbar',
-                           background=[('pressed', '#4a0000'), ('active', '#4a0000')])
-
-            # Tab colors for night mode
-            self.style.configure("TNotebook", background='#1a0000', borderwidth=0,
-                                 bordercolor='#1a0000', lightcolor='#1a0000',
-                                 darkcolor='#1a0000')
-            self.style.map("TNotebook.Tab",
-                         background=[('selected', '#4a0000'), ('active', '#5a0000'),
-                                     ('!selected', '#1a0000')],
-                         foreground=[('selected', '#ff6666'), ('active', '#ff6666'),
-                                     ('!selected', '#aa3333')])
-            
-            # Force update all treeview widgets individually
-            self.update_treeview_colors('#200000', '#ff5555', '#300000', '#ff6666')
-            
-            # Update GPS status colors
-            try:
-                current_text = self.gps_status.cget('text')
-                if '3D Fix' in current_text or 'sats' in current_text:
-                    self.gps_status.config(foreground='#ff4444')  # Red instead of green
-                else:
-                    self.gps_status.config(foreground='#cc3333')  # Darker red
-            except:
-                pass
-                
-        else:
-            # Day mode: Normal dark theme with white text
-            print("[OK] Day mode enabled - normal display")
-            
-            # Root background
-            self.root.configure(bg='#2b2b2b')
-            
-            # Style configurations
-            self.style.configure('TLabel', background='#2b2b2b', foreground='#ffffff')
-            self.style.configure('TFrame', background='#2b2b2b')
-            self.style.configure('TButton', background='#4a4a4a', foreground='#ffffff')
-            # Mouse-over/pressed: lighter gray, never the clam default white.
-            self.style.map('TButton',
-                           background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')],
-                           foreground=[('pressed', '#ffffff'), ('active', '#ffffff')])
-            self.style.configure('TCheckbutton', background='#2b2b2b', foreground='#ffffff', font=('Arial', 11))
-            self.style.configure('Treeview', 
-                               background='#3b3b3b', 
-                               foreground='#ffffff',
-                               fieldbackground='#3b3b3b')
-            self.style.configure('Treeview.Heading', 
-                               background='#4a4a4a', 
-                               foreground='#ffffff')
-            # clam theme overrides .configure via internal state maps — force the
-            # heading colors with explicit .map entries for all states.
-            self.style.map('Treeview.Heading',
-                           background=[('active', '#5a5a5a'), ('!active', '#4a4a4a')],
-                           foreground=[('active', '#ffffff'), ('!active', '#ffffff')])
-            self.style.configure('Treeview', borderwidth=0, relief='flat',
-                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                                 darkcolor='#2b2b2b')
-            self.style.configure('Treeview.Heading', borderwidth=0, relief='flat',
-                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                                 darkcolor='#2b2b2b')
-            # LabelFrame border + title (GPS Navigation Dashboard) — restore the
-            # day-mode gray border so it matches the normal dark theme.
-            self.style.configure('TLabelframe', background='#2b2b2b', borderwidth=1,
-                                 relief='groove', bordercolor='#4a4a4a',
-                                 lightcolor='#4a4a4a', darkcolor='#4a4a4a')
-            self.style.configure('TLabelframe.Label', background='#2b2b2b',
-                                 foreground='#ffffff')
-            # Scrollbar (GPS page) — restore gray trough/thumb for day mode.
-            self.style.configure('Vertical.TScrollbar', background='#4a4a4a',
-                                 troughcolor='#2b2b2b', bordercolor='#2b2b2b',
-                                 arrowcolor='#ffffff', relief='flat')
-            self.style.map('Vertical.TScrollbar',
-                           background=[('pressed', '#5a5a5a'), ('active', '#5a5a5a')])
-
-            # Tab colors for day mode
-            self.style.configure("TNotebook", background='#2b2b2b', borderwidth=0,
-                                 bordercolor='#2b2b2b', lightcolor='#2b2b2b',
-                                 darkcolor='#2b2b2b')
-            self.style.map("TNotebook.Tab",
-                         background=[('selected', '#3498DB'), ('active', '#5DADE2'),
-                                     ('!selected', '#2b2b2b')],
-                         foreground=[('selected', '#ffffff'), ('active', '#ffffff'),
-                                     ('!selected', '#cccccc')])
-            
-            # Force update all treeview widgets individually
-            self.update_treeview_colors('#3b3b3b', '#ffffff', '#4a4a4a', '#ffffff')
-            
-            # Restore GPS status colors
-            try:
-                current_text = self.gps_status.cget('text')
-                if '3D Fix' in current_text or 'sats' in current_text:
-                    self.gps_status.config(foreground='#00FF00')  # Green for good signal
-                else:
-                    self.gps_status.config(foreground='#FFA500')  # Orange for demo/no signal
-            except:
-                pass
-        
-        # Force display update
+        self.p = tw_theme.NIGHT if self.night_mode_on else tw_theme.DAY
+        print(f"[OK] {self.p.name.capitalize()} palette")
+        tw_theme.apply(self.style, self.root, self.p)
+        self.update_treeview_colors()
+        self._recolor_status()
         self.root.update_idletasks()
 
-    def update_treeview_colors(self, bg, fg, heading_bg, heading_fg):
-        """Update all treeview widget colors directly"""
+    def _recolor_status(self):
+        """Re-read the state labels' colour from the palette after a swap."""
+        try:
+            text = self.gps_status.cget('text')
+            if '3D Fix' in text:
+                self.gps_status.config(foreground=self.p.green)
+            elif 'No Fix' in text or 'No data' in text or 'unreachable' in text:
+                self.gps_status.config(foreground=self.p.red)
+            else:
+                self.gps_status.config(foreground=self.p.amber)
+            fix = self.nav_fix_status.cget('text')
+            self.nav_fix_status.config(foreground=self.p.green if 'FIX' in fix and 'NO' not in fix
+                                       else self.p.red if 'NO' in fix else self.p.amber)
+        except Exception:
+            pass
+
+    def update_treeview_colors(self):
+        """Have every table take the palette again after a swap."""
         treeviews = [
             self.gps_tree,
             self.grid_tree,
@@ -4094,7 +3897,7 @@ class TowerWitchTkinter:
         # Save the current status so we can restore it after refresh
         prev_status = self.gps_status.cget('text')
         prev_color = self.gps_status.cget('foreground')
-        self.gps_status.config(text="Refreshing data...", foreground='#FFA500')
+        self.gps_status.config(text="Refreshing data...", foreground=self.p.amber)
 
         def do_refresh():
             try:
@@ -4201,7 +4004,7 @@ class TowerWitchTkinter:
         """Opt-in: fetch live data from Radio Reference in a background thread."""
         prev_status = self.gps_status.cget('text')
         prev_color = self.gps_status.cget('foreground')
-        self.gps_status.config(text="Fetching from API...", foreground='#FFA500')
+        self.gps_status.config(text="Fetching from API...", foreground=self.p.amber)
 
         def do_api_fetch():
             try:

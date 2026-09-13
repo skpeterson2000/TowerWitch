@@ -20,7 +20,7 @@ TowerWitch is a comprehensive amateur radio application that helps locate nearby
 - **5-Tab Interface** - Streamlined tabbed layout with color-coded sections
 - **Utilities Button** - Separate dialog for location tools and data management
 - Touch-friendly controls and spacing
-- **Tab Colors** - Purple (Location), Red (ARMER), Orange (SKYWARN), Green (NOAA), Blue (Amateur)
+- **ELMER's look** - the same palette, type and labels as ELMER (`tw_theme.py` carries elmer.css's tokens), so the two read as one program on two screens; night mode is the same look in red
 
 ### 🌐 Live Data Integration
 - **Radio Reference API** - Live repeater database access (premium account)
