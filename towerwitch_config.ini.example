@@ -18,6 +18,12 @@ refresh_miles = 5
 # false: flash the Refresh button at that distance instead and wait
 auto_refresh = true
 
+[OP25]
+# Where op25's multi_rx HTTP terminal answers. This machine (localhost:8080)
+# is tried first; then this address. The Send to OP25 button on the ARMER
+# tab is live only while one of them answers and ARMER sites are loaded.
+url = http://192.168.1.31:8080/
+
 [UI]
 # Interface settings
 window_width = 1024

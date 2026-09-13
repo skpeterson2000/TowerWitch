@@ -167,6 +167,20 @@ on each line (2 MB, three kept), so a run can be laid against `journalctl`
 and gpsd's own record. `[GPS]` lines every 30 s give position, speed, heading,
 fix, satellites and distance from the loaded data.
 
+### OP25 Hand-off
+The ARMER tab's **Send to OP25** button posts the selected site to a running
+op25 `multi_rx` terminal. TowerWitch looks for one on this machine
+(`localhost:8080`) and then at `[OP25] url` in `towerwitch_config.ini`:
+
+```ini
+[OP25]
+url = http://192.168.1.31:8080/
+```
+
+The button is live only while an op25 is answering and ARMER sites are
+loaded; otherwise it is greyed and says which of the two is missing. While
+nothing answers, TowerWitch looks every ten seconds and the log says so once.
+
 ### UDP Broadcasting Configuration
 TowerWitch can broadcast nearest tower data via UDP for integration with external systems:
 

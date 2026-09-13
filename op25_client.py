@@ -11,12 +11,18 @@ Usage from TowerWitch:
     from armer_state_store import update_from_op25
 
     client = Op25Client(
-        url="http://192.168.1.31:8080/",
+        url=["http://localhost:8080/", "http://192.168.1.31:8080/"],
         on_update=lambda st: update_from_op25(json_path, st),
+        on_status=lambda reachable, url: ...,   # button state
     )
     client.start()
     ...
     client.stop()
+
+`url` may be one address or several: the first that answers is used until
+it stops answering. While nothing answers the poll slows to `absent_poll_sec`
+so an op25 that is not there costs a request every ten seconds, not four a
+second, and the log hears about it once.
 """
 
 from __future__ import annotations
@@ -51,39 +57,62 @@ class Op25SystemState:
 
 
 class Op25Client(threading.Thread):
+    # Misses in a row before a reachable op25 is called lost; one dropped
+    # poll should not flip the button.
+    LOST_AFTER = 3
+
     def __init__(
         self,
-        url: str,
+        url,
         on_update,
         poll_sec: float = 0.25,
         timeout_sec: float = 2.0,
         log_fn=print,
+        absent_poll_sec: float = 10.0,
+        on_status=None,
     ):
         super().__init__(daemon=True, name="op25_client")
-        self.url = url.rstrip("/") + "/"
+        urls = [url] if isinstance(url, str) else list(url)
+        self.urls = []
+        for u in urls:
+            u = u.rstrip("/") + "/"
+            if u not in self.urls:
+                self.urls.append(u)
         self.on_update = on_update
+        self.on_status = on_status
         self.poll_sec = poll_sec
+        self.absent_poll_sec = absent_poll_sec
         self.timeout_sec = timeout_sec
         self.log_fn = log_fn
         self._stop_evt = threading.Event()
-        self._last_status = None
-        self._last_status_print = 0.0
         self._last_fingerprint = None
+        self._misses = 0
+        self._said_absent = False
+        self.active_url = None      # the address answering, while one is
+        self.reachable = False
+
+    @property
+    def url(self):
+        """Where to send: the address answering, else the last configured."""
+        return self.active_url or self.urls[-1]
 
     def stop(self) -> None:
         self._stop_evt.set()
 
     def run(self) -> None:
         while not self._stop_evt.is_set():
-            msgs, status = self._poll()
-            now = time.time()
-            if status != "ok":
-                if status != self._last_status or now - self._last_status_print > 5:
-                    self.log_fn("op25_client: %s" % status)
-                    self._last_status = status
-                    self._last_status_print = now
-            else:
-                self._last_status = "ok"
+            candidates = [self.active_url] if self.active_url else self.urls
+            answered = None
+            status = None
+            for url in candidates:
+                msgs, status = self._poll(url)
+                if status == "ok":
+                    answered = url
+                    break
+            if answered:
+                self._misses = 0
+                if not self.reachable:
+                    self._set_reachable(True, answered)
                 for state in self._extract_systems(msgs):
                     fp = self._fingerprint(state)
                     if fp == self._last_fingerprint:
@@ -93,13 +122,34 @@ class Op25Client(threading.Thread):
                         self.on_update(state)
                     except Exception as e:
                         self.log_fn("op25_client: on_update raised: %s" % e)
-            self._stop_evt.wait(self.poll_sec)
+            elif self.reachable:
+                self._misses += 1
+                if self._misses >= self.LOST_AFTER:
+                    self.log_fn("op25_client: lost %s (%s)" % (self.active_url, status))
+                    self._set_reachable(False, None)
+            elif not self._said_absent:
+                self._said_absent = True
+                self.log_fn("op25_client: no op25 at %s (%s); looking every %.0fs"
+                            % (", ".join(self.urls), status, self.absent_poll_sec))
+            self._stop_evt.wait(self.poll_sec if self.reachable else self.absent_poll_sec)
 
-    def _poll(self):
+    def _set_reachable(self, reachable: bool, url) -> None:
+        self.reachable = reachable
+        self.active_url = url
+        if reachable:
+            self.log_fn("op25_client: op25 answering at %s" % url)
+            self._said_absent = False
+        if self.on_status:
+            try:
+                self.on_status(reachable, url)
+            except Exception as e:
+                self.log_fn("op25_client: on_status raised: %s" % e)
+
+    def _poll(self, url):
         # http_server.py expects a LIST of command dicts; a bare dict iterates over keys and crashes.
         body = json.dumps([{"command": "update", "arg1": 0, "arg2": 0}]).encode()
         req = urllib.request.Request(
-            self.url, data=body,
+            url, data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )

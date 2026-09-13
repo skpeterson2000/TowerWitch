@@ -546,7 +546,8 @@ class GPSWorker:
 import armer_state_store
 from op25_client import Op25Client
 
-OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # op25 Pi LAN IP
+OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # fallback when [OP25] url is not set
+OP25_LOCAL_URL   = "http://localhost:8080/"      # tried first: op25 on this machine
 ARMER_CSV_PATH   = os.path.join(os.path.dirname(__file__), "trs_sites_3508.csv")
 ARMER_STATE_JSON = os.path.join(os.path.dirname(__file__), "data", "armer_state.json")
 OP25_IMPORT_PATH = "/tw/import"
@@ -594,10 +595,13 @@ class TowerWitchTkinter:
         except Exception as e:
             print(f"[WARN] ARMER state bootstrap failed: {e}")
 
-        # Background poller for the op25 HTTP terminal
+        # Background poller for the op25 HTTP terminal. Same machine first,
+        # then the configured address; the Send button follows its answer.
+        self.armer_loaded = False
         self.op25_client = Op25Client(
-            url=OP25_SIDECAR_URL,
+            url=[OP25_LOCAL_URL, self.config.get('OP25', 'url', fallback=OP25_SIDECAR_URL)],
             on_update=lambda st: armer_state_store.update_from_op25(ARMER_STATE_JSON, st),
+            on_status=lambda reachable, url: self.root.after(0, self._update_op25_button),
             log_fn=lambda msg: print(f"[OP25] {msg}"),
         )
         self.op25_client.start()
@@ -942,6 +946,24 @@ class TowerWitchTkinter:
         else:
             print("[OK] Windowed mode enabled")
 
+    def _update_op25_button(self):
+        """Send to OP25 is live when ARMER sites are loaded and an op25 is
+        answering; otherwise greyed, saying which is missing."""
+        btn = getattr(self, 'op25_btn', None)
+        if btn is None:
+            return
+        client = getattr(self, 'op25_client', None)
+        if not self.armer_loaded:
+            text, state = "Send to OP25 \u2014 no ARMER data", 'disabled'
+        elif not (client and client.reachable):
+            text, state = "Send to OP25 \u2014 op25 not found", 'disabled'
+        else:
+            text, state = "\U0001F4E1 Send to OP25", 'normal'
+        try:
+            btn.config(text=text, state=state)
+        except Exception as e:
+            print(f"[WARN] Could not update Send to OP25 button: {e}")
+
     def send_to_op25(self):
         """Hand off the selected ARMER site to a running op25 instance.
 
@@ -985,7 +1007,7 @@ class TowerWitchTkinter:
             "trunking": {"chans": [chan_entry]},
         }
 
-        url = OP25_SIDECAR_URL.rstrip("/") + OP25_IMPORT_PATH
+        url = self.op25_client.url.rstrip("/") + OP25_IMPORT_PATH
         req = urllib.request.Request(
             url, data=json.dumps(payload).encode(),
             headers={"Content-Type": "application/json"}, method="POST",
@@ -1196,9 +1218,11 @@ class TowerWitchTkinter:
                               font=('Arial', 16, 'bold'))
         info_label.pack(side=tk.LEFT)
 
-        op25_btn = ttk.Button(armer_header, text="📡 Send to OP25",
-                              command=self.send_to_op25)
-        op25_btn.pack(side=tk.RIGHT, padx=5, ipadx=15, ipady=6)
+        # Greyed with the reason until there is a site to send and an op25
+        # to send it to; the same button in the same place either way.
+        self.op25_btn = ttk.Button(armer_header, command=self.send_to_op25)
+        self.op25_btn.pack(side=tk.RIGHT, padx=5, ipadx=15, ipady=6)
+        self._update_op25_button()
 
         # ARMER sites tree
         columns = ('Site', 'Description', 'County', 'Distance', 'Bearing', 'Range', 'Frequencies')
@@ -3388,11 +3412,14 @@ class TowerWitchTkinter:
         
         if not os.path.exists(armer_file):
             print("[WARN] ARMER data file not found")
+            self.armer_loaded = False
+            self._update_op25_button()
             return
         
         # Clear existing
         for item in self.armer_tree.get_children():
             self.armer_tree.delete(item)
+        self.armer_loaded = False
         
         try:
             with open(armer_file, 'r') as f:
@@ -3451,9 +3478,11 @@ class TowerWitchTkinter:
                     self.armer_tree.insert('', 'end', iid=f"{site['rfid']}-{site['site_id']}", values=values)
                 
                 print(f"[OK] Loaded {len(sites)} ARMER sites")
+                self.armer_loaded = len(sites) > 0
                 
         except Exception as e:
             print(f"[ERROR] Error loading ARMER data: {e}")
+        self._update_op25_button()
 
     def get_nearest_town(self, lat, lon):
         """Get nearest town/city using reverse geocoding with Nominatim (OSM)"""
