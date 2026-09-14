@@ -1,0 +1,7 @@
+# TowerWitch-P, the Qt build - the one that runs on Windows as well as a Pi.
+PyQt5
+requests
+utm
+maidenhead
+mgrs
+packaging

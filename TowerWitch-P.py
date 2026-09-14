@@ -72,6 +72,15 @@ except ImportError as e:
 
 # Configure comprehensive logging
 log_filename = os.path.join(os.path.dirname(__file__), 'towerwitch-p_debug.log')
+# The messages carry emoji, and a Windows console is cp1252 unless told
+# otherwise: the first emoji printed would raise inside the error handler
+# and hide the error it was reporting. Say UTF-8 once, here.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
@@ -914,10 +923,33 @@ class GPSWorker(QThread):
             process.terminate()
             
         except FileNotFoundError:
-            print("[ERROR] Error: gpspipe not found. Install gpsd-clients package:")
-            print("  sudo apt-get install gpsd-clients")
+            # No gpsd here - a laptop, or Windows. ELMER on this machine may
+            # have a position: a receiver of its own, a phone streaming to
+            # it, or at least the QTH typed into it. Borrow that rather than
+            # have nothing; the log says which it was.
+            print("[WARNING] gpspipe not found (no gpsd on this machine) - asking ELMER for a position")
+            self.borrow_from_elmer()
         except Exception as e:
             print(f"❌ Error in GPSWorker: {e}")
+
+    def borrow_from_elmer(self):
+        """ELMER's fix, every few seconds, for as long as this runs; its
+        typed QTH once if it has no fix. Quiet when ELMER is not there."""
+        said_qth = False
+        while self.running:
+            got = elmer_link.position()
+            if got and got.get("located"):
+                self.gps_data_signal.emit(float(got["lat"]), float(got["lon"]), 0.0, 0.0, 0.0)
+                said_qth = False
+            elif got and got.get("qth") and not said_qth:
+                q = got["qth"]
+                logger.info(f"GPS: no fix anywhere; using the QTH ELMER has on file ({q.get('short')})")
+                self.gps_data_signal.emit(float(q["lat"]), float(q["lon"]), 0.0, 0.0, 0.0)
+                said_qth = True
+            for _ in range(10):
+                if not self.running:
+                    return
+                time.sleep(0.5)
     
     def stop(self):
         self.running = False

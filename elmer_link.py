@@ -11,6 +11,7 @@ tooltip, when there is nothing to open.
 Nothing here reaches past this machine: ELMER on another unit is that
 unit's dashboard to open.
 """
+import json
 import os
 import subprocess
 import sys
@@ -49,6 +50,17 @@ def answering(timeout=0.8):
             return True
     except Exception:
         return False
+
+
+def position(timeout=2.0):
+    """ELMER's position, as its /api/gps answers it: `located` with lat and
+    lon when it has a fix from a receiver or a phone, otherwise `qth` - the
+    place typed into it - when it has one. None when ELMER is not there."""
+    try:
+        with urllib.request.urlopen(URL + "api/gps", timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        return None
 
 
 def status():
