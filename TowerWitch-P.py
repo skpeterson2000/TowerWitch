@@ -831,6 +831,11 @@ class RadioReferenceAPI:
 # GPS Worker Class using gpspipe
 class GPSWorker(QThread):
     gps_data_signal = pyqtSignal(float, float, float, float, float)  # Added heading parameter
+    # Where the position comes from and how it is going, in words: the
+    # source, the quality (satellites, HDOP), and advice when the fix is
+    # weak or has gone - which antenna to move, or when a phone is not
+    # going to be enough. Empty strings when there is nothing to say.
+    gps_source_signal = pyqtSignal(str, str, str)
 
     def __init__(self, host='127.0.0.1', port=2947):
         super().__init__()
@@ -876,6 +881,16 @@ class GPSWorker(QThread):
                         logger.debug(f"GPS Worker: Processed {message_count} messages")
                     
                     # Look for TPV (Time-Position-Velocity) messages
+                    if msg_class == 'SKY':
+                        sats = data.get('satellites') or []
+                        used = sum(1 for x in sats if x.get('used'))
+                        hdop = data.get('hdop')
+                        quality = f"{used} satellites of {len(sats)} seen" + (f", HDOP {hdop}" if hdop is not None else "")
+                        weak = used < 5 or (hdop is not None and hdop > 5)
+                        self.gps_source_signal.emit(
+                            "a receiver on this machine (gpsd)", quality,
+                            "the receiver is short of satellites - move the puck: the dash, the roof, "
+                            "away from the metal and any heated glass" if weak else "")
                     if msg_class == 'TPV':
                         logger.debug(f"GPS Worker: TPV message received: {data}")
                         
@@ -938,14 +953,24 @@ class GPSWorker(QThread):
         said_qth = False
         while self.running:
             got = elmer_link.position()
+            sleuth = (got or {}).get("sleuth") or {}
             if got and got.get("located"):
                 self.gps_data_signal.emit(float(got["lat"]), float(got["lon"]), 0.0, 0.0, 0.0)
+                self.gps_source_signal.emit(
+                    f"via ELMER: {sleuth.get('words') or got.get('from') or 'a position'}",
+                    sleuth.get("quality") or "", sleuth.get("advice") or "")
                 said_qth = False
             elif got and got.get("qth") and not said_qth:
                 q = got["qth"]
                 logger.info(f"GPS: no fix anywhere; using the QTH ELMER has on file ({q.get('short')})")
                 self.gps_data_signal.emit(float(q["lat"]), float(q["lon"]), 0.0, 0.0, 0.0)
+                self.gps_source_signal.emit(
+                    f"via ELMER: the QTH on file ({q.get('short')}) - no fix from anywhere",
+                    "", sleuth.get("advice") or "")
                 said_qth = True
+            elif got and not got.get("located") and sleuth.get("advice"):
+                self.gps_source_signal.emit(
+                    f"via ELMER: {sleuth.get('words') or 'no position'}", "", sleuth.get("advice") or "")
             for _ in range(10):
                 if not self.running:
                     return
@@ -1109,6 +1134,7 @@ class EnhancedGPSWindow(QMainWindow):
             self.gps_worker = GPSWorker()
             print("DEBUG: GPS worker created, connecting signal")
             self.gps_worker.gps_data_signal.connect(self.update_gps_data)
+            self.gps_worker.gps_source_signal.connect(self.update_gps_source)
             print("DEBUG: Signal connected, starting GPS worker thread")
             self.gps_worker.start()
             print("DEBUG: GPS worker thread started")
@@ -1558,6 +1584,17 @@ class EnhancedGPSWindow(QMainWindow):
                 item.setForeground(text_color)
         
         layout.addWidget(self.location_table)
+
+        # Where the position comes from, and what to move if it goes. Blank
+        # until a source has said; the advice line shows only when there is
+        # advice, so a good fix leaves nothing to read.
+        self.gps_source_words, self.gps_quality_words, self.gps_advice_words = "", "", ""
+        self.gps_advice_label = QLabel("")
+        self.gps_advice_label.setWordWrap(True)
+        self.gps_advice_label.setFont(QFont("Arial", 11))
+        self.gps_advice_label.setStyleSheet("color: #e0a030; padding: 4px 8px;")
+        self.gps_advice_label.hide()
+        layout.addWidget(self.gps_advice_label)
         
         return tab
 
@@ -3570,6 +3607,29 @@ class EnhancedGPSWindow(QMainWindow):
         if hasattr(self, 'amateur_subtabs'):
             self.set_amateur_band_tab_colors()
 
+    def update_gps_source(self, words, quality, advice):
+        """Where the position comes from, how it is going, and what to do.
+
+        The source goes on the status row, the quality on the fix row, and
+        the advice - move the phone, move the puck, get a receiver - under
+        the table, and in the log once each time it changes."""
+        changed = (words, quality, advice) != (self.gps_source_words, self.gps_quality_words, self.gps_advice_words)
+        self.gps_source_words, self.gps_quality_words, self.gps_advice_words = words, quality, advice
+        if 'status_value' in self.location_items and words:
+            current = self.location_items['status_value'].text().split(" - ")[0]
+            self.location_items['status_value'].setText(f"{current} - {words}")
+            self.location_items['status_value'].setToolTip(words + (f"\n{quality}" if quality else ""))
+        if 'fix_value' in self.location_items and quality:
+            base = self.location_items['fix_value'].text().split(" \u00b7 ")[0]
+            self.location_items['fix_value'].setText(f"{base} \u00b7 {quality}")
+        if advice:
+            self.gps_advice_label.setText("\u26a0 " + advice)
+            self.gps_advice_label.show()
+        else:
+            self.gps_advice_label.hide()
+        if changed:
+            logger.info(f"GPS source: {words}" + (f" ({quality})" if quality else "") + (f" - {advice}" if advice else ""))
+
     def update_gps_data(self, latitude, longitude, altitude, speed, heading):
         """Update all GPS-related displays"""
         # Log GPS speed and direction data
@@ -3656,8 +3716,10 @@ class EnhancedGPSWindow(QMainWindow):
         else:
             self.set_table_item_text_with_color(self.location_items['vector_value'], "Stationary")
         
-        # Update GPS status and fix quality with appropriate colors
-        self.location_items['status_value'].setText("ACTIVE")
+        # Update GPS status and fix quality with appropriate colors - and
+        # where the position comes from, when a source has said.
+        self.location_items['status_value'].setText(
+            "ACTIVE" + (f" - {self.gps_source_words}" if getattr(self, 'gps_source_words', '') else ""))
         # Set status color based on night mode
         status_color = QColor(255, 102, 102) if self.night_mode_active else QColor(0, 255, 0)
         self.location_items['status_value'].setForeground(status_color)
@@ -3668,6 +3730,8 @@ class EnhancedGPSWindow(QMainWindow):
             self.location_items['fix_value'].setForeground(status_color)
         else:  # Stationary
             self.location_items['fix_value'].setText("3D FIX (Stationary)")
+        if getattr(self, 'gps_quality_words', ''):
+            self.location_items['fix_value'].setText(self.location_items['fix_value'].text() + f" \u00b7 {self.gps_quality_words}")
             # Set warning color based on night mode
             warning_color = QColor(255, 153, 102) if self.night_mode_active else QColor(255, 255, 0)
             self.location_items['fix_value'].setForeground(warning_color)
