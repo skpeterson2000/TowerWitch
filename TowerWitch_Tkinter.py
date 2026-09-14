@@ -472,6 +472,7 @@ class GPSWorker:
 
 # --- TowerWitch -> OP25 sidecar wiring ---
 import armer_state_store
+import elmer_link
 from op25_client import Op25Client
 
 OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # op25 Pi LAN IP
@@ -785,6 +786,18 @@ class TowerWitchTkinter:
                               command=self.quit_application)
         exit_btn.pack(side=tk.RIGHT, padx=10, pady=5, ipadx=15, ipady=8)
 
+        # ELMER — the other dashboard on this bench. Greyed, with the reason
+        # in the label, when ELMER is not on this machine; opens the browser
+        # to it (starting it first if need be) when it is.
+        self.elmer_state = elmer_link.status()
+        self.elmer_btn = ttk.Button(controls_frame,
+                                    text="📚 ELMER" if self.elmer_state["installed"] or self.elmer_state["running"]
+                                    else "📚 ELMER (not installed)",
+                                    command=self.open_elmer)
+        if not (self.elmer_state["installed"] or self.elmer_state["running"]):
+            self.elmer_btn.state(["disabled"])
+        self.elmer_btn.pack(side=tk.RIGHT, padx=10, pady=5, ipadx=15, ipady=8)
+
         # Create main notebook (tabbed interface)
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(fill=tk.BOTH, expand=True)
@@ -838,6 +851,15 @@ class TowerWitchTkinter:
         self.root.bind('<F12>', lambda e: self.toggle_night_mode_key())
         
         print("[OK] Keyboard shortcuts enabled: Ctrl+Q, Ctrl+C, F11 (fullscreen), F12 (night mode)")
+
+    def open_elmer(self):
+        """The press: ELMER's dashboard in the browser, started if need be."""
+        self.elmer_btn.config(text="📚 ELMER…")
+        self.root.update_idletasks()
+        ok, said = elmer_link.open_dashboard()
+        self.elmer_btn.config(text="📚 ELMER")
+        if not ok:
+            messagebox.showwarning("ELMER", said, parent=self.root)
 
     def quit_application(self):
         """Cleanly exit the application"""

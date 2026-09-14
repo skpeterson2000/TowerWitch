@@ -8,6 +8,7 @@ import json
 import csv
 import subprocess
 import configparser
+import elmer_link
 import tempfile
 import requests
 import urllib.parse
@@ -2102,10 +2103,26 @@ class EnhancedGPSWindow(QMainWindow):
         self.night_mode_btn.clicked.connect(self.toggle_night_mode_button)
         self.night_mode_active = False  # Track night mode state
         
+        # ELMER — the other dashboard on this bench. Greyed, with the reason
+        # in the tooltip, when ELMER is not on this machine; opens the
+        # browser to it (starting it first if need be) when it is.
+        elmer_state = elmer_link.status()
+        self.elmer_btn = QPushButton("📚 ELMER")
+        self.elmer_btn.setFont(self.button_font)
+        if elmer_state["installed"] or elmer_state["running"]:
+            self.elmer_btn.setToolTip("Open ELMER's dashboard" +
+                                      (f" ({elmer_state['path']})" if elmer_state["path"] else ""))
+            self.elmer_btn.clicked.connect(self.open_elmer)
+        else:
+            self.elmer_btn.setEnabled(False)
+            self.elmer_btn.setToolTip("ELMER is not on this machine - it is looked for at "
+                                      "~/elmer, ~/elmer-main, or beside TowerWitch (ELMER_HOME names another)")
+
         button_layout.addWidget(refresh_btn)
         button_layout.addWidget(export_btn)
         button_layout.addWidget(utilities_btn)
         button_layout.addWidget(self.night_mode_btn)
+        button_layout.addWidget(self.elmer_btn)
         
         self.main_layout.addWidget(button_frame)
 
@@ -2590,6 +2607,16 @@ class EnhancedGPSWindow(QMainWindow):
                     except:
                         pass
                     self.udp_socket = None
+
+    def open_elmer(self):
+        """The press: ELMER's dashboard in the browser, started if need be."""
+        self.elmer_btn.setEnabled(False)
+        try:
+            ok, said = elmer_link.open_dashboard()
+        finally:
+            self.elmer_btn.setEnabled(True)
+        if not ok:
+            QMessageBox.warning(self, "ELMER", said)
 
     def toggle_night_mode_button(self):
         """Toggle night mode when button is clicked"""
