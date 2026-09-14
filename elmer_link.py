@@ -1,27 +1,24 @@
-"""ELMER, from TowerWitch: the button to the other dashboard.
+"""ELMER, from TowerWitch: the position it lends.
 
-ELMER and TowerWitch are two programs on one bench. ELMER has a button to
-TowerWitch on its dashboard, greyed when TowerWitch is not installed; this
-is the same button the other way round. It finds ELMER beside TowerWitch
-(or wherever ELMER_HOME says), tells whether one is already answering on
-this machine, and on the press opens the browser to it - starting ELMER
-first if it is installed but not running. Greyed, with the reason in the
-tooltip, when there is nothing to open.
+ELMER and TowerWitch are two programs on one bench. ELMER's dashboard has
+a button that starts TowerWitch; this is what TowerWitch asks of ELMER in
+return - a position, when there is no gpsd on the machine (a laptop,
+Windows): ELMER's fix from a receiver or a phone, or the QTH typed into
+it, offered as such.
+
+There is no button the other way. One was tried: it opened a second copy
+of ELMER's page beside the one already on the screen, which is worse than
+no button. Getting back to ELMER is closing this window.
 
 Nothing here reaches past this machine: ELMER on another unit is that
-unit's dashboard to open.
+unit's business.
 """
 import json
 import os
-import subprocess
-import sys
-import time
 import urllib.request
-import webbrowser
 from pathlib import Path
 
 URL = os.environ.get("ELMER_URL", "http://127.0.0.1:5000/")
-START_WAIT_S = 30.0
 
 
 def find():
@@ -61,46 +58,3 @@ def position(timeout=2.0):
             return json.loads(resp.read().decode("utf-8"))
     except Exception:
         return None
-
-
-def status():
-    path = find()
-    return {"installed": path is not None, "path": str(path) if path else None,
-            "running": answering()}
-
-
-def _start(path):
-    """Start ELMER from its folder, detached. Returns (ok, said)."""
-    path = Path(path)
-    if os.name == "nt":
-        cmd = [str(path / "elmer.cmd")] if (path / "elmer.cmd").is_file() else [sys.executable, str(path / "elmer.py")]
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        kw = {"creationflags": flags}
-    else:
-        py = path / ".venv" / "bin" / "python"
-        cmd = [str(py) if py.is_file() else sys.executable, str(path / "elmer.py")]
-        kw = {"start_new_session": True}
-    try:
-        subprocess.Popen(cmd, cwd=str(path), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
-    except OSError as exc:
-        return False, f"could not start ELMER: {exc}"
-    t0 = time.time()
-    while time.time() - t0 < START_WAIT_S:
-        if answering(0.5):
-            return True, "ELMER started"
-        time.sleep(0.5)
-    return False, "ELMER was started but is not answering yet - try the button again in a moment"
-
-
-def open_dashboard():
-    """The press. Returns (ok, said)."""
-    if answering():
-        webbrowser.open(URL)
-        return True, "opened ELMER"
-    path = find()
-    if path is None:
-        return False, "ELMER is not on this machine"
-    ok, said = _start(path)
-    if ok:
-        webbrowser.open(URL)
-    return ok, said
