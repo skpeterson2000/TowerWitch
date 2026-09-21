@@ -37,6 +37,12 @@ except ImportError:
 import socket
 import json
 
+UDP_CONFIG = {
+    'port': 12345,
+    'armer_tower_count': 2   # closest ARMER sites carried in each broadcast
+}
+
+
 class RadioReferenceAPI:
     """Radio Reference API client for fetching repeater data"""
     def __init__(self, api_key=None):
@@ -545,6 +551,7 @@ class GPSWorker:
 # --- TowerWitch -> OP25 sidecar wiring ---
 import armer_state_store
 import tw_theme
+import hallpass_link
 from op25_client import Op25Client
 
 OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # fallback when [OP25] url is not set
@@ -648,9 +655,27 @@ class TowerWitchTkinter:
         # Night mode state (starts in day mode)
         self.night_mode_on = False
 
+        # Where the position came from. A saved or default position is not
+        # this program's own and is never broadcast as one: ELMER would take
+        # it as a live fix from TowerWitch. 'gps' once the receiver has a
+        # real lock in this session.
+        self.position_source = 'none'
+        self.last_speed = None
+        self.is_vehicle_speed = False
+        # The closest ARMER sites as plain dicts, snapshotted on the main
+        # thread when the table is filled, so the broadcast thread never
+        # touches a Tk widget.
+        self._armer_closest = []
+
         # Create the interface
         self.create_widgets()
         self.setup_keyboard_shortcuts()
+
+        # Tell the network where the station is: the position broadcast
+        # ELMER listens for on udp/12345, and the greeting HallPass puts on
+        # its wall. Nothing is configured at either end.
+        self.setup_udp()
+        self.hello = hallpass_link.Hello(self.describe_for_room).start()
         
         # Load static data with saved position
         if saved_state:
@@ -858,11 +883,99 @@ class TowerWitchTkinter:
         
         if getattr(self, 'op25_client', None) is not None:
             self.op25_client.stop()
+        if getattr(self, 'hello', None) is not None:
+            self.hello.close()
+        self._udp_stop.set()
         if self.gps_worker:
             self.gps_worker.stop()
         self.root.quit()
         self.root.destroy()
         sys.exit(0)
+
+    # ------------------------------------------------------------ the network
+    # The same packet TowerWitch-P sends, from the same [UDP] settings, so
+    # ELMER and anything else listening see one TowerWitch whichever build
+    # is on screen.
+
+    def setup_udp(self):
+        """Read the [UDP] settings and start the position broadcast."""
+        self._udp_stop = threading.Event()
+        self.udp_socket = None
+        self.udp_enabled = self.config.getboolean('UDP', 'enabled', fallback=True)
+        self.udp_port = self.config.getint('UDP', 'port', fallback=UDP_CONFIG['port'])
+        self.udp_broadcast_ip = self.config.get('UDP', 'broadcast_ip', fallback='255.255.255.255')
+        self.udp_send_interval = self.config.getint('UDP', 'send_interval', fallback=25)
+        self.udp_sent = 0
+        if not self.udp_enabled:
+            print("[INFO] UDP broadcasting is off in the config")
+            return
+        try:
+            self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        except OSError as e:
+            print(f"[WARN] UDP setup failed: {e}")
+            self.udp_enabled = False
+            return
+        threading.Thread(target=self._udp_run, daemon=True, name="towerwitch-udp").start()
+        print(f"[OK] UDP broadcasting to {self.udp_broadcast_ip}:{self.udp_port} every {self.udp_send_interval}s")
+
+    def _udp_run(self):
+        while not self._udp_stop.is_set():
+            try:
+                self.send_udp_armer_data()
+            except Exception as e:      # reads GUI state; must never take the GUI down
+                print(f"[WARN] UDP send error: {e}")
+            self._udp_stop.wait(self.udp_send_interval)
+
+    def send_udp_armer_data(self):
+        """One broadcast: the position when it is this program's own, and
+        the closest ARMER sites. The position is left out until the receiver
+        has a real fix - a packet without one is tower data and nothing more."""
+        if not self.udp_enabled or not self.udp_socket:
+            return
+        ours = self.position_source in ('gps', 'manual')
+        udp_data = {
+            'timestamp': datetime.now().isoformat(),
+            'source': 'TowerWitch',
+            'gps_lat': self.last_lat if ours else None,
+            'gps_lon': self.last_lon if ours else None,
+            'speed_mps': self.last_speed,
+            'is_vehicle_speed': self.is_vehicle_speed,
+            'closest_armer_towers': list(self._armer_closest),
+        }
+        message = json.dumps(udp_data).encode('utf-8')
+        # The limited broadcast leaves by one interface only; each
+        # interface's own broadcast reaches its segment regardless.
+        targets = [self.udp_broadcast_ip]
+        if self.udp_broadcast_ip == '255.255.255.255':
+            targets = hallpass_link.broadcast_targets() + ['127.0.0.1']
+        for target in targets:
+            try:
+                self.udp_socket.sendto(message, (target, self.udp_port))
+            except OSError as e:
+                print(f"[WARN] UDP to {target}: {e}")
+        self.udp_sent += 1
+        if self.udp_sent == 1:
+            print(f"[OK] UDP broadcasting started - {len(self._armer_closest)} towers, "
+                  f"position {'included' if ours else 'withheld until the GPS has a fix'}")
+
+    def describe_for_room(self):
+        """TowerWitch's line on HallPass's wall: where the station is and how
+        it knows, and the nearest town. Read on the greeting's own thread from
+        plain attributes, never from a widget."""
+        if self.position_source == 'none':
+            state = "waiting for a position"
+        else:
+            try:
+                grid = self.lat_lon_to_maidenhead(self.last_lat, self.last_lon)
+            except Exception:
+                grid = "%.3f, %.3f" % (self.last_lat, self.last_lon)
+            state = "%s (GPS)" % grid
+            if self.nearest_town:
+                state += " · " + self.nearest_town
+        if self._armer_closest:
+            state += " · nearest ARMER " + self._armer_closest[0]['site_name']
+        return {"state": state, "version": "tk", "alarm": None, "url": ""}
 
     def toggle_fullscreen(self):
         """Toggle between fullscreen and windowed mode"""
@@ -3403,6 +3516,11 @@ class TowerWitchTkinter:
                         site['freqs']
                     )
                     self.armer_tree.insert('', 'end', iid=f"{site['rfid']}-{site['site_id']}", values=values)
+                self._armer_closest = [
+                    {'site_name': site['description'], 'distance': f"{site['distance']:.1f} mi",
+                     'bearing': f"{site['bearing']:.0f}°", 'nac': '',
+                     'control_channels': site['freqs']}
+                    for site in sites[:UDP_CONFIG['armer_tower_count']]]
                 
                 print(f"[OK] Loaded {len(sites)} ARMER sites")
                 self.armer_loaded = len(sites) > 0
@@ -3661,6 +3779,10 @@ class TowerWitchTkinter:
             mode = gps_data.get('mode', 0)
             is_demo = gps_data.get('demo', False)
             if not is_demo and mode >= 2:
+                self.position_source = 'gps'
+                speed = gps_data.get('speed')
+                self.last_speed = float(speed) if speed is not None else None
+                self.is_vehicle_speed = bool(self.last_speed and self.last_speed >= 2.0)
                 drift = self.calculate_distance(self.data_lat, self.data_lon,
                                                  self.last_lat, self.last_lon)
                 if drift > self.stale_threshold_miles:
