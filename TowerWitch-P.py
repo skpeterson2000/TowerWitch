@@ -9,6 +9,7 @@ import csv
 import subprocess
 import configparser
 import elmer_link
+import hallpass_link
 import raven_link
 import tempfile
 import requests
@@ -949,10 +950,15 @@ class GPSWorker(QThread):
             print(f"❌ Error in GPSWorker: {e}")
 
     def borrow_from_elmer(self):
-        """ELMER's fix, every few seconds, for as long as this runs; its
-        typed QTH once if it has no fix. Quiet when ELMER is not there."""
+        """The suite's fix, every few seconds, for as long as this runs: the
+        ELMER on this machine, or any ELMER on the network with a receiver
+        of its own; the local one's typed QTH once if nobody has a fix.
+        Quiet when there is no ELMER anywhere."""
         said_qth = False
         self.borrowed = True
+        heard = elmer_link.listen()
+        if heard.error:
+            logger.warning(f"GPS: cannot hear other ELMERs on udp/{heard.port}: {heard.error}")
         while self.running:
             got = elmer_link.position()
             sleuth = (got or {}).get("sleuth") or {}
@@ -1074,6 +1080,9 @@ class EnhancedGPSWindow(QMainWindow):
             debug_print("Setting up UDP broadcasting...", "INFO")
             self.setup_udp()
             debug_print("UDP broadcasting configured", "SUCCESS")
+
+            # Say hello to HallPass, the suite's control room, every few seconds
+            self.hello = hallpass_link.Hello(self.describe_for_room).start()
             
             # Initialize caching variables for amateur radio data
             debug_print("Setting up caching variables...", "INFO")
@@ -1155,8 +1164,9 @@ class EnhancedGPSWindow(QMainWindow):
             self.last_lat = 44.9778  # Minneapolis default
             self.last_lon = -93.2650
             # Where last_lat/last_lon came from: "none" (the default above),
-            # "gps", "manual" or "elmer". Only the first two are this
-            # program's own knowledge, and only they go out on the network.
+            # "gps", "manual", "elmer" or "internet". Only gps and manual are
+            # this program's own knowledge, and only they go out on the
+            # network; an internet guess or a borrowed fix never does.
             self.position_source = "none"
             debug_print(f"GPS defaults: {self.last_lat}, {self.last_lon}", "INFO")
             
@@ -2650,9 +2660,19 @@ class EnhancedGPSWindow(QMainWindow):
                 'closest_armer_towers': closest_towers
             }
             
-            # Send UDP broadcast
+            # Send UDP broadcast: to the address configured, and - unless that is
+            # something specific - to every interface's own broadcast as well,
+            # because the limited broadcast leaves a Pi by one interface only
+            # and the ELMER on the other segment never heard a word.
             message = json.dumps(udp_data, indent=None).encode('utf-8')
-            self.udp_socket.sendto(message, (self.udp_broadcast_ip, self.udp_port))
+            targets = [self.udp_broadcast_ip]
+            if self.udp_broadcast_ip == '255.255.255.255':
+                targets = hallpass_link.broadcast_targets() + ['127.0.0.1']
+            for target in targets:
+                try:
+                    self.udp_socket.sendto(message, (target, self.udp_port))
+                except OSError as exc:
+                    debug_print(f"UDP to {target}: {exc}", "DEBUG")
             self.last_udp_send = current_time
             
             # Show confirmation only on first successful transmission
@@ -2779,7 +2799,7 @@ class EnhancedGPSWindow(QMainWindow):
                             print(f"📍 Coordinates: {lat:.6f}, {lon:.6f}")
                             
                             # Update location and refresh data
-                            self.set_manual_location(lat, lon, f"IP Location: {location_name}")
+                            self.set_manual_location(lat, lon, f"IP Location: {location_name}", source="internet")
                             return True
                             
                 except Exception as e:
@@ -2806,8 +2826,11 @@ class EnhancedGPSWindow(QMainWindow):
             if lat is not None and lon is not None:
                 self.set_manual_location(lat, lon, location_name)
 
-    def set_manual_location(self, latitude, longitude, location_name="Manual Location"):
-        """Set location manually and update all displays"""
+    def set_manual_location(self, latitude, longitude, location_name="Manual Location", source="manual"):
+        """Set location manually and update all displays. `source` is
+        "manual" for a place the operator typed, which is knowledge, or
+        "internet" for a guess from the connection's address, which is not:
+        a Starlink terminal in the north woods geolocates to Minneapolis."""
         try:
             # Validate coordinates
             if not (-90 <= latitude <= 90):
@@ -2825,7 +2848,7 @@ class EnhancedGPSWindow(QMainWindow):
             # Update location variables
             self.last_lat = latitude
             self.last_lon = longitude
-            self.position_source = "manual"
+            self.position_source = source
             
             # Update GPS status to show manual location
             self.gps_status.setText(f"📍 Manual: {location_name}")
@@ -3913,6 +3936,10 @@ class EnhancedGPSWindow(QMainWindow):
         closest_sites = find_closest_sites(self.csv_filepath, latitude, longitude)
         self.table.setRowCount(len(closest_sites))
         
+        # The nearest site, in words, for the line under TowerWitch's name on HallPass's wall
+        if closest_sites:
+            site0, dist0, bear0 = closest_sites[0][0], closest_sites[0][1], closest_sites[0][2]
+            self.nearest_site_words = "%s %.1f mi at %.0f°" % (site0.get('name', site0) if isinstance(site0, dict) else site0, dist0, bear0)
         for row, (site, distance, bearing, control_frequencies, nac) in enumerate(closest_sites):
             # Site name with color coding by distance
             site_item = QTableWidgetItem(site["Description"])
@@ -5157,8 +5184,33 @@ class EnhancedGPSWindow(QMainWindow):
         else:
             return f"Regional cache: {len(self.cached_api_data)} repeaters, {age_hours:.1f}h old"
 
+    def describe_for_room(self):
+        """TowerWitch's line on HallPass's wall: where the station is and how it
+        knows, and the nearest ARMER site. Read from the same fields the
+        screen shows, on the greeting's own thread, so it never touches Qt."""
+        source = getattr(self, 'position_source', 'none')
+        if source == 'none':
+            state = "waiting for a position"
+        else:
+            try:
+                grid = mh.to_maiden(self.last_lat, self.last_lon)
+            except Exception:
+                grid = "%.3f, %.3f" % (self.last_lat, self.last_lon)
+            how = {"gps": "GPS", "manual": "typed in", "elmer": "via ELMER", "internet": "an internet guess"}.get(source, source)
+            state = "%s (%s)" % (grid, how)
+        site = getattr(self, 'nearest_site_words', '')
+        if site:
+            state += " · nearest ARMER " + site
+        alarm = None
+        if source == 'internet':
+            alarm = "position is an internet guess: Starlink puts it in the wrong city"
+        return {"state": state, "version": __version__, "alarm": alarm,
+                "url": "http://%s:8137/" % hallpass_link.my_address() if getattr(self, 'repeater_service_running', False) else ""}
+
     def closeEvent(self, event):
         """Clean up GPS worker thread when window closes"""
+        if hasattr(self, 'hello') and self.hello:
+            self.hello.close()
         if hasattr(self, 'gps_worker') and self.gps_worker.isRunning():
             print("Stopping GPS worker...")
             self.gps_worker.stop()
