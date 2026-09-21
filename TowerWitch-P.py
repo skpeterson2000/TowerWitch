@@ -952,9 +952,18 @@ class GPSWorker(QThread):
         """ELMER's fix, every few seconds, for as long as this runs; its
         typed QTH once if it has no fix. Quiet when ELMER is not there."""
         said_qth = False
+        self.borrowed = True
         while self.running:
             got = elmer_link.position()
             sleuth = (got or {}).get("sleuth") or {}
+            # ELMER hears TowerWitch's own broadcast on UDP 12345 and rates
+            # it a 3D fix. Taken back here it would be this program's word
+            # returned as ELMER's, and once it happened to be the Minneapolis
+            # default: EN34ix on every screen in the house, with a receiver
+            # in none of them. What ELMER learned from a TowerWitch is not a
+            # position ELMER has.
+            if got and got.get("located") and got.get("source") == "towerwitch-net":
+                got = {"sleuth": sleuth}
             if got and got.get("located"):
                 self.gps_data_signal.emit(float(got["lat"]), float(got["lon"]), 0.0, 0.0, 0.0)
                 self.gps_source_signal.emit(
@@ -1145,6 +1154,10 @@ class EnhancedGPSWindow(QMainWindow):
             debug_print("Setting up GPS defaults...", "INFO")
             self.last_lat = 44.9778  # Minneapolis default
             self.last_lon = -93.2650
+            # Where last_lat/last_lon came from: "none" (the default above),
+            # "gps", "manual" or "elmer". Only the first two are this
+            # program's own knowledge, and only they go out on the network.
+            self.position_source = "none"
             debug_print(f"GPS defaults: {self.last_lat}, {self.last_lon}", "INFO")
             
             # Track fullscreen state
@@ -2619,12 +2632,19 @@ class EnhancedGPSWindow(QMainWindow):
                     }
                     closest_towers.append(tower_data)
             
-            # Create UDP packet
+            # Create UDP packet. The position goes out only when it is this
+            # program's own - from gpsd, or typed in here. That is the Pi's
+            # case, where TowerWitch is the unit with the receiver and the
+            # others take its word. The default is not a position, and one
+            # borrowed from ELMER would come straight back to ELMER as a fix
+            # from TowerWitch and outrank whatever ELMER actually knew. ELMER
+            # reads a packet without one as tower data and nothing more.
+            ours = getattr(self, 'position_source', 'none') in ('gps', 'manual')
             udp_data = {
                 'timestamp': datetime.now().isoformat(),
                 'source': 'TowerWitch',
-                'gps_lat': self.last_lat if hasattr(self, 'last_lat') else None,
-                'gps_lon': self.last_lon if hasattr(self, 'last_lon') else None,
+                'gps_lat': self.last_lat if ours else None,
+                'gps_lon': self.last_lon if ours else None,
                 'speed_mps': self.last_speed if hasattr(self, 'last_speed') else None,
                 'is_vehicle_speed': self.is_vehicle_speed if hasattr(self, 'is_vehicle_speed') else False,
                 'closest_armer_towers': closest_towers
@@ -2805,6 +2825,7 @@ class EnhancedGPSWindow(QMainWindow):
             # Update location variables
             self.last_lat = latitude
             self.last_lon = longitude
+            self.position_source = "manual"
             
             # Update GPS status to show manual location
             self.gps_status.setText(f"📍 Manual: {location_name}")
@@ -2925,6 +2946,7 @@ class EnhancedGPSWindow(QMainWindow):
                 print(f"📍 Restoring last GPS location: {self.last_gps_lat:.6f}, {self.last_gps_lon:.6f}")
                 self.last_lat = self.last_gps_lat
                 self.last_lon = self.last_gps_lon
+                self.position_source = getattr(self, "last_gps_source", "gps")
                 
                 # Update displays with last known GPS location
                 self.update_location_displays(self.last_gps_lat, self.last_gps_lon)
@@ -2940,6 +2962,7 @@ class EnhancedGPSWindow(QMainWindow):
                 # Set default location while waiting for GPS
                 self.last_lat = 44.9778  # Minneapolis default
                 self.last_lon = -93.2650
+                self.position_source = "none"
                 self.set_table_item_text_with_color(self.location_items['lat_value'], "Waiting for GPS...")
                 self.set_table_item_text_with_color(self.location_items['lon_value'], "Waiting for GPS...")
             
@@ -3643,10 +3666,12 @@ class EnhancedGPSWindow(QMainWindow):
         self.last_lat = latitude
         self.last_lon = longitude
         self.last_speed = speed  # Store speed for UDP and other functions
+        self.position_source = "elmer" if getattr(self.gps_worker, "borrowed", False) else "gps"
         
         # Store GPS coordinates for return to GPS functionality
         self.last_gps_lat = latitude
         self.last_gps_lon = longitude
+        self.last_gps_source = self.position_source
         self.last_gps_altitude = altitude
         self.last_gps_speed = speed
         self.last_gps_heading = heading
