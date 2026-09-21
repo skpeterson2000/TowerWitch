@@ -9,6 +9,7 @@ import csv
 import subprocess
 import configparser
 import elmer_link
+import raven_link
 import tempfile
 import requests
 import urllib.parse
@@ -20,7 +21,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QLabel, QVBoxLayout, QHB
                             QHeaderView, QTabWidget, QFrame, QScrollArea, QGridLayout,
                             QSizePolicy, QSpacerItem, QAction, QSplitter, QTextEdit,
                             QDialog, QLineEdit, QFormLayout, QDialogButtonBox, QMessageBox,
-                            QComboBox, QPushButton)
+                            QComboBox, QPushButton, QMenu)
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
 from PyQt5.QtGui import QFont, QPalette, QColor, QPainter, QPen, QPixmap
 
@@ -1404,6 +1405,9 @@ class EnhancedGPSWindow(QMainWindow):
             self.amateur_tab = self.create_amateur_tab()
             self.tabs.addTab(self.amateur_tab, "Amateur")
             debug_print("Amateur tab added", "SUCCESS")
+
+            # Every table that names a frequency can hand it to RAVEN
+            self.offer_raven_on_tables()
 
             # Note: Utilities moved to bottom button for better UX
             
@@ -5276,7 +5280,86 @@ class EnhancedGPSWindow(QMainWindow):
         }
         return indicators.get(status, '❓ Unknown')
 
-# Support functions  
+    # ------------------------------------------------------------ RAVEN
+    # A row in any table that names a frequency can be handed to RAVEN, the
+    # receiver in the same suite: a double-click (a double-tap on the
+    # touchscreen) puts it on RAVEN's dial, and a right-click also offers
+    # RAVEN's memory list. Nothing is opened on the screen; RAVEN's console
+    # follows its dial by itself. See raven_link.
+
+    RAVEN_TABLES = ("skywarn_table", "noaa_table", "amateur_10_table", "amateur_6_table",
+                    "amateur_2_table", "amateur_125_table", "amateur_70cm_table",
+                    "amateur_simplex_table", "amateur_emergency_table")
+
+    def offer_raven_on_tables(self):
+        for name in self.RAVEN_TABLES:
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            table.setContextMenuPolicy(Qt.CustomContextMenu)
+            table.customContextMenuRequested.connect(lambda pos, t=table: self.raven_menu(t, pos))
+            table.itemDoubleClicked.connect(lambda item: self.raven_send(item.tableWidget(), item.row()))
+
+    def raven_channel(self, table, row):
+        """What a row says to listen to, as (name, mhz, mode, tone), or None
+        when the row names no frequency. Read by header, so the tables can
+        differ in shape - and the headers can carry a data-source badge -
+        without this caring."""
+        cells = {}
+        for col in range(table.columnCount()):
+            head = table.horizontalHeaderItem(col)
+            item = table.item(row, col)
+            words = head.text().split() if head is not None else []
+            if words and item is not None:
+                cells[words[0].lower()] = item.text().strip()
+        mhz = raven_link.megahertz(cells.get("output") or cells.get("frequency"))
+        if mhz is None:
+            return None
+        name = (cells.get("call") or cells.get("nearest") or cells.get("description")
+                or cells.get("purpose/network") or "")
+        tone = cells.get("tone", "")
+        if tone.lower() in ("none", "-", "n/a", "csq"):
+            tone = ""
+        return name, mhz, raven_link.mode_for(cells.get("mode"), mhz), tone
+
+    def raven_send(self, table, row, remember=False):
+        channel = self.raven_channel(table, row)
+        if channel is None:
+            return
+        name, mhz, mode, tone = channel
+        if remember:
+            message, reason = raven_link.remember(name, mhz, mode)
+        else:
+            message, reason = raven_link.tune(mhz, mode)
+        if reason:
+            self.statusBar().showMessage("RAVEN: " + reason, 8000)
+            debug_print(f"RAVEN: {reason}", "WARNING")
+            return
+        about = ", ".join(part for part in (name, ("tone " + tone) if tone else "") if part)
+        if about:
+            message += "  (" + about + ")"
+        self.statusBar().showMessage(message, 8000)
+        debug_print(message, "SUCCESS")
+
+    def raven_menu(self, table, pos):
+        item = table.itemAt(pos)
+        if item is None or self.raven_channel(table, item.row()) is None:
+            return
+        menu = QMenu(table)
+        listen = menu.addAction("Listen in RAVEN")
+        keep = menu.addAction("Keep in RAVEN's memories")
+        there = raven_link.answering()
+        listen.setEnabled(there)
+        keep.setEnabled(there)
+        if not there:
+            menu.addAction("RAVEN is not answering at " + raven_link.URL).setEnabled(False)
+        chosen = menu.exec_(table.viewport().mapToGlobal(pos))
+        if chosen is listen:
+            self.raven_send(table, item.row())
+        elif chosen is keep:
+            self.raven_send(table, item.row(), remember=True)
+
+# Support functions
 def calculate_bearing(lat1, lon1, lat2, lon2):
     """Calculate bearing between two points"""
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
