@@ -169,6 +169,73 @@ kind, records, gone = rr.read(os.path.join(TMP, "missing.csv"))
 check("a file that is not there", bool(gone["fatal"]), True)
 
 
+COUNTY = written("ctid_1327_1790122872.csv", '''"Frequency Output","Frequency Input","FCC Callsign",Agency/Category,Description,"Alpha Tag","PL Output Tone","PL Input Tone",Mode,"Class Station Code",Tag
+53.110000,52.11000,W0UJ,"Amateur Radio","Brainerd ARC - 6M","W0UJ 6M BRD",CSQ,"123.0 PL",FM,RM,Ham
+118.675000,0.00000,,"Brainerd Lakes Regional Airport","Automatic Weather Observation System","KBRD AWOS",CSQ,,AM,B,Aircraft
+152.307500,158.26500,WNFY603,"Crow Wing Power","Longville Tower","CW Power Longvil","CC 1|TG 1001|SL 1",,DMR,RM,Utilities
+152.390000,157.65000,WQRL598,"Crow Wing Business","Breezy Point Resort","Breezy Pt Resort","043 DPL",,FMN,RM,Business
+153.500000,158.22000,KAA872,"Crow Wing Business","Xcel Energy","Xcel Energy","004 NAC",,P25,RM,Utilities
+462.062500,467.06250,WQBB617,"Brainerd International Raceway","Maint, Starting Line, Race Tower Control, Track Fire/Rescue","BIR Ops","114 DPL",,FMN,RM,Business
+851.325000,0.00000," ","Allied Radio Matrix for Emergency Response (ARMER)","Site 036 Crosby",,,,"Project 25",,TRS
+wat,0.00000,,"Nonsense","Not a frequency","X",,,FM,,Junk
+''')
+
+
+print("\nthe county list is a third kind, and is recognised as one")
+check("by its header", rr.kind_of(COUNTY), "frequencies")
+# `ctid_1327_1790122872.csv` - the number that means something is the
+# county, and the long one after it is when it was downloaded. Taking the
+# last run of digits called the timestamp's tail "2872" the system.
+check("  and its number is the county, not a piece of the timestamp",
+      rr.system_id(COUNTY), "1327")
+check("  a system file still gives its system", rr.system_id(SITES), "3508")
+
+freqs, freport = rr.read_frequencies(COUNTY)
+check("the good rows came through", freport["kept"], 7)
+check("  and the nonsense one was skipped, with a reason",
+      "not a number" in freport["skipped"][0]["why"], True)
+check("  a person is told it is a county",
+      any("county 1327" in line for line in rr.summary(freport)), True)
+
+print("\n  an input of 0.00000 means there is no input, not a frequency at DC")
+awos = [f for f in freqs if f["alpha_tag"] == "KBRD AWOS"][0]
+check("the airport's weather only ever transmits", awos["input_hz"], None)
+check("  where a repeater has a real input",
+      [f["input_hz"] for f in freqs if f["alpha_tag"] == "W0UJ 6M BRD"], [52110000])
+
+print("\n  a description with commas in it survives being quoted")
+bir = [f for f in freqs if f["alpha_tag"] == "BIR Ops"][0]
+check("all four commas still there",
+      bir["description"], "Maint, Starting Line, Race Tower Control, Track Fire/Rescue")
+
+
+print("\nthe tone column is five different things, and is read apart")
+check("no tone at all", rr.parse_tone("CSQ")["kind"], "csq")
+check("  a CTCSS tone, in hertz", rr.parse_tone("123.0 PL"),
+      {"kind": "ctcss", "hz": 123.0, "text": "123.0 PL"})
+# A DCS code is octal and is dialled as written: 043 is not 43.
+check("  a DCS code, keeping its leading zero",
+      rr.parse_tone("043 DPL")["code"], "043")
+check("  a P25 NAC, hexadecimal like a site's",
+      rr.parse_tone("004 NAC")["nac"], 0x004)
+dmr = rr.parse_tone("CC 1|TG 1001|SL 1")
+check("  and DMR's three at once",
+      (dmr["kind"], dmr["color_code"], dmr["talkgroup"], dmr["slot"]),
+      ("dmr", 1, 1001, 1))
+check("an empty column is nothing", rr.parse_tone(""), None)
+check("  and something nobody here knows is kept, not raised on",
+      rr.parse_tone("wat?")["kind"], "other")
+check("  with the original text beside it, always",
+      rr.parse_tone("wat?")["text"], "wat?")
+
+print("\n  the trunked rows are the county's view of a system it can hear")
+armer = [f for f in freqs if f["tag"] == "TRS"][0]
+check("no alpha tag, no tone, just a frequency and where it is",
+      (armer["alpha_tag"], armer["tone_out"], armer["description"]),
+      ("", None, "Site 036 Crosby"))
+check("  and a callsign of one space is nobody's", armer["callsign"], "")
+
+
 print("\nand the site store gets the sites it was dropping")
 state = armer_state_store.bootstrap_from_csv(SITES, os.path.join(TMP, "state.json"))
 check("all six rows, the position-less one included",

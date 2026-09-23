@@ -8,7 +8,7 @@ This tkinter version provides better control over styling and colored tabs.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import configparser
 import os
 import sys
@@ -560,8 +560,123 @@ class GPSWorker:
         """Stop GPS monitoring"""
         self.running = False
 
+# Known Minnesota city/town coordinates, town centres, used to put a
+# repeater somewhere on the map when its source names a place but no
+# position - which is every RadioReference county export.
+MN_TOWNS = {
+    # Crow Wing County, from the ctid_1327 export
+    'pequot lakes': (46.6027, -94.3092),
+    # Metro Area
+    'minneapolis': (44.9778, -93.2650), 'saint paul': (44.9537, -93.0900),
+    'st paul': (44.9537, -93.0900), 'bloomington': (44.8408, -93.2985),
+    'plymouth': (45.0105, -93.4555), 'maple grove': (45.0725, -93.4557),
+    'edina': (44.8897, -93.3500), 'coon rapids': (45.1200, -93.2878),
+    'burnsville': (44.7677, -93.2778), 'eden prairie': (44.8547, -93.4708),
+    'blaine': (45.1608, -93.2350), 'lakeville': (44.6497, -93.2428),
+    'maple plain': (45.0033, -93.6588), 'ham lake': (45.2503, -93.2044),
+    'maplewood': (44.9531, -92.9952), 'ramsey': (45.2611, -93.4500),
+    'white bear lake': (45.0847, -93.0098),
+    
+    # Crow Wing & Cass Counties
+    'brainerd': (46.358, -94.201), 'baxter': (46.345, -94.263),
+    'crosslake': (46.660, -94.107), 'pequot': (46.603, -94.312),
+    'crosby': (46.484, -93.957), 'nisswa': (46.521, -94.289),
+    'aitkin': (46.533, -93.717), 'pine river': (46.718, -94.397),
+    'pillager': (46.344, -94.482), 'walker': (47.101, -94.587),
+    
+    # Northern Minnesota
+    'duluth': (46.7867, -92.1005), 'superior': (46.7208, -92.1042),
+    'hibbing': (47.4271, -92.9377), 'virginia': (47.5232, -92.5366),
+    'grand rapids': (47.2368, -93.5302), 'bemidji': (47.4736, -94.8803),
+    'international falls': (48.6011, -93.4105), 'thief river falls': (48.1169, -96.1812),
+    'cloquet': (46.7216, -92.4594), 'two harbors': (47.0227, -91.6707),
+    'ely': (47.9032, -91.8671), 'grand marais': (47.7505, -90.3343),
+    'grand portage': (47.9650, -89.6824), 'tofte': (47.5810, -90.8496),
+    'cook': (47.8191, -92.6885), 'aurora': (47.5299, -92.2374),
+    'silver bay': (47.2955, -91.2526), 'proctor': (46.7477, -92.2224),
+    'coleraine': (47.2888, -93.4269), 'isabella': (47.6158, -91.4932),
+    'big falls': (48.2000, -93.8000), 'kelliher': (47.9375, -94.4533),
+    'lengby': (47.5219, -95.6906), 'wannaska': (48.6572, -95.7253),
+    'warroad': (48.9053, -95.3133), 'roosevelt': (48.7942, -95.2036),
+    'angle inlet': (49.3489, -95.0708),
+    
+    # Central Minnesota  
+    'saint cloud': (45.5579, -94.1632), 'st cloud': (45.5579, -94.1632),
+    'sartell': (45.6219, -94.2069), 'sauk rapids': (45.5953, -94.1617),
+    'little falls': (45.9764, -94.3628), 'avon': (45.6080, -94.4508),
+    'collegeville': (45.5944, -94.3633), 'paynesville': (45.3794, -94.7122),
+    'willmar': (45.1219, -95.0433), 'litchfield': (45.1275, -94.5281),
+    'hutchinson': (44.8883, -94.3708), 'silver lake': (44.9044, -94.1933),
+    'darwin': (45.0939, -94.4094), 'foley': (45.6647, -93.9097),
+    
+    # Southeast Minnesota
+    'rochester': (44.0219, -92.4635), 'owatonna': (44.0838, -93.2261),
+    'austin': (43.6666, -92.9746), 'albert lea': (43.6480, -93.3683),
+    'red wing': (44.5625, -92.5338), 'winona': (44.0499, -91.6393),
+    'la crescent': (43.8233, -91.3004), 'waseca': (44.0783, -93.5061),
+    'faribault': (44.2950, -93.2688), 'northfield': (44.4583, -93.1616),
+    'kasson': (44.0297, -92.7502), 'byron': (44.0333, -92.6474),
+    'stewartville': (43.8558, -92.4877), 'chatfield': (43.8452, -92.1888),
+    'wykoff': (43.7086, -92.2713), 'dennison': (44.4100, -93.0200),
+    'glenville': (43.5669, -93.2780), 'racine': (43.8100, -92.5200),
+    'lemond': (43.8000, -93.3000), 'medford': (44.1658, -93.2438),
+    
+    # Southwest Minnesota
+    'mankato': (44.1636, -94.0033), 'new ulm': (44.3125, -94.4608),
+    'marshall': (44.4469, -95.7883), 'worthington': (43.6200, -95.5956),
+    'fairmont': (43.6519, -94.4608), 'jackson': (43.6200, -95.0100),
+    'pipestone': (44.0000, -96.3169), 'luverne': (43.6539, -96.2125),
+    'tracy': (44.2297, -95.6189), 'slayton': (43.9875, -95.7581),
+    'windom': (43.8658, -95.1153), 'fulda': (43.8711, -95.6025),
+    'blue earth': (43.6386, -94.1016), 'saint peter': (44.3236, -93.9575),
+    'st peter': (44.3236, -93.9575), 'le sueur': (44.4600, -93.9122),
+    'le center': (44.3886, -93.7302), 'ellendale': (43.8614, -93.2983),
+    'gaylord': (44.5539, -94.2208), 'arlington': (44.6089, -94.0806),
+    'green isle': (44.6708, -94.0069), 'wabasso': (44.4072, -95.2508),
+    'tyler': (44.2786, -96.1342),
+    
+    # West Central Minnesota
+    'moorhead': (46.8738, -96.7678), 'fergus falls': (46.2830, -96.0776),
+    'detroit lakes': (46.8172, -95.8453), 'alexandria': (45.8852, -95.3775),
+    'morris': (45.5861, -95.9142), 'breckenridge': (46.2636, -96.5892),
+    'wheaton': (45.8064, -96.5000), 'ortonville': (45.3050, -96.4431),
+    'montevideo': (44.9458, -95.7231), 'granite falls': (44.8097, -95.5453),
+    'clara city': (44.9539, -95.3653), 'dawson': (44.9322, -96.0539),
+    'madison': (45.0089, -96.1953), 'perham': (46.5944, -95.5728),
+    'dalton': (46.1700, -95.9100), 'bertha': (46.2694, -95.0683),
+    'sebeka': (46.6264, -95.0864), 'deer creek': (46.3897, -95.2967),
+    'twin valley': (47.2683, -96.2542), 'east grand forks': (47.9297, -97.0242),
+    'crookston': (47.7741, -96.6081), 'warren': (48.1958, -96.7731),
+    'karlstad': (48.5733, -96.5181),
+    
+    # South Central Minnesota
+    'mankato': (44.1636, -94.0033), 'north mankato': (44.1775, -94.0336),
+    'saint james': (43.9869, -94.6275), 'madelia': (44.0525, -94.4200),
+    'mountain lake': (43.9369, -94.9297),
+    
+    # Counties & Towns
+    'isanti': (45.4900, -93.2478), 'cambridge': (45.5728, -93.2244),
+    'north branch': (45.5111, -92.9808), 'mora': (45.8747, -93.2908),
+    'milaca': (45.7553, -93.6539), 'princeton': (45.5697, -93.5819),
+    'elk river': (45.3038, -93.5672), 'big lake': (45.3319, -93.7458),
+    'monticello': (45.3055, -93.7927), 'buffalo': (45.1719, -93.8744),
+    'delano': (45.0411, -93.7886), 'howard lake': (45.0600, -94.0733),
+    'annandale': (45.2608, -94.1244), 'clearwater': (45.4169, -94.0486),
+    'cold spring': (45.4558, -94.4269), 'richmond': (45.4575, -94.5133),
+    'melrose': (45.6747, -94.8133), 'sauk centre': (45.7375, -94.9511),
+    'long prairie': (45.9758, -94.8633), 'staples': (46.3558, -94.7947),
+    'wadena': (46.4425, -95.1361), 'park rapids': (46.9253, -95.0586),
+    'menahga': (46.7536, -95.0975), 'nevis': (46.9678, -94.8400),
+    'akeley': (47.0000, -94.7333),
+}
+
+
 # --- TowerWitch -> OP25 sidecar wiring ---
 import armer_state_store
+import frequency_store
+import radioreference
+import repeaterbook
+import talkgroup_store
 import tw_theme
 import hallpass_link
 from op25_client import Op25Client
@@ -570,6 +685,10 @@ OP25_SIDECAR_URL = "http://192.168.1.31:8080/"   # fallback when [OP25] url is n
 OP25_LOCAL_URL   = "http://localhost:8080/"      # tried first: op25 on this machine
 ARMER_CSV_PATH   = os.path.join(os.path.dirname(__file__), "trs_sites_3508.csv")
 ARMER_STATE_JSON = os.path.join(os.path.dirname(__file__), "data", "armer_state.json")
+# The other half of a RadioReference export - what is said on the towers.
+TALKGROUPS_JSON  = os.path.join(os.path.dirname(__file__), "data", "talkgroups.json")
+COUNTY_JSON      = os.path.join(os.path.dirname(__file__), "data", "county_frequencies.json")
+REPEATERBOOK_CSV = os.path.join(os.path.dirname(__file__), "data", "repeaterbook.csv")
 OP25_IMPORT_PATH = "/tw/import"
 # --- end op25 wiring ---
 
@@ -887,22 +1006,70 @@ class TowerWitchTkinter:
         print("[OK] Keyboard shortcuts enabled: Ctrl+Q, Ctrl+C, F11 (fullscreen), F12 (night mode)")
 
     def quit_application(self):
-        """Cleanly exit the application"""
+        """Cleanly exit the application.
+
+        Every line of this used to be taken on trust, and shutdown is the
+        one place where that does not hold: the state file may sit on a
+        card gone read-only, a socket may already be gone, a worker may
+        never have started because its section of the config was off.
+        Tkinter catches whatever a WM_DELETE_WINDOW handler raises,
+        reports it, and then leaves the window up - so a failure in here
+        does not read as a crash, it reads as a window that will not
+        close and a process that stays resident with its threads. On a Pi
+        at the end of a coax run that is a leak nobody is watching for.
+
+        So each step is taken on its own and a failure is named rather
+        than ending the teardown, and the window comes down either way.
+        """
         print("[OK] Shutting down TowerWitch...")
-        
-        # Save current state for next session
-        self.save_state()
-        
-        if getattr(self, 'op25_client', None) is not None:
-            self.op25_client.stop()
-        if getattr(self, 'hello', None) is not None:
-            self.hello.close()
-        self._udp_stop.set()
-        if self.gps_worker:
-            self.gps_worker.stop()
-        self.root.quit()
-        self.root.destroy()
-        sys.exit(0)
+
+        def stop_op25():
+            client = getattr(self, 'op25_client', None)
+            if client is not None:
+                client.stop()
+
+        def close_hello():
+            hello = getattr(self, 'hello', None)
+            if hello is not None:
+                hello.close()
+
+        def stop_udp():
+            # The socket was never closed on the way out before this; a
+            # daemon thread dying with the process hid it, but the handle
+            # is ours to give back.
+            stop = getattr(self, '_udp_stop', None)
+            if stop is not None:
+                stop.set()
+            sock = getattr(self, 'udp_socket', None)
+            if sock is not None:
+                sock.close()
+
+        def stop_gps():
+            worker = getattr(self, 'gps_worker', None)
+            if worker is not None:
+                worker.stop()
+
+        for what, step in (("saving state", self.save_state),
+                           ("stopping the op25 client", stop_op25),
+                           ("closing the HallPass hello", close_hello),
+                           ("stopping the UDP broadcast", stop_udp),
+                           ("stopping the GPS worker", stop_gps)):
+            try:
+                step()
+            except Exception as e:      # no one step may strand the window
+                print(f"[WARN] shutting down, {what}: {e}")
+
+        try:
+            self.root.quit()
+            self.root.destroy()
+        except tk.TclError as e:
+            # Already torn down - a second Exit, or the window manager got
+            # here first. Nothing left to close, and saying so beats a
+            # traceback that looks like a fault.
+            print(f"[INFO] window was already closed: {e}")
+        finally:
+            print("[OK] TowerWitch is down")
+            sys.exit(0)
 
     # ------------------------------------------------------------ the network
     # The same packet TowerWitch-P sends, from the same [UDP] settings, so
@@ -1275,6 +1442,24 @@ class TowerWitchTkinter:
         self.op25_btn = ttk.Button(armer_header, command=self.send_to_op25)
         self.op25_btn.pack(side=tk.RIGHT, padx=5, ipadx=15, ipady=6)
         self._update_op25_button()
+
+        # A RadioReference account gives you the system as two CSVs. Put
+        # them anywhere - a stick, a download folder, the other Pi - and
+        # point this at them; which file is which is read off the header,
+        # not the name. Export writes them back properly quoted, which
+        # the file from the website is not.
+        ttk.Button(armer_header, text="Export CSV...",
+                   command=self.export_radioreference).pack(
+                       side=tk.RIGHT, padx=5, ipadx=10, ipady=6)
+        ttk.Button(armer_header, text="Import CSV...",
+                   command=self.import_radioreference).pack(
+                       side=tk.RIGHT, padx=5, ipadx=10, ipady=6)
+
+        # What the last import found, under the buttons rather than in a
+        # box somebody has to dismiss before they can read the tree.
+        self.armer_import_note = ttk.Label(armer_frame, text="",
+                                           font=(tw_theme.SANS, 9))
+        self.armer_import_note.pack(fill=tk.X, padx=10)
 
         # ARMER sites tree
         columns = ('Site', 'Description', 'County', 'Distance', 'Bearing', 'Range', 'Frequencies')
@@ -2108,12 +2293,24 @@ class TowerWitchTkinter:
         return all_skywarn
 
     def load_amateur_data(self):
-        """Load amateur radio repeater data"""
-        # Try to load from local CSV first
-        local_repeaters = self.load_local_repeater_csv()
-        
+        """Load amateur radio repeater data.
+
+        Two sources, neither of them required: the repeater CSVs if any
+        are on disk, and the rows tagged Ham of whatever RadioReference
+        county exports have been imported. A county export is the one
+        most likely to be there, because it is the file the Import button
+        takes and the website hands out per county.
+        """
+        local_repeaters = list(self.load_local_repeater_csv())
+        from_county = self.county_amateur_repeaters()
+        if from_county:
+            print(f"[OK] {len(from_county)} amateur repeaters from imported "
+                  f"county frequencies")
+        local_repeaters += from_county
+
         if local_repeaters:
-            print(f"[OK] Using {len(local_repeaters)} local amateur repeaters from CSV")
+            print(f"[OK] {len(local_repeaters)} amateur repeaters to place "
+                  f"on the band tabs")
             # Separate by band
             repeaters_10m = [r for r in local_repeaters if 28 <= float(r.get('output', '0')) <= 30]
             repeaters_6m = [r for r in local_repeaters if 50 <= float(r.get('output', '0')) <= 54]
@@ -2134,132 +2331,83 @@ class TowerWitchTkinter:
             if repeaters_70cm:
                 self.populate_band_tree(repeaters_70cm, '70cm')
         else:
-            # Fall back to sample 2m repeaters
-            repeaters_2m = [
-                {"call": "W0AIH", "location": "Minneapolis", "output": "146.94", "input": "146.34", "tone": "114.8", "lat": 44.9778, "lon": -93.2650},
-                {"call": "K0TB", "location": "St. Paul", "output": "145.23", "input": "144.63", "tone": "107.2", "lat": 44.9537, "lon": -93.0900},
-                {"call": "WA0TDA", "location": "Bloomington", "output": "147.06", "input": "147.66", "tone": "103.5", "lat": 44.8408, "lon": -93.2985},
-            ]
+            # There used to be five invented repeaters here - metro
+            # machines with real callsigns pinned to towns they are not
+            # in - shown whenever the CSVs were missing, which was
+            # always. A placeholder that looks exactly like data is
+            # worse than an empty tab: nobody thinks to check a list
+            # that is already full, and a ham who trusts it keys up into
+            # nothing. An empty band now reads as empty.
+            print("[INFO] no amateur repeaters on hand - Import a county CSV "
+                  "from RadioReference, or put a repeater CSV in data/")
+            for band in ('10m', '6m', '2m', '1.25m', '70cm'):
+                self.populate_band_tree([], band)
 
-            # Sample 70cm repeaters
-            repeaters_70cm = [
-                {"call": "W0AIH", "location": "Minneapolis", "output": "442.20", "input": "447.20", "tone": "114.8", "lat": 44.9778, "lon": -93.2650},
-                {"call": "K0TB", "location": "St. Paul", "output": "444.85", "input": "449.85", "tone": "107.2", "lat": 44.9537, "lon": -93.0900},
-            ]
+    def town_position(self, place):
+        """Where a named place is, or (None, None) if we have no idea.
 
-            # Populate band trees with correct band identifiers
-            self.populate_band_tree(repeaters_2m, '2m')
-            self.populate_band_tree(repeaters_70cm, '70cm')
+        A RadioReference county export describes a repeater by the town
+        it serves and never by position, so the description is matched
+        against the town table. Longest match first: "Crosslake" must not
+        be answered by "Cross" or a shorter town sitting inside it.
+        """
+        if not place:
+            return None, None
+        haystack = place.lower()
+        best = None
+        for town, coords in MN_TOWNS.items():
+            if town in haystack and (best is None or len(town) > len(best[0])):
+                best = (town, coords)
+        return best[1] if best else (None, None)
+
+    def county_amateur_repeaters(self):
+        """The Ham rows of every imported county, shaped for a band tab.
+
+        The tone given is the input tone - the one you have to send to
+        open the machine - falling back to the output tone when there is
+        no input. A repeater whose town is not in the table is still
+        listed; it simply cannot say how far away it is.
+        """
+        try:
+            records = frequency_store.frequencies(COUNTY_JSON, tag="Ham")
+        except Exception as exc:     # a bad store must not empty the tab
+            print(f"[WARN] county frequencies could not be read: {exc}")
+            return []
+
+        out, unplaced = [], []
+        for record in records:
+            output_hz = record.get("output_hz")
+            if not output_hz:
+                continue
+            description = (record.get("description") or "").strip()
+            lat, lon = self.town_position(description)
+            if lat is None:
+                unplaced.append(description or "(unnamed)")
+            input_hz = record.get("input_hz")
+            tone = record.get("tone_in") or record.get("tone_out") or {}
+            out.append({
+                'call': (record.get("callsign") or "").strip() or "",
+                'location': description or (record.get("alpha_tag") or ""),
+                'output': f"{output_hz / 1e6:.4f}",
+                'input': f"{input_hz / 1e6:.4f}" if input_hz else "",
+                'tone': (f"{tone['hz']:.1f}" if tone.get("kind") == "ctcss"
+                         else tone.get("text", "")),
+                'lat': lat,
+                'lon': lon,
+            })
+        if unplaced:
+            print(f"[INFO] {len(unplaced)} amateur repeaters have no town in "
+                  f"the table, listed without a distance: "
+                  f"{', '.join(sorted(set(unplaced))[:4])}")
+        return out
 
     def load_local_repeater_csv(self):
         """Load local repeater data from CSV files"""
         # Known Minnesota city/town coordinates (expanded statewide coverage)
-        known_locations = {
-            # Metro Area
-            'minneapolis': (44.9778, -93.2650), 'saint paul': (44.9537, -93.0900),
-            'st paul': (44.9537, -93.0900), 'bloomington': (44.8408, -93.2985),
-            'plymouth': (45.0105, -93.4555), 'maple grove': (45.0725, -93.4557),
-            'edina': (44.8897, -93.3500), 'coon rapids': (45.1200, -93.2878),
-            'burnsville': (44.7677, -93.2778), 'eden prairie': (44.8547, -93.4708),
-            'blaine': (45.1608, -93.2350), 'lakeville': (44.6497, -93.2428),
-            'maple plain': (45.0033, -93.6588), 'ham lake': (45.2503, -93.2044),
-            'maplewood': (44.9531, -92.9952), 'ramsey': (45.2611, -93.4500),
-            'white bear lake': (45.0847, -93.0098),
-            
-            # Crow Wing & Cass Counties
-            'brainerd': (46.358, -94.201), 'baxter': (46.345, -94.263),
-            'crosslake': (46.660, -94.107), 'pequot': (46.603, -94.312),
-            'crosby': (46.484, -93.957), 'nisswa': (46.521, -94.289),
-            'aitkin': (46.533, -93.717), 'pine river': (46.718, -94.397),
-            'pillager': (46.344, -94.482), 'walker': (47.101, -94.587),
-            
-            # Northern Minnesota
-            'duluth': (46.7867, -92.1005), 'superior': (46.7208, -92.1042),
-            'hibbing': (47.4271, -92.9377), 'virginia': (47.5232, -92.5366),
-            'grand rapids': (47.2368, -93.5302), 'bemidji': (47.4736, -94.8803),
-            'international falls': (48.6011, -93.4105), 'thief river falls': (48.1169, -96.1812),
-            'cloquet': (46.7216, -92.4594), 'two harbors': (47.0227, -91.6707),
-            'ely': (47.9032, -91.8671), 'grand marais': (47.7505, -90.3343),
-            'grand portage': (47.9650, -89.6824), 'tofte': (47.5810, -90.8496),
-            'cook': (47.8191, -92.6885), 'aurora': (47.5299, -92.2374),
-            'silver bay': (47.2955, -91.2526), 'proctor': (46.7477, -92.2224),
-            'coleraine': (47.2888, -93.4269), 'isabella': (47.6158, -91.4932),
-            'big falls': (48.2000, -93.8000), 'kelliher': (47.9375, -94.4533),
-            'lengby': (47.5219, -95.6906), 'wannaska': (48.6572, -95.7253),
-            'warroad': (48.9053, -95.3133), 'roosevelt': (48.7942, -95.2036),
-            'angle inlet': (49.3489, -95.0708),
-            
-            # Central Minnesota  
-            'saint cloud': (45.5579, -94.1632), 'st cloud': (45.5579, -94.1632),
-            'sartell': (45.6219, -94.2069), 'sauk rapids': (45.5953, -94.1617),
-            'little falls': (45.9764, -94.3628), 'avon': (45.6080, -94.4508),
-            'collegeville': (45.5944, -94.3633), 'paynesville': (45.3794, -94.7122),
-            'willmar': (45.1219, -95.0433), 'litchfield': (45.1275, -94.5281),
-            'hutchinson': (44.8883, -94.3708), 'silver lake': (44.9044, -94.1933),
-            'darwin': (45.0939, -94.4094), 'foley': (45.6647, -93.9097),
-            
-            # Southeast Minnesota
-            'rochester': (44.0219, -92.4635), 'owatonna': (44.0838, -93.2261),
-            'austin': (43.6666, -92.9746), 'albert lea': (43.6480, -93.3683),
-            'red wing': (44.5625, -92.5338), 'winona': (44.0499, -91.6393),
-            'la crescent': (43.8233, -91.3004), 'waseca': (44.0783, -93.5061),
-            'faribault': (44.2950, -93.2688), 'northfield': (44.4583, -93.1616),
-            'kasson': (44.0297, -92.7502), 'byron': (44.0333, -92.6474),
-            'stewartville': (43.8558, -92.4877), 'chatfield': (43.8452, -92.1888),
-            'wykoff': (43.7086, -92.2713), 'dennison': (44.4100, -93.0200),
-            'glenville': (43.5669, -93.2780), 'racine': (43.8100, -92.5200),
-            'lemond': (43.8000, -93.3000), 'medford': (44.1658, -93.2438),
-            
-            # Southwest Minnesota
-            'mankato': (44.1636, -94.0033), 'new ulm': (44.3125, -94.4608),
-            'marshall': (44.4469, -95.7883), 'worthington': (43.6200, -95.5956),
-            'fairmont': (43.6519, -94.4608), 'jackson': (43.6200, -95.0100),
-            'pipestone': (44.0000, -96.3169), 'luverne': (43.6539, -96.2125),
-            'tracy': (44.2297, -95.6189), 'slayton': (43.9875, -95.7581),
-            'windom': (43.8658, -95.1153), 'fulda': (43.8711, -95.6025),
-            'blue earth': (43.6386, -94.1016), 'saint peter': (44.3236, -93.9575),
-            'st peter': (44.3236, -93.9575), 'le sueur': (44.4600, -93.9122),
-            'le center': (44.3886, -93.7302), 'ellendale': (43.8614, -93.2983),
-            'gaylord': (44.5539, -94.2208), 'arlington': (44.6089, -94.0806),
-            'green isle': (44.6708, -94.0069), 'wabasso': (44.4072, -95.2508),
-            'tyler': (44.2786, -96.1342),
-            
-            # West Central Minnesota
-            'moorhead': (46.8738, -96.7678), 'fergus falls': (46.2830, -96.0776),
-            'detroit lakes': (46.8172, -95.8453), 'alexandria': (45.8852, -95.3775),
-            'morris': (45.5861, -95.9142), 'breckenridge': (46.2636, -96.5892),
-            'wheaton': (45.8064, -96.5000), 'ortonville': (45.3050, -96.4431),
-            'montevideo': (44.9458, -95.7231), 'granite falls': (44.8097, -95.5453),
-            'clara city': (44.9539, -95.3653), 'dawson': (44.9322, -96.0539),
-            'madison': (45.0089, -96.1953), 'perham': (46.5944, -95.5728),
-            'dalton': (46.1700, -95.9100), 'bertha': (46.2694, -95.0683),
-            'sebeka': (46.6264, -95.0864), 'deer creek': (46.3897, -95.2967),
-            'twin valley': (47.2683, -96.2542), 'east grand forks': (47.9297, -97.0242),
-            'crookston': (47.7741, -96.6081), 'warren': (48.1958, -96.7731),
-            'karlstad': (48.5733, -96.5181),
-            
-            # South Central Minnesota
-            'mankato': (44.1636, -94.0033), 'north mankato': (44.1775, -94.0336),
-            'saint james': (43.9869, -94.6275), 'madelia': (44.0525, -94.4200),
-            'mountain lake': (43.9369, -94.9297),
-            
-            # Counties & Towns
-            'isanti': (45.4900, -93.2478), 'cambridge': (45.5728, -93.2244),
-            'north branch': (45.5111, -92.9808), 'mora': (45.8747, -93.2908),
-            'milaca': (45.7553, -93.6539), 'princeton': (45.5697, -93.5819),
-            'elk river': (45.3038, -93.5672), 'big lake': (45.3319, -93.7458),
-            'monticello': (45.3055, -93.7927), 'buffalo': (45.1719, -93.8744),
-            'delano': (45.0411, -93.7886), 'howard lake': (45.0600, -94.0733),
-            'annandale': (45.2608, -94.1244), 'clearwater': (45.4169, -94.0486),
-            'cold spring': (45.4558, -94.4269), 'richmond': (45.4575, -94.5133),
-            'melrose': (45.6747, -94.8133), 'sauk centre': (45.7375, -94.9511),
-            'long prairie': (45.9758, -94.8633), 'staples': (46.3558, -94.7947),
-            'wadena': (46.4425, -95.1361), 'park rapids': (46.9253, -95.0586),
-            'menahga': (46.7536, -95.0975), 'nevis': (46.9678, -94.8400),
-            'akeley': (47.0000, -94.7333),
-        }
+        known_locations = MN_TOWNS
         
         repeater_files = [
+            'data/repeaterbook.csv',             # whatever came in through Import
             'data/Repeater_Book_Minnesota.csv',  # Primary statewide source
             'data/crow_wing_county_radio_reference.csv',
             'data/cass_county_radio_reference.csv',
@@ -2289,6 +2437,17 @@ class TowerWitchTkinter:
                                 callsign = row.get('Call', 'N0CALL').strip()
                                 location_name = row.get('Location', 'Unknown').strip()
                                 county = row.get('County', '').strip().lower()
+                                state = row.get('State', '').strip().lower()
+                                # A RepeaterBook export is whatever was asked
+                                # of it, and the national one is mostly not
+                                # Minnesota. The town and county tables below
+                                # are Minnesota's, and county names repeat
+                                # across states - Polk, Washington and Lake
+                                # are each several places. Placing an out of
+                                # state row from them puts a Texas machine in
+                                # Minnesota, so those rows are carried without
+                                # a position rather than with a wrong one.
+                                in_minnesota = state in ('', 'minnesota', 'mn')
                                 
                                 # Extract tone
                                 uplink_tone = row.get('Uplink Tone', '').strip()
@@ -2302,13 +2461,14 @@ class TowerWitchTkinter:
                                 location_lower = location_name.lower()
                                 
                                 # Try exact city match
-                                for city_key, coords in known_locations.items():
-                                    if city_key in location_lower:
-                                        lat, lon = coords
-                                        break
+                                if in_minnesota:
+                                    for city_key, coords in known_locations.items():
+                                        if city_key in location_lower:
+                                            lat, lon = coords
+                                            break
                                 
                                 # Fallback to county center
-                                if lat is None and county:
+                                if lat is None and county and in_minnesota:
                                     county_centers = {
                                         'crow wing': (46.450, -94.150), 'cass': (46.900, -94.350),
                                         'aitkin': (46.533, -93.717), 'hennepin': (44.977, -93.265),
@@ -2356,9 +2516,11 @@ class TowerWitchTkinter:
                                     if county in county_centers:
                                         lat, lon = county_centers[county]
                                 
-                                # Skip if still no coordinates
-                                if lat is None:
-                                    lat, lon = 46.450, -94.150  # Default to central MN
+                                # No coordinates is an answer. It used to
+                                # default to central Minnesota, which put every
+                                # unplaceable repeater in Brainerd - a made up
+                                # position reads as a real one on a bearing.
+                                # The band tab lists these without a distance.
                                 
                                 repeater = {
                                     'call': callsign,
@@ -2447,6 +2609,34 @@ class TowerWitchTkinter:
         else:
             return None
 
+    @staticmethod
+    def _mhz(value, blank="—"):
+        """A frequency for a column, or a word when there is not one.
+
+        An output frequency is always a number. An input is not: a
+        simplex channel has none, and rendering the nothing as
+        "0.0000 MHz" puts a frequency at the bottom of the spectrum on
+        screen and invites somebody to transmit on it.
+        """
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return str(value).strip() or blank
+        return f"{number:.4f} MHz" if number else blank
+
+    @staticmethod
+    def _tone_text(value):
+        """A tone for a column. CSQ is not a number of hertz, and
+        labelling it as one reads as a tone somebody should be sending."""
+        text = str(value or "").strip()
+        if not text:
+            return "CSQ"
+        try:
+            hz = float(text)
+        except ValueError:
+            return text                  # CSQ, a DCS code, whatever it was
+        return f"{hz:.1f} Hz" if hz else "CSQ"
+
     def populate_band_tree(self, repeaters, band):
         """Populate a specific band tree with repeater data"""
         # Fix band naming to match our attribute names
@@ -2465,33 +2655,51 @@ class TowerWitchTkinter:
                 tree.delete(item)
 
             # Calculate distances and sort by proximity
+            # A repeater whose town is not in the table still belongs on
+            # the list - it is audible or it is not, and that does not
+            # depend on our being able to measure it. It sorts to the end
+            # and leaves the distance blank rather than claiming a zero.
             repeater_distances = []
             for repeater in repeaters:
+                if repeater.get("lat") is None or repeater.get("lon") is None:
+                    repeater_distances.append((float("inf"), repeater))
+                    continue
                 distance = self.calculate_distance(self.last_lat, self.last_lon,
                                                  repeater["lat"], repeater["lon"])
                 repeater_distances.append((distance, repeater))
-            
-            # Sort by distance and take closest 7
+
+            # Nearest first, and all of them. It used to show the
+            # closest seven, which is a filter that cannot be seen from
+            # the screen: a band with forty repeaters on it looked
+            # exactly like a band with seven. The tree scrolls.
             repeater_distances.sort(key=lambda x: x[0])
-            
+
             # Populate with repeater data
-            for distance, repeater in repeater_distances[:7]:
-                # Distance already calculated in sort
-                bearing = self.calculate_bearing(self.last_lat, self.last_lon,
-                                               repeater["lat"], repeater["lon"])
+            for distance, repeater in repeater_distances:
+                if distance == float("inf"):
+                    how_far, heading = "—", "—"
+                else:
+                    bearing = self.calculate_bearing(self.last_lat, self.last_lon,
+                                                   repeater["lat"], repeater["lon"])
+                    how_far = f"{distance:.1f} mi"
+                    heading = f"{bearing:.0f}°"
 
                 values = (
                     repeater["call"],
                     repeater["location"],
-                    f"{repeater['output']} MHz",
-                    f"{repeater['input']} MHz",
-                    f"{repeater['tone']} Hz",
-                    f"{distance:.1f} mi",
-                    f"{bearing:.0f}°"
+                    self._mhz(repeater.get("output")),
+                    self._mhz(repeater.get("input"), blank="simplex"),
+                    self._tone_text(repeater.get("tone")),
+                    how_far,
+                    heading,
                 )
 
                 tree.insert('', 'end', values=values)
-            print(f"[OK] Populated {band} with {len(repeater_distances[:7])} repeaters")
+            placed = sum(1 for d, _ in repeater_distances if d != float("inf"))
+            print(f"[OK] Populated {band} with {len(repeater_distances)} "
+                  f"repeaters"
+                  + (f", {len(repeater_distances) - placed} without a position"
+                     if placed != len(repeater_distances) else ""))
         else:
             print(f"[WARN] Tree {tree_name} not found for band {band}")
 
@@ -2725,14 +2933,24 @@ class TowerWitchTkinter:
 
     def load_fusion_data(self):
         """Load Yaesu System Fusion repeater data from CSV"""
-        fusion_file = os.path.join(os.path.dirname(__file__), "data/fusion_repeater_boook.csv")
-        
+        # Fusion is not a separate download. A RepeaterBook export says
+        # in its Modes column which machines carry C4FM, so the file the
+        # Import button already writes is the source. The hand-filtered
+        # file is still read if somebody has one - including under the
+        # misspelling it has always had.
+        candidates = [os.path.join(os.path.dirname(__file__), name)
+                      for name in ("data/repeaterbook.csv",
+                                   "data/fusion_repeater_boook.csv",
+                                   "data/fusion_repeater_book.csv")]
+
         # Clear existing data
         for item in self.fusion_tree.get_children():
             self.fusion_tree.delete(item)
-        
-        if not os.path.exists(fusion_file):
-            print(f"[WARN] Fusion repeater file not found: {fusion_file}")
+
+        fusion_file = next((p for p in candidates if os.path.exists(p)), None)
+        if fusion_file is None:
+            print("[INFO] no repeater file to read Fusion from - Import a "
+                  "RepeaterBook export")
             return
         
         try:
@@ -2750,6 +2968,13 @@ class TowerWitchTkinter:
                 
                 for row in reader:
                     try:
+                        # A hand-filtered Fusion file says nothing in its
+                        # Modes column, so an empty one is taken at its
+                        # word. A full export does say, and then it has
+                        # to say Fusion to belong on this tab.
+                        modes_text = (row.get('Modes') or '').strip()
+                        if modes_text and 'fusion' not in modes_text.lower():
+                            continue
                         output_freq = row.get('Output Freq', '0')
                         input_freq = row.get('Input Freq', '0')
                         
@@ -2813,9 +3038,17 @@ class TowerWitchTkinter:
                                     cache_hit_count += 1
                                     break
                         
-                        # TIER 4: Use county center as fallback (NO geocoding API calls)
-                        if lat is None:
-                            # Use county or state center as fallback
+                        # TIER 4: the town table, then a county centre - and
+                        # both of them are Minnesota's. A RepeaterBook export
+                        # is national, and Hennepin, Dakota and Cass are each
+                        # several states, so only a Minnesota row is placed
+                        # from them. The rest are listed without a distance
+                        # rather than stood in the middle of Minnesota.
+                        state_name = (row.get('State') or '').strip().lower()
+                        in_minnesota = state_name in ('', 'minnesota', 'mn')
+                        if lat is None and in_minnesota:
+                            lat, lon = self.town_position(city)
+                        if lat is None and in_minnesota:
                             county_centers = {
                                 'crow wing': (46.450, -94.150),
                                 'cass': (47.000, -94.300),
@@ -2826,8 +3059,8 @@ class TowerWitchTkinter:
                                 'olmsted': (43.967, -92.458),
                             }
                             county_lower = county.lower() if county else ''
-                            lat, lon = county_centers.get(county_lower, (46.0, -94.0))  # Minnesota center
-                            # Not counted as geocode since it's static fallback
+                            lat, lon = county_centers.get(county_lower,
+                                                          (None, None))
                         
                         repeater = {
                             'call': call if call else 'N0CALL',
@@ -2850,6 +3083,9 @@ class TowerWitchTkinter:
                 # Calculate distances and sort by proximity
                 repeater_distances = []
                 for repeater in fusion_repeaters:
+                    if repeater['lat'] is None or repeater['lon'] is None:
+                        repeater_distances.append((float("inf"), None, repeater))
+                        continue
                     distance = self.calculate_distance(self.last_lat, self.last_lon,
                                                      repeater['lat'], repeater['lon'])
                     bearing = self.calculate_bearing(self.last_lat, self.last_lon,
@@ -2861,23 +3097,37 @@ class TowerWitchTkinter:
                 
                 # Populate tree
                 for distance, bearing, repeater in repeater_distances:
+                    if bearing is None:
+                        how_far, heading = "—", "—"
+                    else:
+                        how_far = f"{distance:.1f} mi"
+                        heading = f"{bearing:.0f}°"
                     values = (
                         repeater['call'],
                         repeater['location'],
-                        f"{repeater['output']} MHz",
-                        f"{repeater['input']} MHz",
-                        repeater['tone'],
+                        self._mhz(repeater['output']),
+                        self._mhz(repeater['input'], blank="simplex"),
+                        self._tone_text(repeater['tone']),
                         repeater['modes'],
-                        f"{distance:.1f} mi",
-                        bearing
+                        how_far,
+                        heading,
                     )
                     self.fusion_tree.insert('', 'end', values=values)
                 
         except Exception as e:
             print(f"[ERROR] Error loading Fusion data: {e}")
     
-    def approximate_location_from_name(self, location, county):
-        """Approximate coordinates from location and county names"""
+    def approximate_location_from_name(self, location, county, state=None):
+        """Approximate coordinates from location and county names.
+
+        Every table in here is Minnesota's, and county names repeat
+        across states, so a row from anywhere else gets no position
+        rather than a Minnesota one. It used to answer (46.0, -94.0)
+        for anything it did not know, which reads on screen as a
+        real fix in the middle of the state.
+        """
+        if state and state.strip().lower() not in ('minnesota', 'mn'):
+            return (None, None)
         location_lower = location.lower()
         county_lower = county.lower() if county else ''
         
@@ -2960,9 +3210,9 @@ class TowerWitchTkinter:
         
         if county_lower in county_centers:
             return county_centers[county_lower]
-        
-        # Default to central Minnesota
-        return (46.0, -94.0)
+
+        # Nothing known. Saying so beats standing it in central Minnesota.
+        return (None, None)
     
     def load_dmr_dstar_data(self):
         """Load DMR and D-Star repeater data from CSV or Radio Reference"""
@@ -2976,13 +3226,28 @@ class TowerWitchTkinter:
         dmr_dstar_repeaters = []
         
         # First, try loading from dedicated Repeater Book DMR file
-        dmr_book_file = os.path.join(os.path.dirname(__file__), 'data/Repeater_Book_DMR_MN.csv')
-        if os.path.exists(dmr_book_file):
+        # The dedicated file if somebody has one, otherwise the export
+        # the Import button writes: a RepeaterBook export names DMR and
+        # DSTAR in its Modes column, so it needs no filtering beforehand.
+        dmr_book_file = next(
+            (p for p in (os.path.join(os.path.dirname(__file__),
+                                      'data/Repeater_Book_DMR_MN.csv'),
+                         os.path.join(os.path.dirname(__file__),
+                                      'data/repeaterbook.csv'))
+             if os.path.exists(p)), None)
+        if dmr_book_file:
             try:
                 with open(dmr_book_file, 'r') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
                         try:
+                            # A dedicated DMR file says nothing in Modes and
+                            # is taken at its word; a full export has to say
+                            # one of the two to belong on this tab.
+                            modes_text = (row.get('Modes') or '').strip().lower()
+                            if modes_text and not any(m in modes_text for m in
+                                                      ('dmr', 'dstar', 'd-star')):
+                                continue
                             output_freq = row.get('Output Freq', '0').strip()
                             input_freq = row.get('Input Freq', '0').strip()
                             
@@ -3009,7 +3274,9 @@ class TowerWitchTkinter:
                                     lat, lon = coord_cache[location_key]
                                 else:
                                     # Use approximate coordinates for known cities
-                                    lat, lon = self.approximate_location_from_name(location_name, county)
+                                    lat, lon = self.approximate_location_from_name(
+                                        location_name, county,
+                                        row.get('State'))
                             
                             repeater = {
                                 'call': call if call else 'N0CALL',
@@ -3026,7 +3293,8 @@ class TowerWitchTkinter:
                         except (ValueError, KeyError) as e:
                             continue
                             
-                print(f"[OK] Loaded {len(dmr_dstar_repeaters)} repeaters from Repeater Book DMR file")
+                print(f"[OK] Loaded {len(dmr_dstar_repeaters)} DMR/D-Star "
+                      f"repeaters from {os.path.basename(dmr_book_file)}")
             except Exception as e:
                 print(f"[WARN] Error loading DMR from Repeater Book: {e}")
         
@@ -3111,6 +3379,9 @@ class TowerWitchTkinter:
             # Calculate distances and sort by proximity
             repeater_distances = []
             for repeater in dmr_dstar_repeaters:
+                if repeater['lat'] is None or repeater['lon'] is None:
+                    repeater_distances.append((float("inf"), None, repeater))
+                    continue
                 distance = self.calculate_distance(self.last_lat, self.last_lon,
                                                  repeater['lat'], repeater['lon'])
                 bearing = self.calculate_bearing(self.last_lat, self.last_lon,
@@ -3122,15 +3393,20 @@ class TowerWitchTkinter:
             
             # Populate tree
             for distance, bearing, repeater in repeater_distances:
+                if bearing is None:
+                    how_far, heading = "—", "—"
+                else:
+                    how_far = f"{distance:.1f} mi"
+                    heading = f"{bearing:.0f}°"
                 values = (
                     repeater['call'],
                     repeater['location'],
-                    f"{repeater['output']} MHz",
-                    f"{repeater['input']} MHz",
+                    self._mhz(repeater['output']),
+                    self._mhz(repeater['input'], blank="simplex"),
                     repeater['mode'],
                     repeater['cc_id'],
-                    f"{distance:.1f} mi",
-                    f"{bearing:.0f}°"
+                    how_far,
+                    heading,
                 )
                 self.dmr_dstar_tree.insert('', 'end', values=values)
         else:
@@ -3457,6 +3733,200 @@ class TowerWitchTkinter:
         except Exception as e:
             print(f"[WARN] What3Words lookup failed: {e}")
             return None
+
+    # ---------------------------------------------- RadioReference import
+    def import_radioreference(self):
+        """Pick one or more RadioReference CSVs and take them in.
+
+        Either kind, in any order, from anywhere - a stick, a download
+        folder, the other Pi. Which file is which is read off its header
+        rather than its name, because a file that has been through a
+        download folder twice is "trs_tg_3508 (1).csv".
+
+        Nothing here is allowed to take the window down. A file that
+        cannot be read, is not one of ours, or is half full of nonsense
+        ends as a line in the report and the rest of the files still go
+        in. See radioreference.py for what a report carries.
+        """
+        paths = filedialog.askopenfilenames(
+            title="Import RadioReference CSV",
+            filetypes=[("RadioReference CSV", "*.csv"), ("All files", "*.*")])
+        if not paths:
+            return                       # cancelled; not a fault, say nothing
+
+        said, sites_in, tgs_in, freqs_in, reps_in, failed = [], 0, 0, 0, 0, 0
+        for path in paths:
+            summarise = radioreference.summary
+            try:
+                kind, records, report = radioreference.read(path)
+                if kind is None:
+                    # Not RadioReference. RepeaterBook is the other export
+                    # somebody is likely to be holding, and it is the better
+                    # source for amateur repeaters - the people who own the
+                    # machines keep it. Try it before calling the file junk.
+                    other, other_report = repeaterbook.read(path)
+                    if not other_report["fatal"]:
+                        kind, records, report = (repeaterbook.REPEATERBOOK,
+                                                 other, other_report)
+                        summarise = repeaterbook.summary
+            except Exception as exc:     # a reader must never take the GUI down
+                print(f"[ERROR] import: {os.path.basename(path)} could not be "
+                      f"read ({exc})")
+                said.append(f"{os.path.basename(path)}: could not be read")
+                failed += 1
+                continue
+
+            for line in summarise(report):
+                print(line)
+            if report["fatal"]:
+                said.append(f"{os.path.basename(path)}: {report['fatal']}")
+                failed += 1
+                continue
+
+            try:
+                if kind == radioreference.SITES:
+                    # Written back out properly quoted to the path the
+                    # rest of the program already reads, so the sites
+                    # tree and the OP25 payload both see it without
+                    # anything else having to learn a new place to look.
+                    radioreference.write_sites_csv(ARMER_CSV_PATH, records)
+                    armer_state_store.bootstrap_from_csv(ARMER_CSV_PATH,
+                                                         ARMER_STATE_JSON)
+                    sites_in += report["kept"]
+                    said.append(f"{report['kept']} sites")
+                elif kind == radioreference.TALKGROUPS:
+                    talkgroup_store.save(TALKGROUPS_JSON,
+                                         report["system"] or "unknown",
+                                         records, source=path)
+                    tgs_in += report["kept"]
+                    said.append(f"{report['kept']} talkgroups"
+                                + (f" for system {report['system']}"
+                                   if report["system"] else ""))
+                elif kind == radioreference.FREQUENCIES:
+                    # A county, not a system: everything audible in one
+                    # place, each row carrying the Tag that says what it
+                    # is. Only the amateur rows have somewhere to go on
+                    # screen so far; the rest are held until we decide
+                    # where a Fire Dispatch channel belongs.
+                    frequency_store.save(COUNTY_JSON,
+                                         report["system"] or "unknown",
+                                         records, source=path)
+                    freqs_in += report["kept"]
+                    ham = sum(1 for r in records
+                              if (r.get("tag") or "").lower() == "ham")
+                    said.append(f"{report['kept']} county frequencies"
+                                + (f" for county {report['system']}"
+                                   if report["system"] else "")
+                                + (f", {ham} amateur" if ham else ""))
+                elif kind == repeaterbook.REPEATERBOOK:
+                    # Written to the folder the band tabs already read, the
+                    # way a sites import is written to the ARMER CSV. Coming
+                    # in through this button is what should put a file where
+                    # the program looks; nobody should have to place it by
+                    # hand afterwards.
+                    repeaterbook.write_csv(REPEATERBOOK_CSV, records)
+                    reps_in += report["kept"]
+                    states = len(report.get("states") or {})
+                    said.append(f"{report['kept']} repeaters"
+                                + (f" across {states} states" if states > 1
+                                   else ""))
+                else:
+                    # A kind that was read but that nothing here stores used
+                    # to fall through both tests, report success and keep
+                    # nothing - which is how a county import announced 90
+                    # frequencies and left no trace of them.
+                    print(f"[ERROR] import: {os.path.basename(path)} was read "
+                          f"as {kind!r}, which nothing here knows how to keep")
+                    said.append(f"{os.path.basename(path)}: read but not kept")
+                    failed += 1
+                    continue
+            except (OSError, ValueError) as exc:
+                print(f"[ERROR] import: {os.path.basename(path)} read but not "
+                      f"saved ({exc})")
+                said.append(f"{os.path.basename(path)}: read but not saved")
+                failed += 1
+                continue
+
+            if report["repaired"]:
+                said.append(f"{len(report['repaired'])} rows had quotes the "
+                            f"export failed to escape, put back")
+            if report["skipped"]:
+                said.append(f"{len(report['skipped'])} rows skipped")
+
+        if sites_in:
+            self.load_armer_data()       # the tree, from the file just written
+            self._update_op25_button()
+        if freqs_in or reps_in:
+            self.load_amateur_data()     # the band tabs, from what just came in
+
+        note = "; ".join(said) if said else "nothing imported"
+        self.armer_import_note.config(text=f"Last import: {note}")
+        if failed and not (sites_in or tgs_in or freqs_in or reps_in):
+            messagebox.showerror("Import failed", note)
+        elif failed:
+            messagebox.showwarning("Imported with problems", note)
+
+    def export_radioreference(self):
+        """Write what is held back out as RadioReference CSVs.
+
+        Into a folder, one file per kind, named the way the website names
+        them so they go back where they came from. What leaves here is
+        correct CSV - the quotes inside a description escaped the way the
+        standard says - which the file from the website is not, so an
+        export can be read by anything and the original cannot.
+        """
+        sites = []
+        try:
+            state = armer_state_store.load(ARMER_STATE_JSON) or {}
+            for entry in (state.get("sites") or {}).values():
+                sites.append({
+                    "rfss": entry.get("rfid"), "site": entry.get("stid"),
+                    "site_hex": (entry.get("stid_hex") or "").replace("0x", ""),
+                    "nac": int(entry["nac"], 16) if entry.get("nac") else None,
+                    "description": entry.get("description", ""),
+                    "county": entry.get("county", ""),
+                    "lat": entry.get("lat"), "lon": entry.get("lon"),
+                    "range_mi": entry.get("range_mi"),
+                    "control_hz": entry.get("cc_freqs_hz") or [],
+                    "all_hz": entry.get("all_freqs_hz") or [],
+                })
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"[WARN] export: the site store could not be read ({exc})")
+
+        by_system = talkgroup_store.load(TALKGROUPS_JSON).get("systems", {})
+        if not sites and not by_system:
+            messagebox.showinfo(
+                "Nothing to export",
+                "No sites or talkgroups have been imported yet.")
+            return
+
+        folder = filedialog.askdirectory(title="Export RadioReference CSV into")
+        if not folder:
+            return
+
+        written = []
+        try:
+            if sites:
+                name = os.path.join(folder, "trs_sites_export.csv")
+                radioreference.write_sites_csv(name, sites)
+                written.append(f"{len(sites)} sites")
+            for system, entry in by_system.items():
+                records = entry.get("talkgroups") or []
+                if not records:
+                    continue
+                name = os.path.join(folder, f"trs_tg_{system}.csv")
+                radioreference.write_talkgroups_csv(name, records)
+                written.append(f"{len(records)} talkgroups ({system})")
+        except OSError as exc:
+            print(f"[ERROR] export: could not write into {folder} ({exc})")
+            messagebox.showerror("Export failed",
+                                 f"Could not write into that folder:\n{exc}")
+            return
+
+        said = ", ".join(written) if written else "nothing"
+        print(f"[OK] export: wrote {said} into {folder}")
+        self.armer_import_note.config(text=f"Last export: {said} -> {folder}")
+        messagebox.showinfo("Exported", f"Wrote {said} into\n{folder}")
 
     def load_armer_data(self):
         """Load ARMER site data from CSV"""

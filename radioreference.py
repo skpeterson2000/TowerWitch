@@ -1,15 +1,30 @@
 """Reading RadioReference exports as they actually come off the website.
 
-A person with a RadioReference account can download their system as CSV,
-and gets two files: `trs_sites_<id>.csv`, the towers, and `trs_tg_<id>.csv`,
-the talkgroups. TowerWitch already wanted the first, under one hardcoded
-name at the top of the repo, and had never heard of the second. This reads
-both, from wherever they were put, and says what it found.
+A person with a RadioReference account can download three different things,
+and this reads all of them, from wherever they were put:
+
+* `trs_sites_<id>.csv` - a trunked system's towers. TowerWitch already
+  wanted this one, under a single hardcoded name at the top of the repo.
+* `trs_tg_<id>.csv` - that system's talkgroups. Never heard of before.
+* `ctid_<county>_<when>.csv` - everything on the air in one county: the
+  ham repeaters, the airport, the school buses, the power co-op, and the
+  individual channels of whatever trunked systems reach it. A different
+  question from the other two - those describe a system, this describes a
+  place.
 
 **The files are told apart by their header, not their name.** A file that
 has been through a download folder twice is `trs_tg_3508 (1).csv`, and one
 somebody tidied is `armer talkgroups.csv`. The first line says which it is
 and that is a better question to ask.
+
+**One column in the county file is five different things.** What addresses
+a channel depends on what kind of channel it is, and RadioReference puts
+all of them in the tone column: `CSQ` for no tone at all, `123.0 PL` for a
+CTCSS tone, `043 DPL` for a DCS code, `CC 1|TG 1001|SL 1` for DMR's colour
+code, talkgroup and timeslot, and `004 NAC` for a P25 network access code.
+Read apart by :func:`parse_tone`, which keeps the original text beside
+what it made of it, and calls anything it does not recognise "other"
+rather than raising - an unknown tone is still a channel you can tune.
 
 **They are not quite CSV.** RadioReference does not escape the quotes
 inside a quoted field, so the State Patrol's district talkgroups come off
@@ -49,14 +64,24 @@ import re
 # and a header is not worth being strict about.
 SITES_HEADER = ("rfss", "sitedec", "sitehex", "sitenac", "description")
 TALKGROUPS_HEADER = ("decimal", "hex", "alphatag", "mode", "description")
+# The county list - `ctid_<county>_<when>.csv`. Everything on the air in
+# one county: the ham repeaters, the airport, the school buses, the power
+# co-op, and the individual channels of the trunked systems.
+FREQUENCIES_HEADER = ("frequencyoutput", "frequencyinput", "fcccallsign",
+                      "alphatag", "mode")
 
 SITES = "sites"
 TALKGROUPS = "talkgroups"
+FREQUENCIES = "frequencies"
 
 # A control channel is marked with a trailing c in the frequency column.
 CONTROL = "c"
-# The system's number, off the end of the name RadioReference gives it.
-SYSTEM_IN_NAME = re.compile(r"(\d{3,6})")
+# The number in the name RadioReference gives a download, which follows
+# the prefix and nothing else. Anchored there on purpose: a county file is
+# `ctid_1327_1790122872.csv`, and simply taking the last run of digits
+# picked "2872" out of the timestamp and called it the system.
+SYSTEM_IN_NAME = re.compile(r"^(?:trs_sites|trs_tg|ctid)_(\d+)", re.I)
+ANY_NUMBER = re.compile(r"(\d{3,6})")
 
 
 def _slug(text):
@@ -81,27 +106,42 @@ def kind_of(path):
         return SITES
     if all(want in fields for want in TALKGROUPS_HEADER):
         return TALKGROUPS
+    if all(want in fields for want in FREQUENCIES_HEADER):
+        return FREQUENCIES
     return None
 
 
 def system_id(path):
-    """The system's number, from the file's name, or None.
+    """The number in the file's name, or None.
 
-    `trs_tg_3508.csv` is system 3508. A file somebody renamed has no
-    number in it and gets None, which is not a fault - it only means the
-    two files cannot be filed together automatically.
+    `trs_tg_3508.csv` is system 3508, and `ctid_1327_....csv` is county
+    1327 - for a county file this is a place, not a system, which is why
+    the summary says "county" there. Taken from straight after the prefix
+    rather than from anywhere in the name, because a county file carries
+    a download timestamp as well and the last digits in it are not an id
+    at all.
+
+    A file somebody renamed falls back to the first number that looks
+    like an id, and then to None - which is not a fault, it only means
+    the files cannot be filed together automatically.
     """
-    found = SYSTEM_IN_NAME.findall(os.path.basename(path))
-    return found[-1] if found else None
+    name = os.path.basename(path)
+    match = SYSTEM_IN_NAME.match(name)
+    if match:
+        return match.group(1)
+    found = ANY_NUMBER.findall(name)
+    return found[0] if found else None
 
 
 def split_line(line):
     """One line into fields, by a rule that fits this file.
 
     A quoted field ends at the first quote followed by a comma or by the
-    end of the line. Any other quote is part of the text, which is what
-    lets `"West Metro "2500" Dispatch"` come back whole. Returns the
-    fields and whether the line needed this at all.
+    end of the line. A doubled quote is an escaped one - that is proper
+    CSV and is not a fault. Any *other* quote is a stray the export
+    failed to escape, kept as part of the text, which is what lets
+    `"West Metro "2500" Dispatch"` come back whole. Returns the fields
+    and whether a stray was found.
     """
     line = line.rstrip("\r\n")
     fields, i, n, repaired = [], 0, len(line), False
@@ -111,14 +151,19 @@ def split_line(line):
             break
         if line[i] == '"':
             i += 1
-            start = i
+            piece = []
             while i < n:
+                if line[i] == '"' and line[i + 1:i + 2] == '"':
+                    piece.append('"')        # an escaped quote: proper CSV
+                    i += 2
+                    continue
                 if line[i] == '"' and (i + 1 >= n or line[i + 1] == ","):
-                    break
+                    break                    # the field ends here
                 if line[i] == '"':
-                    repaired = True          # a quote inside the text
+                    repaired = True          # a quote the export did not escape
+                piece.append(line[i])
                 i += 1
-            fields.append(line[start:i])
+            fields.append("".join(piece))
             i += 2                            # past the closing quote and comma
         else:
             end = line.find(",", i)
@@ -133,10 +178,13 @@ def split_line(line):
 def _rows(path, report):
     """Every line of the file as fields, repairing the ones that need it.
 
-    csv.reader first, because it is right for every well-formed line and
-    understands a field with a newline in it. A line it disagrees with -
-    by field count, or by leaving a quote stranded in the text - is read
-    again by split_line() and counted as repaired.
+    One parser for every line - see split_line(). csv.reader was used
+    first for a while and had to go: it reads a stray-quote line without
+    complaining and hands back something subtly different, so using both
+    meant two readers that disagreed about the same line, which is the
+    bug this module exists to stop. It also could not tell a stray quote
+    from a properly escaped one, so the module's own export would not
+    survive being read back.
     """
     try:
         with io.open(path, encoding="utf-8-sig", errors="replace", newline="") as handle:
@@ -149,13 +197,10 @@ def _rows(path, report):
     for number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
-        plain = next(csv.reader([line]), [])
-        if any('"' in field for field in plain):
-            fixed, _ = split_line(line)
-            report["repaired"].append({"line": number, "was": plain, "now": fixed})
-            out.append((number, fixed))
-        else:
-            out.append((number, plain))
+        fields, strays = split_line(line)
+        if strays:
+            report["repaired"].append({"line": number, "fields": fields})
+        out.append((number, fields))
     return out
 
 
@@ -189,7 +234,7 @@ def read_talkgroups(path):
         if len(row) < 7:
             _note(report, number, f"{len(row)} fields, wanted 7", row)
             continue
-        decimal, hexid, tag, mode, description, service, agency = row[:7]
+        decimal, hexid, alpha, mode, description, tag, agency = row[:7]
         try:
             decimal = int(decimal.strip())
         except ValueError:
@@ -199,9 +244,9 @@ def read_talkgroups(path):
         record = {
             "decimal": decimal,
             "hex": (hexid or "").strip().lower(),
-            "tag": (tag or "").strip(),
+            "alpha_tag": (alpha or "").strip(),
             "description": (description or "").strip(),
-            "service": (service or "").strip(),
+            "tag": (tag or "").strip(),
             # The export leaves a trailing space on a good many of these.
             "agency": (agency or "").strip(),
             "mode": mode.upper(),
@@ -210,7 +255,7 @@ def read_talkgroups(path):
         if decimal in seen:
             report["duplicates"].append({"decimal": decimal, "line": number,
                                          "first": seen[decimal],
-                                         "tag": record["tag"]})
+                                         "alpha_tag": record["alpha_tag"]})
         else:
             seen[decimal] = number
         out.append(record)
@@ -249,6 +294,109 @@ def parse_frequency(token):
         return int(round(float(token) * 1_000_000)), control
     except ValueError:
         return None, False
+
+
+def parse_tone(text):
+    """The squelch column, which is five different things wearing one hat.
+
+    RadioReference puts whatever addresses the channel in here, and what
+    that is depends on the mode:
+
+        CSQ                  carrier squelch - open, no tone
+        123.0 PL             a CTCSS tone, in hertz
+        043 DPL              a DCS code, which is octal and keeps its
+                             leading zero because that is how it is dialled
+        CC 1|TG 1001|SL 1    DMR: colour code, talkgroup, timeslot
+        004 NAC              a P25 network access code, hexadecimal
+
+    Returns a dict with `kind` and whatever that kind carries, or None
+    for an empty column. Never raises: a value nobody here recognises
+    comes back as {"kind": "other", "text": ...} rather than an
+    exception, because an unknown tone is a channel you can still tune.
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+    upper = text.upper()
+    if upper == "CSQ":
+        return {"kind": "csq", "text": text}
+    if "|" in text and "CC" in upper:
+        out = {"kind": "dmr", "text": text}
+        for part in text.split("|"):
+            bits = part.strip().split()
+            if len(bits) != 2:
+                continue
+            what, value = bits[0].upper(), bits[1]
+            try:
+                value = int(value)
+            except ValueError:
+                continue
+            out.update({"CC": {"color_code": value}, "TG": {"talkgroup": value},
+                        "SL": {"slot": value}}.get(what, {}))
+        return out
+    if upper.endswith("NAC"):
+        try:                                   # hexadecimal, as on a site
+            return {"kind": "nac", "nac": int(text.split()[0], 16), "text": text}
+        except (ValueError, IndexError):
+            return {"kind": "other", "text": text}
+    if upper.endswith("DPL") or upper.endswith("DCS"):
+        # Kept as written: a DCS code is octal and 043 is not 43.
+        return {"kind": "dcs", "code": text.split()[0], "text": text}
+    if upper.endswith("PL") or upper.endswith("CTCSS"):
+        try:
+            return {"kind": "ctcss", "hz": float(text.split()[0]), "text": text}
+        except (ValueError, IndexError):
+            return {"kind": "other", "text": text}
+    return {"kind": "other", "text": text}
+
+
+def read_frequencies(path):
+    """A county's frequencies, and a report. Returns (records, report).
+
+    Everything on the air in one county, which is a different question
+    from the two system exports: those describe one trunked system, this
+    describes a place. The rows tagged TRS are the individual channels of
+    whatever trunked systems reach the county, so an ARMER site turns up
+    here as its frequencies where trs_sites describes it as a site.
+
+    An input frequency of 0 means there is no input - the channel is
+    simplex, or it is something that only ever transmits, like an
+    airport's weather. It comes back as None rather than as 0 Hz, which
+    would read as a real frequency at the bottom of the spectrum.
+    """
+    report = _blank_report(path, FREQUENCIES)
+    rows = _rows(path, report)
+    if report["fatal"]:
+        return [], report
+
+    out = []
+    for number, row in rows[1:]:
+        report["read"] += 1
+        if len(row) < 11:
+            _note(report, number, f"{len(row)} fields, wanted 11", row)
+            continue
+        output_hz, _ = parse_frequency(row[0])
+        if output_hz is None:
+            _note(report, number, f"output frequency {row[0]!r} is not a number", row)
+            continue
+        input_hz, _ = parse_frequency(row[1])
+        out.append({
+            "output_hz": output_hz,
+            # 0.00000 is how the export writes "there isn't one".
+            "input_hz": input_hz or None,
+            # A callsign of one space is how it writes "none of anybody's".
+            "callsign": (row[2] or "").strip(),
+            "agency": (row[3] or "").strip(),
+            "description": (row[4] or "").strip(),
+            "alpha_tag": (row[5] or "").strip(),
+            "tone_out": parse_tone(row[6]),
+            "tone_in": parse_tone(row[7]),
+            "mode": (row[8] or "").strip(),
+            "station_class": (row[9] or "").strip(),
+            "tag": (row[10] or "").strip(),
+        })
+        report["kept"] += 1
+    return out, report
 
 
 def read_sites(path):
@@ -335,10 +483,12 @@ def read(path):
         records, report = read_sites(path)
     elif kind == TALKGROUPS:
         records, report = read_talkgroups(path)
+    elif kind == FREQUENCIES:
+        records, report = read_frequencies(path)
     else:
         report = _blank_report(path, None)
         report["fatal"] = ("not a RadioReference export - the first line is "
-                           "neither a sites header nor a talkgroups one")
+                           "not a sites, talkgroups or county header")
         return None, [], report
     return kind, records, report
 
@@ -349,9 +499,11 @@ def summary(report):
     if report["fatal"]:
         return [f"[ERROR] {name}: {report['fatal']}"]
 
+    # A county file's number is a place, not a system.
+    what = "county" if report["kind"] == FREQUENCIES else "system"
     out = [f"[OK] {name}: {report['kept']} {report['kind']} of "
            f"{report['read']} rows"
-           + (f", system {report['system']}" if report["system"] else "")]
+           + (f", {what} {report['system']}" if report["system"] else "")]
     if report["repaired"]:
         out.append(f"[WARN] {name}: {len(report['repaired'])} rows had quotes "
                    f"inside a quoted field and were read again - the export "
@@ -371,6 +523,66 @@ def summary(report):
         out.append(f"[WARN] {name}: {len(report['duplicates'])} entries appear "
                    f"twice, first at line {first['line']}; both are kept")
     return out
+
+
+# ------------------------------------------------------------ writing
+
+SITES_COLUMNS = ["RFSS", "Site Dec", "Site Hex", "Site NAC", "Description",
+                 "County Name", "Lat", "Lon", "Range", "Frequencies"]
+TALKGROUPS_COLUMNS = ["Decimal", "Hex", "Alpha Tag", "Mode", "Description",
+                      "Tag", "Category"]
+
+
+def _hertz_text(hertz, control):
+    """A frequency the way the export writes it: megahertz to six places,
+    with a trailing c if it is a control channel."""
+    return f"{hertz / 1_000_000:.6f}" + (CONTROL if control else "")
+
+
+def write_sites_csv(path, records):
+    """Sites back out, in the shape they came in.
+
+    Written with csv.writer, so what leaves here is *correct* CSV: a quote
+    inside a description is escaped the way the standard says, which is
+    the one thing the RadioReference export does not do. What we write
+    reads back through this module unchanged, and through anybody else's
+    csv reader as well - which the file we were given does not.
+    """
+    with io.open(path, "w", encoding="utf-8", newline="") as handle:
+        out = csv.writer(handle)
+        out.writerow(SITES_COLUMNS)
+        for site in records:
+            control = set(site.get("control_hz") or [])
+            row = [
+                site.get("rfss", ""),
+                f"{int(site['site']):03d}" if site.get("site") is not None else "",
+                site.get("site_hex", ""),
+                f"{site['nac']:X}" if site.get("nac") is not None else "",
+                site.get("description", ""),
+                site.get("county", ""),
+                "" if site.get("lat") is None else site["lat"],
+                "" if site.get("lon") is None else site["lon"],
+                "" if site.get("range_mi") is None else site["range_mi"],
+            ]
+            row += [_hertz_text(hz, hz in control)
+                    for hz in site.get("all_hz") or []]
+            out.writerow(row)
+    return len(records)
+
+
+def write_talkgroups_csv(path, records):
+    """Talkgroups back out, in the shape they came in - and properly
+    quoted, so `West Metro "2500" Dispatch` survives the round trip the
+    original file could not make."""
+    with io.open(path, "w", encoding="utf-8", newline="") as handle:
+        out = csv.writer(handle)
+        out.writerow(TALKGROUPS_COLUMNS)
+        for tg in records:
+            out.writerow([tg.get("decimal", ""), tg.get("hex", ""),
+                          tg.get("alpha_tag", ""), tg.get("mode", ""),
+                          tg.get("description", ""), tg.get("tag", ""),
+                          tg.get("agency", "")])
+    return len(records)
 
 
 def main(argv=None):
@@ -396,6 +608,11 @@ def main(argv=None):
             with_cc = sum(1 for r in records if r["control_hz"])
             print(f"       {with_cc} of them name a control channel; "
                   f"{sum(len(r['all_hz']) for r in records)} frequencies in all")
+        if kind == FREQUENCIES and records:
+            trunked = sum(1 for r in records if r["tag"].upper() == "TRS")
+            print(f"       {len(records) - trunked} conventional channels and "
+                  f"{trunked} trunked-system frequencies; "
+                  f"{len({r['tag'] for r in records})} tags")
         if kind == TALKGROUPS and records:
             encrypted = sum(1 for r in records if r["encrypted"])
             print(f"       {encrypted} are encrypted; "

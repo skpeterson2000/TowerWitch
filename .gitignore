@@ -68,5 +68,10 @@ data/sky_warn.csv
 data/interoperability.*
 data/trs_sites_*
 data/trs_tg_*
+data/repeaterbook.csv
+data/county_frequencies.json
+data/talkgroups.json
 trs_sites_*
 trs_tg_*
+ctid_*
+RB_*.csv
