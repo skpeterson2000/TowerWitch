@@ -43,6 +43,8 @@ import json
 import os
 import tempfile
 import threading
+
+import radioreference
 import time
 from typing import Optional
 
@@ -108,7 +110,14 @@ def bootstrap_from_csv(csv_path: str, json_path: str) -> dict:
                 rfid = int(row[0])
                 stid = int(row[1])
                 stid_hex = (row[2] or "").strip()
-                nac_dec = int(row[3]) if row[3].strip() else 0
+                # NAC is hexadecimal in the export - "400", "40B",
+                # "40a" - and reading it as decimal did two things. It
+                # turned NAC 0x400 into 0x190, and it threw away every
+                # site whose NAC had a letter in it, because int("40B")
+                # raises and the whole row went out by the `continue`
+                # below. Parsed apart from the rest now, so a NAC nobody
+                # can read costs the NAC and not the site.
+                nac_dec = radioreference.parse_nac(row[3]) or 0
                 description = (row[4] or "").strip()
                 county = (row[5] or "").strip()
                 lat = float(row[6]) if row[6].strip() else None
