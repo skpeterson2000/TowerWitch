@@ -14,7 +14,19 @@ import os
 import sys
 import json
 import csv
-import fcntl
+# The single-instance lock, on whichever platform this is. fcntl is POSIX
+# and does not exist on Windows, and importing it unconditionally is what
+# stopped the Tk build running on a laptop at all - it died on line 17,
+# before a window could appear, which reads as "TowerWitch is broken"
+# rather than "this module is for the Pi". Windows has its own byte-range
+# lock in msvcrt, so the protection is kept rather than dropped: see
+# acquire_single_instance_lock().
+try:
+    import fcntl
+    msvcrt = None
+except ImportError:                 # Windows
+    fcntl = None
+    import msvcrt
 import tempfile
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt, atan2, degrees, tan
@@ -4351,15 +4363,43 @@ def _log_startup_event(message):
     except Exception:
         pass
 
+# Where the Windows lock sits, and how much room the pid is given. Well
+# apart, so the one never covers the other.
+LOCK_BYTE = 1000
+PID_WIDTH = 16
+
+
 def acquire_single_instance_lock():
     """Acquire an exclusive lock file to prevent a second instance from running.
     Returns the file descriptor (kept open for process lifetime) or None if
     another instance already holds the lock."""
     lock_path = os.path.join(tempfile.gettempdir(), 'towerwitch.lock')
     try:
-        lock_fd = open(lock_path, 'w')
-        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        lock_fd.write(str(os.getpid()))
+        # Opened without truncating: on Windows the holder's byte lock sits
+        # on the first byte of this file, and coming in with 'w' would try
+        # to empty it out from under them. The pid is written after the
+        # lock is held, which is the only point at which it is ours to
+        # write. r+ needs the file to exist; the first run makes it.
+        try:
+            lock_fd = open(lock_path, 'r+')
+        except FileNotFoundError:
+            lock_fd = open(lock_path, 'w')
+        if fcntl is not None:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        else:
+            # Windows locks a byte *range*, and a locked byte cannot be read
+            # by anybody else - so the lock goes on a byte well past the end
+            # of the pid rather than on the pid itself. main() prints who is
+            # holding it when a second copy is refused, and locking the pid
+            # would make that message read "held by pid=?" for ever. Locking
+            # past the end of the file is allowed.
+            lock_fd.seek(LOCK_BYTE)
+            msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
+        # Padded, not truncated: truncating would cut away the byte Windows
+        # has just locked, and a fixed width stops the tail of an older,
+        # longer pid showing through behind a shorter one.
+        lock_fd.seek(0)
+        lock_fd.write(str(os.getpid()).ljust(PID_WIDTH))
         lock_fd.flush()
         _log_startup_event("lock acquired")
         return lock_fd
