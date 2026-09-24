@@ -1456,9 +1456,19 @@ class TowerWitchTkinter:
                        side=tk.RIGHT, padx=5, ipadx=10, ipady=6)
 
         # What the last import found, under the buttons rather than in a
-        # box somebody has to dismiss before they can read the tree.
-        self.armer_import_note = ttk.Label(armer_frame, text="",
-                                           font=(tw_theme.SANS, 9))
+        # box somebody has to dismiss before they can read the tree. Until
+        # there has been one it says what the button takes, because a
+        # button that only says "Import" does not tell you what to bring
+        # out to a unit that has no connection to go and look with.
+        # wraplength, because this label also carries the report of an
+        # import, which runs long - and a label that does not wrap sets
+        # the width of everything above it. A 1024-wide Pi screen is the
+        # one that has to survive it, not this desk.
+        self.armer_import_note = ttk.Label(
+            armer_frame,
+            text="Import takes RadioReference and RepeaterBook CSV exports,"
+                 " read by header rather than filename.",
+            font=(tw_theme.SANS, 9), wraplength=940, justify=tk.LEFT)
         self.armer_import_note.pack(fill=tk.X, padx=10)
 
         # ARMER sites tree

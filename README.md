@@ -125,6 +125,30 @@ tower, ground, approach and CTAF frequencies - see `AIRPORT_README.md`) and
 those on the shelf TowerWitch runs, shows GPS and grids, and says which
 tabs are waiting for data.
 
+### Programming a radio
+
+TowerWitch does not program radios, and will not grow a worse copy of
+something that already exists. If you have a connection, RepeaterBook does
+this themselves and does it better:
+
+- **CHIRP Export Builder** (free, on their website) builds a CHIRP-ready
+  CSV for where you are, and CHIRP loads it into several hundred radios.
+  RepeaterBook has supported CHIRP since 2011 and their exports are
+  certified by CHIRP, RT Systems and G4HFQ.
+- **RepeaterBook Connect** (their Android app, an annual in-app purchase)
+  sends frequency, offset and tone straight into a supported radio over
+  USB-OTG or Bluetooth - currently a named list of Icom, Kenwood and Yaesu
+  models. It is an app feature, not a web one.
+
+Use theirs. What TowerWitch is for is the other half of the problem: the
+unit at the end of a coax run with no signal, no app store and no account
+session. Export under your own account while you have a connection, carry
+the CSV over, and **Import** on the ARMER tab takes it - RadioReference
+sites, talkgroups and county exports, and RepeaterBook exports, each
+recognised by its header rather than its filename. Nothing here needs a
+network, a token, or anybody's approval to keep working, which is the
+whole point of carrying it out to the field.
+
 ### GPS Configuration
 TowerWitch uses `gpsd` for GPS data:
 ```bash
