@@ -72,7 +72,7 @@ pip3 install PyQt5 requests utm maidenhead mgrs
 ### Quick Start
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/TowerWitch.git
+git clone https://github.com/skpeterson2000/TowerWitch.git
 cd TowerWitch
 
 # Use automated launcher (recommended)
@@ -425,7 +425,18 @@ We welcome contributions! Areas where help is needed:
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+Copyright (C) 2025-2026 Scott Peterson (KC9SP)
+
+TowerWitch is free software: you may redistribute it and modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the [LICENSE](LICENSE) file for the full terms.
+
+That licence covers TowerWitch's own code. It does not cover the Radio
+Reference and RepeaterBook exports it reads, which are licensed to the account
+that downloaded them - see *Your data, not ours* above.
 
 ## Support
 
