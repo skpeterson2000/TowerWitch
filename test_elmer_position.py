@@ -55,6 +55,38 @@ check("the QTH is taken", (round(got["lat"], 3), round(got["lon"], 3)),
 check("  at mode nought - a place named, not a fix", got["mode"], 0)
 check("  and says so", got["elmer_words"], "ELMER's QTH EN26uo")
 
+print("")
+print("-- ELMER's own diagnosis comes with it --")
+got = ask({"located": True, "lat": 46.6, "lon": -94.3, "mode": 3,
+           "from": "ELMER on the Jeep",
+           "sleuth": {"quality": "3D", "advice": "move the puck to a window",
+                      "words": "gpsd on the Jeep"}})
+check("the quality it reports", got["elmer_quality"], "3D")
+check("  and what would make it better",
+      got["elmer_advice"], "move the puck to a window")
+
+print("")
+print("-- the way back in is open --")
+# A unit with a receiver coming on line outranks a typed QTH, which is what
+# elmer_link.position() already decides; this is that it arrives here as a
+# fix and is not flattened into the QTH case.
+got = ask({"located": True, "lat": 47.0, "lon": -93.0, "mode": 2,
+           "from": "ELMER on the Pi",
+           "qth": {"lat": 46.60302, "lon": -94.30944, "grid": "EN26uo"}})
+check("a real fix wins over a QTH that is also on offer",
+      (round(got["lat"]), got["mode"]), (47, 2))
+
+print("")
+print("-- but not this program's own word, come back round --")
+# ELMER hears TowerWitch's UDP broadcast and rates it a fix. Taken back it
+# is TowerWitch's own position returned as ELMER's - which the Qt build
+# records having put the Minneapolis default on every screen in the house.
+got = ask({"located": True, "lat": 44.9778, "lon": -93.265, "mode": 3,
+           "source": "towerwitch-net",
+           "qth": {"lat": 46.60302, "lon": -94.30944, "grid": "EN26uo"}})
+check("the echo is refused", round(got["lat"], 3), 46.603)
+check("  and the QTH underneath it is used instead", got["mode"], 0)
+
 print("\n-- and when there is nothing to take --")
 check("no ELMER at all", ask(None), None)
 check("  an ELMER with neither fix nor QTH",

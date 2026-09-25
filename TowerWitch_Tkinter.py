@@ -256,6 +256,19 @@ class GPSWorker:
         """Start GPS monitoring. The JSON-socket path uses raw sockets and
         does not require the optional `gpsd` Python module — try it first."""
         self.running = True
+        # Hear every ELMER on the network, not only the one on this machine.
+        # The unit with the puck on it is usually not this one, and its
+        # greeting carries its fix; without this the borrowed position can
+        # only ever be a typed QTH. The Qt build has listened for a while
+        # and the Tk build never did.
+        try:
+            heard = elmer_link.listen()
+            if getattr(heard, "error", None):
+                print(f"[WARN] cannot hear other ELMERs on udp/{heard.port}: {heard.error}")
+            else:
+                print(f"[OK] listening for other ELMERs on udp/{heard.port}")
+        except Exception as exc:        # never at the GPS loop's expense
+            print(f"[WARN] could not listen for other ELMERs: {exc}")
         print("[INFO] Attempting to connect to gpsd via JSON socket...")
         self.use_json_fallback = True
         self.thread = threading.Thread(target=self._gps_loop_json, daemon=True)
@@ -287,10 +300,24 @@ class GPSWorker:
             return None
         if not got:
             return None
+        sleuth = got.get("sleuth") or {}
+        # ELMER hears this program's own UDP broadcast and rates it a fix.
+        # Taken back here it would be TowerWitch's word returned as ELMER's,
+        # and the Qt build records what that cost once: the Minneapolis
+        # default went round the loop and came back as EN34ix on every screen
+        # in the house, with a receiver in none of them. What ELMER learned
+        # from a TowerWitch is not a position ELMER has.
+        if got.get("located") and got.get("source") == "towerwitch-net":
+            got = {"sleuth": sleuth, "qth": got.get("qth")}
         common = {'time': datetime.now().isoformat(), 'satellites_used': 0,
-                  'source': 'elmer', 'demo': False}
+                  'source': 'elmer', 'demo': False,
+                  # ELMER's own diagnosis, carried through rather than
+                  # reworded: what it has, how good it is, and what would
+                  # make it better. It is the one that knows.
+                  'elmer_quality': sleuth.get("quality") or '',
+                  'elmer_advice': sleuth.get("advice") or ''}
         if got.get("located") and got.get("lat") is not None:
-            where = got.get("from") or "ELMER on this machine"
+            where = got.get("from") or sleuth.get("words") or "ELMER on this machine"
             print(f"[OK] position from ELMER: {got['lat']:.4f}, {got['lon']:.4f} ({where})")
             return dict(common, lat=float(got["lat"]), lon=float(got["lon"]),
                         alt=got.get("alt"), mode=int(got.get("mode") or 2),
@@ -329,12 +356,12 @@ class GPSWorker:
     RECONNECT_SECONDS = 5
     GPSD_ADDRESS = ('localhost', 2947)
 
-    # How often ELMER is asked for a position while there is no gpsd here.
-    # Often enough that moving the QTH in ELMER moves TowerWitch within a
-    # minute - which is how somebody tests another location from a desk -
-    # and rarely enough that a machine with no ELMER on it is not knocking
-    # on localhost every five seconds for nothing.
-    ELMER_EVERY_SECONDS = 60
+    # How often ELMER is asked while there is no gpsd here. Short, because
+    # this is also the way back: an ELMER with a receiver coming on line, or
+    # a phone being turned on in ELMER's settings, should take the screen
+    # over from a typed QTH without anybody restarting anything. Ten seconds
+    # of localhost costs nothing and a stale position can cost a drive.
+    ELMER_EVERY_SECONDS = 10
 
     def _gps_loop_json(self):
         """Direct JSON socket connection to gpsd - bypasses library caching.
@@ -863,6 +890,8 @@ class TowerWitchTkinter:
         # status line: "ELMER's QTH EN34jv", or the name of the ELMER that
         # had a fix of its own.
         self.elmer_words = ''
+        self.elmer_quality = ''
+        self.elmer_advice = ''
         self.last_speed = None
         self.is_vehicle_speed = False
         # The closest ARMER sites as plain dicts, snapshotted on the main
@@ -4355,6 +4384,8 @@ class TowerWitchTkinter:
                 # TowerWitch's fix would be the suite talking to itself.
                 self.position_source = 'elmer'
                 self.elmer_words = gps_data.get('elmer_words') or 'ELMER'
+                self.elmer_quality = gps_data.get('elmer_quality') or ''
+                self.elmer_advice = gps_data.get('elmer_advice') or ''
                 self.last_speed = None
                 self.is_vehicle_speed = False
             if not is_demo and mode >= 2 and gps_data.get('source') != 'elmer':
@@ -4404,8 +4435,14 @@ class TowerWitchTkinter:
                 # it is a position and it is not this receiver's, and the
                 # difference matters when somebody is deciding whether to
                 # trust the nearest-site list under it.
+                # Never "3D Fix": there is no fix here. What it is, and
+                # how good ELMER says it is - a borrowed 3D from the unit
+                # in the vehicle is worth knowing about, and so is a typed
+                # QTH, and they are not the same thing.
+                quality = gps_data.get('elmer_quality') or ''
                 self.gps_status.config(
-                    text="Position: %s" % (gps_data.get('elmer_words') or "from ELMER"),
+                    text="Position: %s%s" % (gps_data.get('elmer_words') or "from ELMER",
+                                             " (%s)" % quality if quality else ""),
                     foreground=self.p.amber)
             elif is_demo:
                 status_text = "GPS: DEMO MODE (Minneapolis)"
@@ -4434,14 +4471,22 @@ class TowerWitchTkinter:
     def update_gps_display(self, gps_data=None):
         """Update GPS data display"""
         if not gps_data:
-            # Default GPS data (altitude in meters)
+            # Whatever is on screen, with no claim about how it got there.
+            # This used to say mode 3 on eight satellites - a 3D fix,
+            # invented, with no receiver in the machine and often over a
+            # position that came from a saved file or from ELMER. A page
+            # that fabricates its own provenance is worse than a blank one.
             gps_data = {
                 'lat': self.last_lat,
                 'lon': self.last_lon,
-                'alt': 260.0,  # meters
+                'alt': None,
                 'time': datetime.now().isoformat(),
-                'mode': 3,
-                'satellites_used': 8
+                'mode': 0,
+                'satellites_used': 0,
+                'source': self.position_source if self.position_source != 'gps' else None,
+                'elmer_words': getattr(self, 'elmer_words', ''),
+                'elmer_quality': getattr(self, 'elmer_quality', ''),
+                'elmer_advice': getattr(self, 'elmer_advice', ''),
             }
 
         # Clear existing GPS data
@@ -4451,22 +4496,44 @@ class TowerWitchTkinter:
         # Convert altitude from meters to feet
         # GPS provides altitude in meters (typically HAE - Height Above Ellipsoid)
         # Note: True MSL requires geoid correction, but HAE is close enough for amateur radio use
-        alt_meters = gps_data.get('alt', 0)
-        alt_feet = alt_meters * 3.28084
+        alt_meters = gps_data.get('alt')
+        alt_feet = (alt_meters or 0) * 3.28084
         
         # Check if in demo mode
         is_demo = gps_data.get('demo', False)
 
         # Add GPS data rows
+        # What it actually is. A borrowed position has no fix mode and no
+        # satellites: saying "0D" and "0" beside it reads as a receiver that
+        # has failed, when there is no receiver here at all. It says where
+        # the position came from instead, and ELMER's own advice on getting
+        # a better one underneath - ELMER is the thing that knows whether
+        # the answer is a puck, a phone or a cable.
+        borrowed = gps_data.get('source') == 'elmer'
+        mode = gps_data.get('mode', 0)
+        if is_demo:
+            fix_row = ('Fix Mode', 'DEMO', '')
+        elif borrowed:
+            fix_row = ('Position from', gps_data.get('elmer_words') or 'ELMER',
+                       gps_data.get('elmer_quality') or 'no fix of our own')
+        elif mode >= 2:
+            fix_row = ('Fix Mode', str(mode), 'D')
+        else:
+            fix_row = ('Fix Mode', 'no fix', '')
         gps_items = [
             ('Latitude', f"{gps_data.get('lat', 0):.6f}", '°'),
             ('Longitude', f"{gps_data.get('lon', 0):.6f}", '°'),
-            ('Altitude', f"{alt_feet:.1f}", 'ft MSL'),
+        ]
+        if alt_meters is not None:
+            gps_items.append(('Altitude', f"{alt_feet:.1f}", 'ft MSL'))
+        gps_items += [
             ('Nearest Town', self.nearest_town, ''),
-            ('Fix Mode', str(gps_data.get('mode', 0)) if not is_demo else 'DEMO', 'D' if not is_demo else ''),
-            ('Satellites', str(gps_data.get('satellites_used', 0)), ''),
+            fix_row,
+            ('Satellites', str(gps_data.get('satellites_used', 0)) if mode >= 2 else '—', ''),
             ('Time', gps_data.get('time', ''), ''),
         ]
+        if borrowed and gps_data.get('elmer_advice'):
+            gps_items.append(('To do better', gps_data['elmer_advice'], ''))
         
         # Add warning row if in demo mode
         if is_demo:
