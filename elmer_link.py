@@ -190,6 +190,20 @@ def position(timeout=2.0):
     any ELMER on the network announcing a fix of its own, else whatever the
     local one had to say (its typed QTH, or its reasons), else None."""
     got = local_position(timeout)
+    if got and got.get("located") and (got.get("source") or "") in NOT_ITS_OWN:
+        # ELMER is located, but on a position it learned from a TowerWitch -
+        # possibly this one's, coming back round. NOT_ITS_OWN was being
+        # applied to what the other ELMERs announce and not to what the one
+        # on this machine answers, which is the path that actually loops:
+        # TowerWitch broadcasts its last known position, ELMER takes it as a
+        # fix, TowerWitch asks ELMER and is handed its own answer back with
+        # a grid on it. Seen in the field as EN34ix - the Minneapolis
+        # default - on every screen in the house with a receiver in none.
+        #
+        # Refused, and put back as not located so no caller mistakes it for
+        # one. The QTH travelling with it is untouched and is the answer.
+        got = dict(got, located=False, refused=got.get("source"),
+                   reason="that fix is a TowerWitch's own, come back round")
     if got and got.get("located"):
         return got
     peer = _neighbours.with_fix() if _neighbours is not None else None

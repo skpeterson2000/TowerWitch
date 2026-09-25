@@ -307,8 +307,8 @@ class GPSWorker:
         # default went round the loop and came back as EN34ix on every screen
         # in the house, with a receiver in none of them. What ELMER learned
         # from a TowerWitch is not a position ELMER has.
-        if got.get("located") and got.get("source") == "towerwitch-net":
-            got = {"sleuth": sleuth, "qth": got.get("qth")}
+        if got.get("located") and (got.get("source") or "") in elmer_link.NOT_ITS_OWN:
+            got = dict(got, located=False)
         common = {'time': datetime.now().isoformat(), 'satellites_used': 0,
                   'source': 'elmer', 'demo': False,
                   # ELMER's own diagnosis, carried through rather than
